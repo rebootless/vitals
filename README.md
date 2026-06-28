@@ -1,9 +1,9 @@
 # Vitals
 
-[![Debian 12](https://github.com/VargKernel/vitals/actions/workflows/build-debian12.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-12.yml)
-[![Debian 13](https://github.com/VargKernel/vitals/actions/workflows/build-debian13.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-13.yml)
-[![Ubuntu 22.04](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu2204.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-22.04.yml)
-[![Ubuntu 24.04](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu2404.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-24.04.yml)
+[![Debian 12 (Bookworm)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-12.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-12.yml)
+[![Debian 13 (Trixie)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-13.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-13.yml)
+[![Ubuntu 22.04 (Jammy)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-22.04.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-22.04.yml)
+[![Ubuntu 24.04 (Noble)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-24.04.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-24.04.yml)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
