@@ -1,0 +1,116 @@
+name: Ubuntu 24.04 (Noble)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: Ubuntu 24.04 (Noble)
+    runs-on: ubuntu-latest
+
+    container:
+      image: ubuntu:24.04
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Install dependencies
+      run: |
+        set -euxo pipefail
+
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          ca-certificates \
+          git \
+          build-essential \
+          cmake \
+          pkg-config \
+          pandoc \
+          curl \
+          wget \
+          file \
+          libncurses-dev \
+          libncursesw5-dev \
+          libtinfo-dev \
+          libunistring-dev \
+          libutf8proc-dev \
+          libdeflate-dev \
+          libavcodec-dev \
+          libavdevice-dev \
+          libavformat-dev \
+          libswscale-dev \
+          libavutil-dev \
+          libudev-dev \
+          libjpeg-dev \
+          libpng-dev \
+          libx11-dev \
+          libxkbcommon-dev \
+          libcap-dev \
+          zlib1g-dev \
+          libqrcodegen-dev
+
+        if ! apt-get install -y --no-install-recommends libstb-dev; then
+          echo "Fallback: Downloading stb_image.h directly..."
+          mkdir -p /usr/local/include/stb
+          wget -qO /usr/local/include/stb/stb_image.h https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
+        fi
+
+        if ! apt-get install -y --no-install-recommends doctest-dev; then
+          echo "Fallback: Downloading doctest.h directly..."
+          mkdir -p /usr/local/include/doctest
+          wget -qO /usr/local/include/doctest/doctest.h https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h
+        fi
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Clone and build notcurses
+      run: |
+        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+        export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+        set -euxo pipefail
+
+        git clone --depth 1 https://github.com/dankamongmen/notcurses.git
+        cd notcurses
+        git submodule update --init --recursive
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel $(nproc) -- VERBOSE=1 | tee notcurses-build.log
+        cmake --install build
+
+        echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf || true
+        ldconfig || true
+
+    - name: Configure vitals
+      run: |
+        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+        export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+        set -euxo pipefail
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
+
+    - name: Build vitals
+      run: |
+        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+        export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+        set -euxo pipefail
+        cmake --build build --parallel $(nproc) -- VERBOSE=1 | tee build/build.log
+
+    - name: Verify binary
+      run: |
+        export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+        set -euxo pipefail
+
+        if [ ! -f build/vitals ]; then
+          echo "::error::build/vitals not found"
+          grep -E "error:|undefined reference|ld returned" -rn build || true
+          exit 1
+        fi
+
+        echo "Binary info:"
+        ldd build/vitals || true
+        file build/vitals
