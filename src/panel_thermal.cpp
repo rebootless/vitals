@@ -1,0 +1,133 @@
+#include "panels.h"
+
+void panel_thermal(ncplane* n, int y, int x, int h, int w,
+                   const std::vector<thermal>&   zones,
+                   const std::vector<HwmonChip>& hwmon) {
+
+    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Thermal");
+    if (ih <= 0 || iw <= 0) return;
+
+    int row = iy;
+    const int LBL_W  = 14;
+    const int TEMP_W =  9;
+    int bar_w = iw - LBL_W - TEMP_W - 2;
+
+    double hi_limit   = 74.0;
+    double crit_limit = 94.0;
+    bool   found      = false;
+
+    for (const auto& chip : hwmon) {
+        for (const auto& s : chip.sensors) {
+            if (s.has_crit && s.temp_crit > 0) {
+                crit_limit = s.temp_crit;
+                hi_limit   = s.has_max ? s.temp_max : crit_limit - 20.0;
+                found = true; break;
+            }
+        }
+        if (found) break;
+    }
+    if (!found && !zones.empty()) {
+        auto [hi, crit] = thermal_trip_limits(zones[0].zone);
+        hi_limit = hi; crit_limit = crit;
+    }
+
+    auto draw_temp_row = [&](int r, const std::string& label,
+                             double temp, bool is_pkg) {
+        if (r >= iy + ih - 1) return;
+
+        double shown = std::min(99.0, std::max(0.0, temp));
+        uint32_t tc  = (temp >= crit_limit) ? Cat::RED
+                     : (temp >= hi_limit)   ? Cat::YELLOW
+                                            : Cat::GREEN;
+
+        char lbl[64];
+        snprintf(lbl, sizeof(lbl), "%-*s: ", LBL_W - 2,
+                 str_trunc(label, LBL_W - 2).c_str());
+        nc_set(n, is_pkg ? Cat::MAUVE : Cat::BLUE,
+                  is_pkg ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        ncplane_putstr_yx(n, r, ix, lbl);
+
+        int tx = ix + LBL_W;
+
+        char tbuf[32];
+        snprintf(tbuf, sizeof(tbuf), "+%.1f" DEG_C, shown);
+        lbr(n, r, tx);
+        nc_set(n, tc, NCSTYLE_BOLD);
+        ncplane_putstr_yx(n, r, tx + 1, tbuf);
+        rbr(n, r, tx + 8);
+
+        if (bar_w > 2) {
+            lbr(n, r, tx + TEMP_W);
+            draw_bar_grad(n, r, tx + TEMP_W + 1, bar_w,
+                          shown / 99.0, GRAD_TEMP);
+            rbr(n, r, tx + TEMP_W + 1 + bar_w);
+        }
+    };
+
+    if (!hwmon.empty()) {
+        for (const auto& chip : hwmon) {
+            if (row >= iy + ih - 1) break;
+
+            bool had_pkg = false;
+            for (const auto& s : chip.sensors) {
+                if (!s.is_package) continue;
+                draw_temp_row(row++, s.label, s.temp_celsius, true);
+                had_pkg = true;
+            }
+            if (had_pkg && row < iy + ih - 1)
+                draw_sep(n, row++, ix, iw);
+
+            for (const auto& s : chip.sensors) {
+                if (s.is_package || row >= iy + ih - 1) continue;
+                std::string lbl = s.label;
+                if (lbl.size() > 5 && lbl.substr(0, 5) == "Core ") {
+                    std::string num = lbl.substr(5);
+                    bool all_dig   = !num.empty();
+                    for (char c : num)
+                        if (!std::isdigit(static_cast<unsigned char>(c)))
+                            { all_dig = false; break; }
+                    if (all_dig) {
+                        char fmt_lbl[16];
+                        snprintf(fmt_lbl, sizeof(fmt_lbl), "Core %02d", std::stoi(num));
+                        lbl = fmt_lbl;
+                    }
+                }
+                draw_temp_row(row++, lbl, s.temp_celsius, false);
+            }
+        }
+    } else if (!zones.empty()) {
+        bool first = true;
+        for (const auto& z : zones) {
+            if (row >= iy + ih - 1) break;
+            if (!first && row < iy + ih - 1) draw_sep(n, row++, ix, iw);
+            first = false;
+            if (row >= iy + ih - 1) break;
+            draw_temp_row(row++, thermal_zone_type(z.zone), z.temperature_celsius, false);
+        }
+
+    } else {
+        nc_set(n, Cat::SURFACE2);
+        ncplane_putstr_yx(n, row, ix, "No thermal data found");
+        return;
+    }
+
+    int frow = iy + ih - 1;
+    if (frow < iy) return;
+
+    char hibuf[32], cbuf[32];
+    snprintf(hibuf, sizeof(hibuf), "+%.1f" DEG_C,
+             std::min(99.0, std::max(0.0, hi_limit)));
+    snprintf(cbuf,  sizeof(cbuf),  "+%.1f" DEG_C,
+             std::min(99.0, std::max(0.0, crit_limit)));
+
+    int cx = ix;
+    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
+    nc_set(n, Cat::BLUE);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
+    nc_set(n, Cat::PEACH, NCSTYLE_BOLD);
+                              ncplane_putstr_yx(n, frow, cx, hibuf); cx += 7;
+    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
+    nc_set(n, Cat::BLUE);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
+    nc_set(n, Cat::RED, NCSTYLE_BOLD);
+                              ncplane_putstr_yx(n, frow, cx, cbuf);  cx += 7;
+    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, ")");
+}
