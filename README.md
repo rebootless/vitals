@@ -108,4 +108,4 @@ notcurses is included as a source subdirectory (`add_subdirectory(notcurses)`) a
 
 ## License
 
-[GNU General Public License v3.0](LICENSE)
+Distributed under the [GNU General Public License v3.0](LICENSE).
