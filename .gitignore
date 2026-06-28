@@ -1,0 +1,13 @@
+*
+
+!.gitignore
+
+!CMakeLists.txt
+!main.cpp
+!setup.sh
+
+!src/
+!src/**
+
+!src/**/*.cpp
+!src/**/*.h
