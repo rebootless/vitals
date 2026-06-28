@@ -3,8 +3,11 @@
 !.gitignore
 
 !CMakeLists.txt
+!LICENSE
+!README.md
 !main.cpp
 !setup.sh
+!install.sh
 
 !src/
 !src/**
