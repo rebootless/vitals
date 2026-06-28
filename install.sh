@@ -41,89 +41,13 @@ if command -v vitals &>/dev/null; then
     echo ""
 fi
 
-sudo apt-get update -q
-sudo apt-get install -y --no-install-recommends \
-    git \
-    build-essential \
-    cmake \
-    pkg-config \
-    pandoc \
-    wget \
-    file \
-    libncurses-dev \
-    libncursesw5-dev \
-    libtinfo-dev \
-    libunistring-dev \
-    libutf8proc-dev \
-    libdeflate-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavformat-dev \
-    libswscale-dev \
-    libavutil-dev \
-    libudev-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libx11-dev \
-    libxkbcommon-dev \
-    libcap-dev \
-    zlib1g-dev \
-    libqrcodegen-dev
-
-if ! sudo apt-get install -y --no-install-recommends libstb-dev 2>/dev/null; then
-    echo "[i] libstb-dev not found — downloading stb_image.h directly..."
-    sudo mkdir -p /usr/local/include/stb
-    sudo wget -qO /usr/local/include/stb/stb_image.h \
-        https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
-fi
-
-if ! sudo apt-get install -y --no-install-recommends doctest-dev 2>/dev/null; then
-    echo "[i] doctest-dev not found — downloading doctest.h directly..."
-    sudo mkdir -p /usr/local/include/doctest
-    sudo wget -qO /usr/local/include/doctest/doctest.h \
-        https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h
-fi
-
-echo "[+] Dependencies installed."
+git clone --depth 1 "$REPO_URL" "$BUILD_DIR/vitals"
+echo "[+] vitals cloned."
 echo ""
 
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
-export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+bash "$BUILD_DIR/vitals/setup.sh"
 
-if pkg-config --exists notcurses 2>/dev/null; then
-    NC_VER="$(pkg-config --modversion notcurses)"
-    echo "[i] notcurses ${NC_VER} already installed — skipping build."
-    echo ""
-else
-    echo "[i] notcurses not found — building from source."
-    echo ""
-
-    cd "$BUILD_DIR"
-    git clone --depth 1 https://github.com/dankamongmen/notcurses.git
-    cd notcurses
-    git submodule update --init --recursive
-
-    cmake -B build -S . \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DUSE_PANDOC=OFF \
-        -DCMAKE_INSTALL_PREFIX=/usr/local
-
-    cmake --build build --parallel "$(nproc)"
-    sudo cmake --install build
-
-    echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
-    sudo ldconfig
-
-    echo "[+] notcurses installed."
-    echo ""
-fi
-
-cd "$BUILD_DIR"
-git clone --depth 1 "$REPO_URL" vitals
-cd vitals
-
-echo "[+] Repository cloned."
-echo ""
+cd "$BUILD_DIR/vitals"
 
 cmake -B build -S . \
     -DCMAKE_BUILD_TYPE=Release \
@@ -139,14 +63,18 @@ fi
 echo "[+] Build successful."
 echo ""
 
-sudo install -m 755 build/vitals "$INSTALL_BIN"
+# cmake --install strips the build-tree RPATH
+sudo cmake --install build
+
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
+sudo ldconfig
 
 echo "[+] Binary installed to $INSTALL_BIN"
 echo ""
 
-echo "[SUCCESS]"
-echo "Binary  : $INSTALL_BIN"
-echo "Version : $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+echo "[SUCCESS"
+echo "    Binary  : $INSTALL_BIN"
+echo "    Commit  : $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 echo ""
-echo "[i] Run with: vitals"
+echo "    Run with: vitals"
 echo ""
