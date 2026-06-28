@@ -1,23 +1,83 @@
 #!/bin/bash
-set -e
 
-sudo apt update
-sudo apt install -y \
-    git build-essential cmake pkg-config pandoc\
-    libncurses-dev libunistring-dev libutf8proc-dev \
-    libdeflate-dev libqrcodegen-dev libstb-dev \
-    libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev \
-    libavutil-dev libudev-dev doctest-dev
+set -euo pipefail
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-git clone https://github.com/dankamongmen/notcurses.git
-cd notcurses
-git submodule update --init --recursive
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
 
-cmake -B build \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DUSE_PANDOC=OFF
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cmake --build build -j$(nproc)
+if [[ $EUID -eq 0 ]]; then
+    echo -e "${RED}[!] Do not run this script as root.${NC}"
+    echo "[i] Run it as a regular user — sudo will be called where needed."
+    exit 1
+fi
 
-sudo cmake --install build
-sudo ldconfig
+sudo apt-get update -q
+sudo apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    cmake \
+    pkg-config \
+    wget \
+    file \
+    libncurses-dev \
+    libncursesw5-dev \
+    libtinfo-dev \
+    libunistring-dev \
+    libutf8proc-dev \
+    libdeflate-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libavutil-dev \
+    libudev-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libx11-dev \
+    libxkbcommon-dev \
+    libcap-dev \
+    zlib1g-dev \
+    libqrcodegen-dev
+
+if ! sudo apt-get install -y --no-install-recommends libstb-dev 2>/dev/null; then
+    echo "[i] libstb-dev not found — downloading stb_image.h directly..."
+    sudo mkdir -p /usr/local/include/stb
+    sudo wget -qO /usr/local/include/stb/stb_image.h \
+        https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
+fi
+
+if ! sudo apt-get install -y --no-install-recommends doctest-dev 2>/dev/null; then
+    echo "[i] doctest-dev not found — downloading doctest.h directly..."
+    sudo mkdir -p /usr/local/include/doctest
+    sudo wget -qO /usr/local/include/doctest/doctest.h \
+        https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h
+fi
+
+echo "[+] Dependencies installed."
+echo ""
+
+if [[ -d "$SCRIPT_DIR/notcurses" ]]; then
+    echo "[i] notcurses/ already present — skipping clone."
+else
+    git clone --depth 1 https://github.com/dankamongmen/notcurses.git \
+        "$SCRIPT_DIR/notcurses"
+    echo "[+] notcurses cloned."
+fi
+
+echo "[*] Updating notcurses submodules..."
+git -C "$SCRIPT_DIR/notcurses" submodule update --init --recursive
+echo "[+] Submodules ready."
+echo ""
+
+echo "[SUCCESS]"
+echo "    Repo     : $SCRIPT_DIR"
+echo "    notcurses: $SCRIPT_DIR/notcurses"
+echo ""
+echo "[NOTE] Build vitals:"
+echo "    cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF"
+echo "    cmake --build build -j\$(nproc)"
+echo ""
