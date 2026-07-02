@@ -94,6 +94,10 @@ vitals
 |-----|--------|
 | `q` | Quit   |
 
+## Screenshots
+
+![](screenshots/2026-07-02_23-30.png)
+
 ## How it builds
 
 notcurses is included as a source subdirectory (`add_subdirectory(notcurses)`) and compiled together with vitals. This means no pre-installed notcurses package is required — `setup.sh` clones the source and cmake takes care of the rest.
