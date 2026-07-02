@@ -15,11 +15,11 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         nc_set(n, Cat::BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Interfaces");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::TEAL);
+            nc_set(n, Cat::PEACH);
             ncplane_printf_yx(n, row, C2, "%-14s", "RX");
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::PEACH, NCSTYLE_BOLD);
+            nc_set(n, Cat::TEAL, NCSTYLE_BOLD);
             ncplane_printf_yx(n, row, C3, "%-14s", "TX");
         }
         row++;
@@ -46,14 +46,14 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         ncplane_printf_yx(n, row, C1, "%-14s",
                           str_trunc(nd.interface, 14).c_str());
         if (C2 < ix + iw) {
-            nc_set(n, Cat::TEAL);
+            nc_set(n, Cat::PEACH);
             ncplane_putstr_yx(n, row, C2, "▼ ");
             nc_set(n, Cat::TEXT);
             ncplane_printf_yx(n, row, C2 + 2, "%-12s",
                               str_trunc(fmt_net_rate(rx), 12).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::PEACH, NCSTYLE_BOLD);
+            nc_set(n, Cat::TEAL, NCSTYLE_BOLD);
             ncplane_putstr_yx(n, row, C3, "▲ ");
             nc_set(n, Cat::TEXT);
             ncplane_printf_yx(n, row, C3 + 2, "%-12s",
@@ -69,8 +69,8 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, Cat::BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Packets");
-        if (C2 < ix + iw) { nc_set(n, Cat::TEAL);             ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
-        if (C3 < ix + iw) { nc_set(n, Cat::PEACH, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
+        if (C2 < ix + iw) { nc_set(n, Cat::PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
+        if (C3 < ix + iw) { nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
         row++;
     }
 
@@ -78,12 +78,12 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         if (row >= iy + ih) return;
         nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", name);
         if (C2 < ix + iw) {
-            nc_set(n, Cat::TEAL);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C2 + 2, "%-12llu", rx_v);
+            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n,  row, C2 + 2, "%-12llu", rx_v);
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::PEACH, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C3 + 2, "%-12llu", tx_v);
+            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n,  row, C3 + 2, "%-12llu", tx_v);
         }
         row++;
     };
@@ -95,20 +95,20 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, Cat::BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Throughput");
-        if (C2 < ix + iw) { nc_set(n, Cat::TEAL);             ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
-        if (C3 < ix + iw) { nc_set(n, Cat::PEACH, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
+        if (C2 < ix + iw) { nc_set(n, Cat::PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
+        if (C3 < ix + iw) { nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
         row++;
     }
 
     if (row < iy + ih) {
         nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Total");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::TEAL);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C2 + 2, "%-12s", fmt_bytes(total_rx).c_str());
+            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_bytes(total_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::PEACH, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C3 + 2, "%-12s", fmt_bytes(total_tx).c_str());
+            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_bytes(total_tx).c_str());
         }
         row++;
     }
@@ -116,12 +116,12 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Peak");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::TEAL);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C2 + 2, "%-12s", fmt_net_rate(G.peak_rx).c_str());
+            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_net_rate(G.peak_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::PEACH, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);              ncplane_printf_yx(n,  row, C3 + 2, "%-12s", fmt_net_rate(G.peak_tx).c_str());
+            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_net_rate(G.peak_tx).c_str());
         }
         row++;
     }
