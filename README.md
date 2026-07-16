@@ -103,7 +103,7 @@ vitals
 
 ## Screenshots
 
-![](screenshots/2026-07-02_23-30.png)
+![](screenshots/2026-07-16_07-24.png)
 
 ## How it builds
 
