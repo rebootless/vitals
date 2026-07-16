@@ -1,14 +1,21 @@
+<div align="center">
+
 # Vitals
+
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
+[![CMake](https://img.shields.io/badge/CMake-build-064F8C?logo=cmake)](https://cmake.org/)
+[![notcurses](https://img.shields.io/badge/notcurses-1A1A2E)](https://github.com/dankamongmen/notcurses)
 
 [![Debian 12 (Bookworm)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-12.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-12.yml)
 [![Debian 13 (Trixie)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-13.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-debian-13.yml)
 [![Ubuntu 22.04 (Jammy)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-22.04.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-22.04.yml)
 [![Ubuntu 24.04 (Noble)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-24.04.yml/badge.svg)](https://github.com/VargKernel/vitals/actions/workflows/build-ubuntu-24.04.yml)
-[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
 
 A terminal resource monitor for Linux built with [notcurses](https://github.com/dankamongmen/notcurses). Displays CPU, memory, network, storage, and thermal data in a responsive multi-panel TUI with 24-bit color using the [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) palette.
+
+</div>
 
 ## Panels
 
