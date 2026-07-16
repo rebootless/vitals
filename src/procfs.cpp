@@ -229,12 +229,42 @@ std::vector<thermal> parse_thermal() {
     return result;
 }
 
+static std::vector<cpufreq> parse_cpufreq_from_cpuinfo() {
+    std::vector<cpufreq> result;
+    std::ifstream f("/proc/cpuinfo");
+    if (!f) return result;
+
+    std::string line;
+    int cpu = -1;
+    while (std::getline(f, line)) {
+        if (line.rfind("processor", 0) == 0) {
+            auto pos = line.find(':');
+            if (pos != std::string::npos)
+                cpu = std::stoi(line.substr(pos + 1));
+        } else if (line.rfind("cpu MHz", 0) == 0) {
+            auto pos = line.find(':');
+            if (pos != std::string::npos && cpu >= 0) {
+                cpufreq cf{};
+                cf.cpu         = cpu;
+                cf.current_khz = std::stod(line.substr(pos + 1)) * 1000.0;
+                cf.min_khz     = 0.0;
+                cf.max_khz     = 0.0;
+                result.push_back(cf);
+            }
+        }
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const cpufreq& a, const cpufreq& b) { return a.cpu < b.cpu; });
+    return result;
+}
+
 std::vector<cpufreq> parse_cpufreq() {
     const char* base = "/sys/devices/system/cpu";
     std::vector<cpufreq> result;
 
     DIR* dir = opendir(base);
-    if (!dir) return result;
+    if (!dir) return parse_cpufreq_from_cpuinfo();
 
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
@@ -266,6 +296,8 @@ std::vector<cpufreq> parse_cpufreq() {
 
     std::sort(result.begin(), result.end(),
               [](const cpufreq& a, const cpufreq& b) { return a.cpu < b.cpu; });
+
+    if (result.empty()) return parse_cpufreq_from_cpuinfo();
     return result;
 }
 
