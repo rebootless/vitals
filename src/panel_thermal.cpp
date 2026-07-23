@@ -36,14 +36,14 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         if (r >= iy + ih - 1) return;
 
         double shown = std::min(99.0, std::max(0.0, temp));
-        uint32_t tc  = (temp >= crit_limit) ? Cat::RED
-                     : (temp >= hi_limit)   ? Cat::YELLOW
-                                            : Cat::GREEN;
+        uint32_t tc  = (temp >= crit_limit) ? theme().RED
+                     : (temp >= hi_limit)   ? theme().YELLOW
+                                            : theme().GREEN;
 
         char lbl[64];
         snprintf(lbl, sizeof(lbl), "%-*s: ", LBL_W - 2,
                  str_trunc(label, LBL_W - 2).c_str());
-        nc_set(n, is_pkg ? Cat::MAUVE : Cat::BLUE,
+        nc_set(n, is_pkg ? theme().MAUVE : theme().BLUE,
                   is_pkg ? NCSTYLE_BOLD : NCSTYLE_NONE);
         ncplane_putstr_yx(n, r, ix, lbl);
 
@@ -106,7 +106,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         }
 
     } else {
-        nc_set(n, Cat::SURFACE2);
+        nc_set(n, theme().SURFACE2);
         ncplane_putstr_yx(n, row, ix, "No thermal data found");
         return;
     }
@@ -121,13 +121,13 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
              std::min(99.0, std::max(0.0, crit_limit)));
 
     int cx = ix;
-    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
-    nc_set(n, Cat::BLUE);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
-    nc_set(n, Cat::PEACH, NCSTYLE_BOLD);
+    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
+    nc_set(n, theme().BLUE);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
+    nc_set(n, theme().PEACH, NCSTYLE_BOLD);
                               ncplane_putstr_yx(n, frow, cx, hibuf); cx += 7;
-    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
-    nc_set(n, Cat::BLUE);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
-    nc_set(n, Cat::RED, NCSTYLE_BOLD);
+    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
+    nc_set(n, theme().BLUE);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
+    nc_set(n, theme().RED, NCSTYLE_BOLD);
                               ncplane_putstr_yx(n, frow, cx, cbuf);  cx += 7;
-    nc_set(n, Cat::OVERLAY0); ncplane_putstr_yx(n, frow, cx, ")");
+    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, ")");
 }

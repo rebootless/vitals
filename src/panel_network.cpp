@@ -3,7 +3,7 @@
 void panel_network(ncplane* n, int y, int x, int h, int w,
                    const std::vector<netdev>& cur_net) {
 
-    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Network", "q:Quit");
+    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Network", "q:Quit Esc:Settings");
     if (ih <= 0 || iw <= 0) return;
 
     int row = iy;
@@ -12,14 +12,14 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     const int C3 = ix + 32;
 
     if (row < iy + ih) {
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Interfaces");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::PEACH);
+            nc_set(n, theme().PEACH);
             ncplane_printf_yx(n, row, C2, "%-14s", "RX");
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::TEAL, NCSTYLE_BOLD);
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD);
             ncplane_printf_yx(n, row, C3, "%-14s", "TX");
         }
         row++;
@@ -42,20 +42,20 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         total_tx += nd.tx_bytes;
 
         if (row >= iy + ih) break;
-        nc_set(n, Cat::TEXT);
+        nc_set(n, theme().TEXT);
         ncplane_printf_yx(n, row, C1, "%-14s",
                           str_trunc(nd.interface, 14).c_str());
         if (C2 < ix + iw) {
-            nc_set(n, Cat::PEACH);
+            nc_set(n, theme().PEACH);
             ncplane_putstr_yx(n, row, C2, "▼ ");
-            nc_set(n, Cat::TEXT);
+            nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C2 + 2, "%-12s",
                               str_trunc(fmt_net_rate(rx), 12).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::TEAL, NCSTYLE_BOLD);
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD);
             ncplane_putstr_yx(n, row, C3, "▲ ");
-            nc_set(n, Cat::TEXT);
+            nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C3 + 2, "%-12s",
                               str_trunc(fmt_net_rate(tx), 12).c_str());
         }
@@ -67,23 +67,23 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     auto sn = parse_snmp();
 
     if (row < iy + ih) {
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Packets");
-        if (C2 < ix + iw) { nc_set(n, Cat::PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
-        if (C3 < ix + iw) { nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
+        if (C2 < ix + iw) { nc_set(n, theme().PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
+        if (C3 < ix + iw) { nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
         row++;
     }
 
     auto pkt_row = [&](const char* name, ull rx_v, ull tx_v) {
         if (row >= iy + ih) return;
-        nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", name);
+        nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", name);
         if (C2 < ix + iw) {
-            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n,  row, C2 + 2, "%-12llu", rx_v);
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n,  row, C2 + 2, "%-12llu", rx_v);
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n,  row, C3 + 2, "%-12llu", tx_v);
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n,  row, C3 + 2, "%-12llu", tx_v);
         }
         row++;
     };
@@ -93,35 +93,35 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, C1, "%-14s", "Throughput");
-        if (C2 < ix + iw) { nc_set(n, Cat::PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
-        if (C3 < ix + iw) { nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
+        if (C2 < ix + iw) { nc_set(n, theme().PEACH);              ncplane_printf_yx(n, row, C2, "%-14s", "RX"); }
+        if (C3 < ix + iw) { nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C3, "%-14s", "TX"); }
         row++;
     }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Total");
+        nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Total");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_bytes(total_rx).c_str());
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_bytes(total_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_bytes(total_tx).c_str());
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_bytes(total_tx).c_str());
         }
         row++;
     }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Peak");
+        nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Peak");
         if (C2 < ix + iw) {
-            nc_set(n, Cat::PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_net_rate(G.peak_rx).c_str());
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_net_rate(G.peak_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, Cat::TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
-            nc_set(n, Cat::TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_net_rate(G.peak_tx).c_str());
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_net_rate(G.peak_tx).c_str());
         }
         row++;
     }

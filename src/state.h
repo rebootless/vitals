@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "procfs.h"
+#include "gpu.h"
 
 enum GradType { GRAD_CPU, GRAD_MEM, GRAD_TEMP, GRAD_STORAGE, GRAD_HIST };
 
@@ -33,6 +34,16 @@ struct AppState {
     cpuinfo                ci        = {};
     systemuname            un        = {};
     std::string            local_ip  = "N/A";
+
+    std::vector<GpuInfo>   gpus;
+
+    int  theme_idx = 0;
+    int  bg_idx    = 0;
+
+    bool settings_open        = false;
+    int  settings_focus       = 0;
+    int  settings_saved_theme = 0;
+    int  settings_saved_bg    = 0;
 };
 
 extern AppState G;

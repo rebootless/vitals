@@ -2,20 +2,29 @@
 
 #include "common.h"
 #include "state.h"
+#include "theme.h"
 
-namespace Cat {
-    constexpr uint32_t TEXT     = 0xcdd6f4;
-    constexpr uint32_t SUBTEXT0 = 0xa6adc8;
-    constexpr uint32_t SURFACE1 = 0x45475a;
-    constexpr uint32_t SURFACE2 = 0x585b70;
-    constexpr uint32_t OVERLAY0 = 0x6c7086;
-    constexpr uint32_t BLUE     = 0x89b4fa;
-    constexpr uint32_t GREEN    = 0xa6e3a1;
-    constexpr uint32_t PEACH    = 0xfab387;
-    constexpr uint32_t RED      = 0xf38ba8;
-    constexpr uint32_t MAUVE    = 0xcba6f7;
-    constexpr uint32_t YELLOW   = 0xf9e2af;
-    constexpr uint32_t TEAL     = 0x94e2d5;
+inline const Theme& theme() { return current_theme(); }
+
+inline void nc_bg_apply(ncplane* n) {
+    uint64_t channels = 0;
+
+    if (G.bg_idx == 1) {
+        uint32_t rgb = theme().BASE;
+
+        ncchannels_set_fg_default(&channels);
+
+        ncchannels_set_bg_rgb8(
+            &channels,
+            static_cast<unsigned>((rgb >> 16) & 0xFF),
+            static_cast<unsigned>((rgb >>  8) & 0xFF),
+            static_cast<unsigned>( rgb        & 0xFF));
+    } else {
+        ncchannels_set_fg_default(&channels);
+        ncchannels_set_bg_default(&channels);
+    }
+
+    ncplane_set_base(n, " ", 0, channels);
 }
 
 inline void nc_fg(ncplane* n, uint32_t rgb) {
@@ -23,7 +32,7 @@ inline void nc_fg(ncplane* n, uint32_t rgb) {
         static_cast<unsigned>((rgb >> 16) & 0xFF),
         static_cast<unsigned>((rgb >>  8) & 0xFF),
         static_cast<unsigned>( rgb        & 0xFF));
-    ncplane_set_bg_default(n);
+    nc_bg_apply(n);
 }
 
 inline void nc_set(ncplane* n, uint32_t rgb, unsigned style = NCSTYLE_NONE) {
@@ -43,27 +52,29 @@ static inline uint32_t lerp_rgb(uint32_t a, uint32_t b, double t) {
 
 inline uint32_t grad_color(GradType gt, double pos) {
     pos = std::max(0.0, std::min(1.0, pos));
+    const Theme& t = theme();
     switch (gt) {
         case GRAD_CPU:
         case GRAD_HIST:
-            if (pos < 0.5) return lerp_rgb(Cat::GREEN,  Cat::YELLOW, pos * 2.0);
-            else           return lerp_rgb(Cat::YELLOW,  Cat::RED,   (pos - 0.5) * 2.0);
+            if (pos < 0.5) return lerp_rgb(t.GREEN,  t.YELLOW, pos * 2.0);
+            else           return lerp_rgb(t.YELLOW, t.RED,    (pos - 0.5) * 2.0);
 
         case GRAD_MEM:
-            return lerp_rgb(Cat::BLUE, Cat::MAUVE, pos);
+            return lerp_rgb(t.BLUE, t.MAUVE, pos);
 
         case GRAD_TEMP:
-            if (pos < 0.5) return lerp_rgb(Cat::YELLOW, Cat::PEACH, pos * 2.0);
-            else           return lerp_rgb(Cat::PEACH,   Cat::RED,  (pos - 0.5) * 2.0);
+            if (pos < 0.5) return lerp_rgb(t.YELLOW, t.PEACH, pos * 2.0);
+            else           return lerp_rgb(t.PEACH,  t.RED,   (pos - 0.5) * 2.0);
 
         case GRAD_STORAGE:
-            return lerp_rgb(Cat::TEAL, Cat::BLUE, pos);
+            return lerp_rgb(t.TEAL, t.BLUE, pos);
     }
-    return Cat::GREEN;
+    return t.GREEN;
 }
 
 inline uint32_t pct_color(double pct) {
-    if (pct >= 85.0) return Cat::RED;
-    if (pct >= 60.0) return Cat::YELLOW;
-    return Cat::GREEN;
+    const Theme& t = theme();
+    if (pct >= 85.0) return t.RED;
+    if (pct >= 60.0) return t.YELLOW;
+    return t.GREEN;
 }

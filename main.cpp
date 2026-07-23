@@ -1,4 +1,6 @@
 #include "panels.h"
+#include "theme.h"
+#include "config.h"
 
 #include <clocale>
 #include <thread>
@@ -14,16 +16,17 @@ static void render(notcurses* nc, ncplane* n,
                    const std::vector<thermal>&   therm,
                    const std::vector<cpufreq>&   freqs,
                    const std::vector<double>&    core_pcts,
-                   const std::vector<HwmonChip>& hwmon) {
+                   const std::vector<HwmonChip>& hwmon,
+                   const std::vector<GpuInfo>&   gpus) {
 
+    nc_bg_apply(n);
     ncplane_erase(n);
 
     unsigned rows_u, cols_u;
     ncplane_dim_yx(n, &rows_u, &cols_u);
+
     int rows = static_cast<int>(rows_u);
     int cols = static_cast<int>(cols_u);
-
-    ncplane_set_bg_default(n);
 
     draw_titlebar(n, cols);
 
@@ -36,11 +39,16 @@ static void render(notcurses* nc, ncplane* n,
         int c2 = (cols - c1) / 2;
         int c3 = cols - c1 - c2;
 
+        int b1 = cols * 2 / 5;
+        int b2 = (cols - b1) / 2;
+        int b3 = cols - b1 - b2;
+
         panel_cpu    (n, 1,        0,     top_h, c1,       cur_cpu, cpu_pct, freqs, core_pcts);
         panel_memory (n, 1,        c1,    top_h, c2);
         panel_thermal(n, 1,        c1+c2, top_h, c3,       therm, hwmon);
-        panel_network(n, 1+top_h,  0,     bot_h, c1,       cur_net);
-        panel_storage(n, 1+top_h,  c1,    bot_h, cols-c1,  cur_disk);
+        panel_network(n, 1+top_h,  0,     bot_h, b1,       cur_net);
+        panel_storage(n, 1+top_h,  b1,    bot_h, b2,       cur_disk);
+        panel_gpu    (n, 1+top_h,  b1+b2, bot_h, b3,       gpus);
 
     } else if (cols >= 80) {
         int half  = cols / 2;
@@ -52,16 +60,21 @@ static void render(notcurses* nc, ncplane* n,
         panel_memory (n, 1,             half, top_h, cols-half);
         panel_network(n, 1+top_h,       0,    mid_h, half,      cur_net);
         panel_storage(n, 1+top_h,       half, mid_h, cols-half, cur_disk);
-        panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, cols,      therm, hwmon);
+        panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, half,      therm, hwmon);
+        panel_gpu    (n, 1+top_h+mid_h, half, bot_h, cols-half, gpus);
 
     } else {
-        int np = 5, ph = avail / np, rem = avail % np;
+        int np = 6, ph = avail / np, rem = avail % np;
         panel_cpu    (n, ph*0, 0, ph,      cols, cur_cpu, cpu_pct, freqs, core_pcts);
         panel_memory (n, ph*1, 0, ph,      cols);
         panel_network(n, ph*2, 0, ph,      cols, cur_net);
         panel_storage(n, ph*3, 0, ph,      cols, cur_disk);
-        panel_thermal(n, ph*4, 0, ph+rem,  cols, therm, hwmon);
+        panel_thermal(n, ph*4, 0, ph,      cols, therm, hwmon);
+        panel_gpu    (n, ph*5, 0, ph+rem,  cols, gpus);
     }
+
+    if (G.settings_open)
+        panel_settings(n, rows, cols);
 
     notcurses_render(nc);
 }
@@ -80,6 +93,13 @@ int main() {
     ncplane* n = notcurses_stdplane(nc);
     ncplane_set_bg_default(n);
 
+    {
+        Config cfg = load_config();
+        int ti = find_theme_index(cfg.theme_name);
+        set_theme_index(ti >= 0 ? ti : 0);
+        G.bg_idx = (cfg.bg_mode == "solid") ? 1 : 0;
+    }
+
     try { G.ci = parse_cpuinfo();     } catch (...) {}
     try { G.un = parse_systemuname(); } catch (...) {}
     G.local_ip = get_local_ip();
@@ -92,10 +112,66 @@ int main() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+    cpustat                last_cpu{};
+    double                 last_pct = 0.0;
+    std::vector<netdev>    last_net;
+    std::vector<diskstats> last_disk;
+    std::vector<thermal>   last_therm;
+    std::vector<cpufreq>   last_freqs;
+    std::vector<double>    last_core_pcts;
+    std::vector<HwmonChip> last_hwmon;
+
     for (;;) {
         ncinput ni{};
         uint32_t ch = notcurses_get_nblock(nc, &ni);
-        if (ch == 'q' || ch == 'Q') break;
+
+        if (!G.settings_open) {
+            if (ch == 'q' || ch == 'Q') break;
+
+            // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
+            if (ch == NCKEY_ESC || ch == 27) {
+                G.settings_saved_theme = G.theme_idx;
+                G.settings_saved_bg    = G.bg_idx;
+                G.settings_focus       = 0;
+                G.settings_open        = true;
+            }
+        } else {
+            const int n_themes = static_cast<int>(all_themes().size());
+
+            // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
+            if (ch == NCKEY_ESC || ch == 27) {
+                G.theme_idx     = G.settings_saved_theme;
+                G.bg_idx        = G.settings_saved_bg;
+                G.settings_open = false;
+
+            } else if (ch == '\t') {
+                G.settings_focus = 1 - G.settings_focus;
+
+            } else if (ch == NCKEY_UP) {
+                if (G.settings_focus == 0)
+                    G.theme_idx = (G.theme_idx - 1 + n_themes) % n_themes;
+                else
+                    G.bg_idx    = (G.bg_idx - 1 + 2) % 2;
+
+            } else if (ch == NCKEY_DOWN) {
+                if (G.settings_focus == 0)
+                    G.theme_idx = (G.theme_idx + 1) % n_themes;
+                else
+                    G.bg_idx    = (G.bg_idx + 1) % 2;
+
+            } else if (ch == NCKEY_ENTER || ch == '\n' || ch == '\r') {
+                Config cfg;
+                cfg.theme_name = current_theme().name;
+                cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
+                save_config(cfg);
+                G.settings_open = false;
+            }
+
+            render(nc, n, last_cpu, last_pct, last_net, last_disk,
+                  last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus);
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            continue;
+        }
 
         const auto t_now = Clock::now();
         G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
@@ -116,6 +192,7 @@ int main() {
         try { therm    = parse_thermal();   } catch (...) {}
         try { freqs    = parse_cpufreq();   } catch (...) {}
         try { hwmon    = parse_hwmon();     } catch (...) {}
+        try { G.gpus   = parse_gpus();      } catch (...) {}
 
         const double pct = cpu_delta(G.prev_cpu, cur_cpu);
         G.cpu_hist.push_back(pct);
@@ -146,7 +223,16 @@ int main() {
         G.peak_rx = std::max(G.peak_rx, rx_now);
         G.peak_tx = std::max(G.peak_tx, tx_now);
 
-        render(nc, n, cur_cpu, pct, cur_net, cur_disk, therm, freqs, core_pcts, hwmon);
+        render(nc, n, cur_cpu, pct, cur_net, cur_disk, therm, freqs, core_pcts, hwmon, G.gpus);
+
+        last_cpu       = cur_cpu;
+        last_pct       = pct;
+        last_net       = cur_net;
+        last_disk      = cur_disk;
+        last_therm     = therm;
+        last_freqs     = freqs;
+        last_core_pcts = core_pcts;
+        last_hwmon     = hwmon;
 
         G.prev_cpu  = cur_cpu;
         G.prev_core = std::move(cur_core);

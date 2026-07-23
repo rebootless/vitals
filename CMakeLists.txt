@@ -15,11 +15,16 @@ set(SOURCES
     src/sysinfo.cpp
     src/draw.cpp
     src/format.cpp
+    src/theme.cpp
+    src/config.cpp
+    src/gpu.cpp
     src/panel_cpu.cpp
     src/panel_memory.cpp
     src/panel_network.cpp
     src/panel_storage.cpp
     src/panel_thermal.cpp
+    src/panel_gpu.cpp
+    src/panel_settings.cpp
 )
 
 add_executable(vitals ${SOURCES})

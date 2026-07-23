@@ -2,6 +2,7 @@
 
 #include "draw.h"
 #include "sysinfo.h"
+#include "gpu.h"
 
 void panel_cpu    (ncplane* n, int y, int x, int h, int w,
                    const cpustat&              cur,
@@ -20,3 +21,8 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
 void panel_thermal(ncplane* n, int y, int x, int h, int w,
                    const std::vector<thermal>&   zones,
                    const std::vector<HwmonChip>& hwmon);
+
+void panel_gpu    (ncplane* n, int y, int x, int h, int w,
+                   const std::vector<GpuInfo>& gpus);
+
+void panel_settings(ncplane* n, int rows, int cols);

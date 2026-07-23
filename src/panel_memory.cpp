@@ -15,7 +15,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     if (row < iy + ih) {
         uint32_t pc = pct_color(rampct);
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Memory:");
 
         lbr(n, row, ix + LBL);
@@ -33,7 +33,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::TEXT);
+        nc_set(n, theme().TEXT);
         std::string used_str = fmt_mem_kib(used_kb) + " / " + fmt_mem_kib(mi.MemTotal);
         ncplane_printf_yx(n, row, ix + LBL, "%s",
                           str_trunc(used_str, iw - LBL).c_str());
@@ -43,7 +43,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Swap:");
 
         if (mi.SwapTotal > 0) {
@@ -65,7 +65,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
             }
         } else {
             lbr(n, row, ix + LBL);
-            nc_set(n, Cat::SURFACE2);
+            nc_set(n, theme().SURFACE2);
             ncplane_putstr_yx(n, row, ix + LBL + 1, " 0%");
             rbr(n, row, ix + LBL + 4);
 
@@ -80,7 +80,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     }
 
     if (row < iy + ih) {
-        nc_set(n, Cat::TEXT);
+        nc_set(n, theme().TEXT);
         if (mi.SwapTotal > 0) {
             const ull swp_used = (mi.SwapTotal > mi.SwapFree)
                                  ? mi.SwapTotal - mi.SwapFree : 0;
@@ -97,11 +97,11 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     struct MemRow { const char* label; ull value; uint32_t color; };
     const std::vector<MemRow> rows = {
-        {"Cached",  mi.Cached,  Cat::TEAL},
-        {"Buffers", mi.Buffers, Cat::TEAL},
-        {"Slab",    mi.Slab,    Cat::TEXT},
-        {"Shared",  mi.Shmem,   Cat::TEXT},
-        {"Dirty",   mi.Dirty,   Cat::YELLOW},
+        {"Cached",  mi.Cached,  theme().TEAL},
+        {"Buffers", mi.Buffers, theme().TEAL},
+        {"Slab",    mi.Slab,    theme().TEXT},
+        {"Shared",  mi.Shmem,   theme().TEXT},
+        {"Dirty",   mi.Dirty,   theme().YELLOW},
     };
 
     std::vector<std::string> rendered;
@@ -112,16 +112,16 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     for (size_t i = 0; i < rows.size() && row < iy + ih; ++i) {
         const auto& r = rows[i];
-        nc_set(n, Cat::BLUE);
+        nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, r.label);
 
-        nc_set(n, Cat::OVERLAY0);
+        nc_set(n, theme().OVERLAY0);
         ncplane_putstr_yx(n, row, ix + LBL, "(");
 
         nc_set(n, r.color);
         ncplane_printf_yx(n, row, ix + LBL + 1, "%*s", VAL_W, rendered[i].c_str());
 
-        nc_set(n, Cat::OVERLAY0);
+        nc_set(n, theme().OVERLAY0);
         ncplane_putstr_yx(n, row, ix + LBL + 1 + VAL_W, ")");
         row++;
     }
