@@ -13,7 +13,7 @@
 [![Ubuntu 22.04 (Jammy)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml)
 [![Ubuntu 24.04 (Noble)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml)
 
-A terminal resource monitor for Linux built with [notcurses](https://github.com/dankamongmen/notcurses). Displays CPU, memory, network, storage, and thermal data in a responsive multi-panel TUI with 24-bit color using the [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) palette.
+A terminal resource monitor for Linux built with [notcurses](https://github.com/dankamongmen/notcurses). Displays CPU, memory, network, storage, and thermal data in a responsive multi-panel TUI.
 
 </div>
 
@@ -26,8 +26,6 @@ A terminal resource monitor for Linux built with [notcurses](https://github.com/
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput with peak tracking |
 | **Storage** | `/proc/diskstats`, `statvfs` | Root filesystem bar + per-disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | Thermal zones + hwmon sensors (coretemp, k10temp) |
-
-The layout adapts automatically to the terminal width: three-column wide view (≥ 130 cols), two-column medium view (≥ 80 cols), and a compact stacked view for narrow terminals.
 
 ## Installation
 
