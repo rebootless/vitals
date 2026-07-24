@@ -5,6 +5,7 @@
 #include <clocale>
 #include <thread>
 #include <chrono>
+#include <utility>
 
 AppState G;
 
@@ -34,21 +35,33 @@ static void render(notcurses* nc, ncplane* n,
     int top_h = avail * 3 / 5;
     int bot_h = avail - top_h;
 
+    // GPU's content height is satisfied first, CPU gets the rest (the reverse starved GPU to 0 rows)
+    auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
+        if (gpus.empty()) return { col_h, 0 };
+        int gpu_rows = std::min<int>(4, static_cast<int>(gpus.size()));
+        int gpu_h    = gpu_rows + 2;
+        int cpu_h    = col_h - gpu_h;
+        if (cpu_h < 8) { cpu_h = std::max(6, col_h - 2); gpu_h = col_h - cpu_h; }
+        return { cpu_h, gpu_h };
+    };
+
     if (cols >= 130) {
         int c1 = cols / 2;
         int c2 = (cols - c1) / 2;
         int c3 = cols - c1 - c2;
 
-        int b1 = cols * 2 / 5;
-        int b2 = (cols - b1) / 2;
-        int b3 = cols - b1 - b2;
+        int b1 = cols / 2;
+        int b2 = cols - b1;
 
-        panel_cpu    (n, 1,        0,     top_h, c1,       cur_cpu, cpu_pct, freqs, core_pcts);
+        auto [cpu_h, gpu_h] = split_cpu_gpu(top_h);
+
+        panel_cpu    (n, 1,        0,     cpu_h, c1,       cur_cpu, cpu_pct, freqs, core_pcts);
+        if (gpu_h > 0)
+            panel_gpu(n, 1+cpu_h,  0,     gpu_h, c1,       gpus);
         panel_memory (n, 1,        c1,    top_h, c2);
-        panel_thermal(n, 1,        c1+c2, top_h, c3,       therm, hwmon);
+        panel_thermal(n, 1,        c1+c2, top_h, c3,       therm, hwmon, gpus);
         panel_network(n, 1+top_h,  0,     bot_h, b1,       cur_net);
         panel_storage(n, 1+top_h,  b1,    bot_h, b2,       cur_disk);
-        panel_gpu    (n, 1+top_h,  b1+b2, bot_h, b3,       gpus);
 
     } else if (cols >= 80) {
         int half  = cols / 2;
@@ -56,21 +69,27 @@ static void render(notcurses* nc, ncplane* n,
         top_h     = avail * 2 / 5;
         bot_h     = avail - top_h - mid_h;
 
-        panel_cpu    (n, 1,             0,    top_h, half,      cur_cpu, cpu_pct, freqs, core_pcts);
+        auto [cpu_h, gpu_h] = split_cpu_gpu(top_h);
+
+        panel_cpu    (n, 1,             0,    cpu_h, half,      cur_cpu, cpu_pct, freqs, core_pcts);
+        if (gpu_h > 0)
+            panel_gpu(n, 1+cpu_h,       0,    gpu_h, half,      gpus);
         panel_memory (n, 1,             half, top_h, cols-half);
         panel_network(n, 1+top_h,       0,    mid_h, half,      cur_net);
         panel_storage(n, 1+top_h,       half, mid_h, cols-half, cur_disk);
-        panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, half,      therm, hwmon);
-        panel_gpu    (n, 1+top_h+mid_h, half, bot_h, cols-half, gpus);
+        panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, cols,      therm, hwmon, gpus);
 
     } else {
-        int np = 6, ph = avail / np, rem = avail % np;
-        panel_cpu    (n, ph*0, 0, ph,      cols, cur_cpu, cpu_pct, freqs, core_pcts);
-        panel_memory (n, ph*1, 0, ph,      cols);
-        panel_network(n, ph*2, 0, ph,      cols, cur_net);
-        panel_storage(n, ph*3, 0, ph,      cols, cur_disk);
-        panel_thermal(n, ph*4, 0, ph,      cols, therm, hwmon);
-        panel_gpu    (n, ph*5, 0, ph+rem,  cols, gpus);
+        int np = gpus.empty() ? 5 : 6;
+        int ph = avail / np, rem = avail % np;
+
+        int r = 0;
+        panel_cpu    (n, ph*r,   0, ph, cols, cur_cpu, cpu_pct, freqs, core_pcts); r++;
+        if (!gpus.empty()) { panel_gpu(n, ph*r, 0, ph, cols, gpus); r++; }
+        panel_memory (n, ph*r,   0, ph, cols); r++;
+        panel_network(n, ph*r,   0, ph, cols, cur_net); r++;
+        panel_storage(n, ph*r,   0, ph, cols, cur_disk); r++;
+        panel_thermal(n, ph*r,   0, ph+rem, cols, therm, hwmon, gpus);
     }
 
     if (G.settings_open)
