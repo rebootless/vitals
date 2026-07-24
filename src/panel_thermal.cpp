@@ -2,7 +2,8 @@
 
 void panel_thermal(ncplane* n, int y, int x, int h, int w,
                    const std::vector<thermal>&   zones,
-                   const std::vector<HwmonChip>& hwmon) {
+                   const std::vector<HwmonChip>& hwmon,
+                   const std::vector<GpuInfo>&   gpus) {
 
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Thermal");
     if (ih <= 0 || iw <= 0) return;
@@ -34,12 +35,16 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
     // Single-row renderer
     auto draw_temp_row = [&](int r, const std::string& label,
-                             double temp, bool is_pkg) {
+                             double temp, bool is_pkg,
+                             double row_hi = -1.0, double row_crit = -1.0) {
         if (r >= iy + ih - 1) return;
 
+        double use_hi   = row_hi   >= 0 ? row_hi   : hi_limit;
+        double use_crit = row_crit >= 0 ? row_crit : crit_limit;
+
         double shown = std::min(99.0, std::max(0.0, temp));
-        uint32_t tc  = (temp >= crit_limit) ? theme().RED
-                     : (temp >= hi_limit)   ? theme().YELLOW
+        uint32_t tc  = (temp >= use_crit) ? theme().RED
+                     : (temp >= use_hi)   ? theme().YELLOW
                                             : theme().GREEN;
 
         // Label: "%-12s: " -> always LBL_W columns
@@ -119,6 +124,23 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         nc_set(n, theme().SURFACE2);
         ncplane_putstr_yx(n, row, ix, "No thermal data found");
         return;
+    }
+
+    // GPU temps — fixed thresholds (no crit/max sysfs node is broadly
+    // available across AMD/Intel/NVIDIA the way it is for CPU hwmon).
+    {
+        bool any_gpu_temp = false;
+        for (const auto& g : gpus) if (g.temp_c >= 0) { any_gpu_temp = true; break; }
+
+        if (any_gpu_temp && row < iy + ih - 1) {
+            draw_sep(n, row++, ix, iw);
+            for (size_t gi = 0; gi < gpus.size(); ++gi) {
+                if (gpus[gi].temp_c < 0 || row >= iy + ih - 1) continue;
+                char lbl[16];
+                snprintf(lbl, sizeof(lbl), "GPU %d", static_cast<int>(gi));
+                draw_temp_row(row++, lbl, gpus[gi].temp_c, false, 75.0, 85.0);
+            }
+        }
     }
 
     // Footer: trip limits
