@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ $EUID -eq 0 ]]; then
     echo -e "${RED}[!] Do not run this script as root.${NC}"
-    echo "[i] Run it as a regular user — sudo will be called where needed."
+    echo "    Run it as a regular user — sudo will be called where needed."
     exit 1
 fi
 

@@ -21,7 +21,7 @@ trap 'rm -rf "$BUILD_DIR"' EXIT
 
 if [[ $EUID -eq 0 ]]; then
     echo -e "${RED}[!] Do not run this script as root.${NC}"
-    echo "[i] Run it as a regular user — sudo will be called where needed."
+    echo "    Run it as a regular user — sudo will be called where needed."
     exit 1
 fi
 
@@ -31,8 +31,9 @@ if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
 fi
 
 echo ""
-echo "[i] Build directory : $BUILD_DIR"
-echo "[i] Install target  : $INSTALL_BIN"
+echo "[INFO]"
+echo "    Build directory : $BUILD_DIR"
+echo "    Install target  : $INSTALL_BIN"
 echo ""
 
 if command -v vitals &>/dev/null; then
@@ -40,7 +41,7 @@ if command -v vitals &>/dev/null; then
     echo -e "${YELLOW}[!] vitals is already installed at: ${EXISTING}${NC}"
     read -rp "[?] Reinstall? [y/N]: " CHOICE
     case "${CHOICE,,}" in
-        y|yes) echo "[i] Proceeding with reinstall." ;;
+        y|yes) echo "[i] Proceeding with reinstall..." ;;
         *)     echo "[i] Aborted."; exit 0 ;;
     esac
     echo ""
@@ -67,8 +68,8 @@ if [[ ! -f build/vitals ]]; then
     exit 1
 fi
 
-echo "[+] Build successful."
 echo ""
+echo "[+] Build successful."
 
 # cmake --install handles both the vitals binary and notcurses shared libs.
 # It strips the build-tree RPATH so the installed binary uses the system linker.
@@ -78,12 +79,13 @@ sudo cmake --install build
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
 sudo ldconfig
 
-echo "[+] Binary installed to $INSTALL_BIN"
 echo ""
+echo "[+] Binary installed to $INSTALL_BIN"
 
-echo "[SUCCESS"
+echo ""
+echo "[SUCCESS]"
 echo "    Binary  : $INSTALL_BIN"
 echo "    Commit  : $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 echo ""
-echo "    Run with: vitals"
+echo "    Run with: 'vitals'"
 echo ""
