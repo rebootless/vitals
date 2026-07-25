@@ -14,9 +14,11 @@ set(SOURCES
     src/procfs.cpp
     src/sysinfo.cpp
     src/draw.cpp
+    src/draw_tty.cpp
     src/format.cpp
     src/theme.cpp
     src/config.cpp
+    src/tty.cpp
     src/gpu.cpp
     src/panel_cpu.cpp
     src/panel_memory.cpp

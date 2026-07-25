@@ -42,8 +42,9 @@ Config load_config() {
 
         std::string key = trim(line.substr(0, eq));
         std::string val = trim(line.substr(eq + 1));
-        if (key == "theme")      cfg.theme_name = val;
-        else if (key == "background") cfg.bg_mode = val;
+        if (key == "theme")           cfg.theme_name = val;
+        else if (key == "background") cfg.bg_mode    = val;
+        else if (key == "terminal")   cfg.tty_mode    = val;
     }
     return cfg;
 }
@@ -63,4 +64,5 @@ void save_config(const Config& cfg) {
 
     f << "theme=" << cfg.theme_name << "\n";
     f << "background=" << cfg.bg_mode << "\n";
+    f << "terminal=" << cfg.tty_mode << "\n";
 }

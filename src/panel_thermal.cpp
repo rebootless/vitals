@@ -59,7 +59,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
         // [+99.0°C] — 7 visible columns of content inside brackets
         char tbuf[32];
-        snprintf(tbuf, sizeof(tbuf), "+%.1f" DEG_C, shown);
+        snprintf(tbuf, sizeof(tbuf), "+%.1f%s", shown, deg_suffix());
         lbr(n, r, tx);
         nc_set(n, tc, NCSTYLE_BOLD);
         ncplane_putstr_yx(n, r, tx + 1, tbuf);
@@ -148,10 +148,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (frow < iy) return;
 
     char hibuf[32], cbuf[32];
-    snprintf(hibuf, sizeof(hibuf), "+%.1f" DEG_C,
-             std::min(99.0, std::max(0.0, hi_limit)));
-    snprintf(cbuf,  sizeof(cbuf),  "+%.1f" DEG_C,
-             std::min(99.0, std::max(0.0, crit_limit)));
+    snprintf(hibuf, sizeof(hibuf), "+%.1f%s",
+             std::min(99.0, std::max(0.0, hi_limit)), deg_suffix());
+    snprintf(cbuf,  sizeof(cbuf),  "+%.1f%s",
+             std::min(99.0, std::max(0.0, crit_limit)), deg_suffix());
 
     int cx = ix;
     nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, "(");   cx++;

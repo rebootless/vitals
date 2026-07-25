@@ -5,9 +5,11 @@
 // Persisted at ~/.config/vitals/config as plain "key=value" lines:
 //   theme=Catppuccin Mocha
 //   background=transparent      (or "solid")
+//   terminal=auto                (or "tty" / "graphics")
 struct Config {
-    std::string theme_name = "Catppuccin Mocha";
-    std::string bg_mode    = "transparent"; // "transparent" | "solid"
+    std::string theme_name  = "Catppuccin Mocha";
+    std::string bg_mode     = "transparent"; // "transparent" | "solid"
+    std::string tty_mode    = "auto";        // "auto" | "tty" | "graphics"
 };
 
 // Reads the config file. Returns defaults (Catppuccin Mocha, transparent) if

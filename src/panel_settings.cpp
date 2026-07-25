@@ -1,23 +1,31 @@
 #include "panels.h"
 #include "theme.h"
+#include "draw_tty.h"
 
-// Background mode is universal across all themes (2 choices), so the names
-// live here rather than in theme.h/theme.cpp.
+// Universal (not per-theme) option lists — names live here rather than in
+// theme.h/theme.cpp or tty.h/tty.cpp.
 static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
+static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    int content_h = static_cast<int>(themes.size()) + 6; // theme rows + header/footer
+    // Right column now stacks Background (2) + Terminal (3) groups, each
+    // with its own header — that's the tallest column, so it drives h.
+    int right_rows = 2 + 2 + 3 + 1; // "Background" hdr+2 + "Terminal" hdr+3 + gap
+    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 4;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return; // terminal too small to show the overlay
 
     int x = (cols - w) / 2;
     int y = (rows - h) / 2;
 
-    auto [iy, ix, ih, iw] =
-        draw_box(n, y, x, h, w, "Settings", "Esc:close  Tab:switch  \xe2\x86\x91\xe2\x86\x93:select  Enter:save");
+    std::string hint = G.tty_active
+        ? "Esc:close  Tab:switch  Up/Down:select  Enter:save"
+        : "Esc:close  Tab:switch  \xe2\x86\x91\xe2\x86\x93:select  Enter:save";
+
+    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Settings", hint);
     if (ih <= 0 || iw <= 0) return;
 
     int left_w  = iw * 3 / 5;
@@ -42,15 +50,15 @@ void panel_settings(ncplane* n, int rows, int cols) {
         ncplane_putstr_yx(n, r, ix, label.c_str());
     }
 
-    // Right column: background mode
+    // Right column: two stacked groups — Background, then Terminal mode.
     if (right_x < ix + iw - 3) {
+        int r = iy;
+
         nc_set(n, theme().BLUE, NCSTYLE_BOLD);
-        ncplane_putstr_yx(n, iy, right_x, " Background");
+        ncplane_putstr_yx(n, r, right_x, " Background");
+        r += 2;
 
-        for (int i = 0; i < 2; ++i) {
-            int r = iy + 2 + i;
-            if (r >= iy + ih) break;
-
+        for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
             bool selected = (i == G.bg_idx);
             bool focused  = (G.settings_focus == 1);
 
@@ -60,13 +68,34 @@ void panel_settings(ncplane* n, int rows, int cols) {
             std::string label = std::string(selected ? "> " : "  ") + BG_MODE_NAMES[i];
             ncplane_putstr_yx(n, r, right_x, label.c_str());
         }
+
+        r++; // gap between groups
+
+        if (r < iy + ih) {
+            nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+            ncplane_putstr_yx(n, r, right_x, " Terminal");
+            r += 2;
+
+            for (int i = 0; i < 3 && r < iy + ih; ++i, ++r) {
+                bool selected = (static_cast<int>(G.tty_force) == i);
+                bool focused  = (G.settings_focus == 2);
+
+                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                nc_set(n, col, selected && focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+
+                std::string label = std::string(selected ? "> " : "  ") + TTY_MODE_NAMES[i];
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
     }
 
     // Footer hint
     int frow = iy + ih - 1;
     if (frow >= iy) {
         nc_set(n, theme().OVERLAY0);
-        ncplane_putstr_yx(n, frow, ix,
-            str_trunc(" Preview applies live \xe2\x80\x94 Enter saves, Esc reverts", iw).c_str());
+        std::string note = G.tty_active
+            ? " Preview applies live - Enter saves, Esc reverts"
+            : " Preview applies live \xe2\x80\x94 Enter saves, Esc reverts";
+        ncplane_putstr_yx(n, frow, ix, str_trunc(note, iw).c_str());
     }
 }

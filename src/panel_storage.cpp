@@ -85,13 +85,13 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         ncplane_printf_yx(n, row, C1, "%-13s", name.c_str());
         if (C2 < ix + iw) {
             nc_set(n, theme().PEACH, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, C2, "▼ ");
+            ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_io_rate(wr).c_str());
         }
         if (C3 < ix + iw) {
             nc_set(n, theme().TEAL);
-            ncplane_putstr_yx(n, row, C3, "▲ ");
+            ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_io_rate(rd).c_str());
         }

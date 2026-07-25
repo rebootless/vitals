@@ -48,14 +48,14 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
                           str_trunc(nd.interface, 14).c_str());
         if (C2 < ix + iw) {
             nc_set(n, theme().PEACH);
-            ncplane_putstr_yx(n, row, C2, "▼ ");
+            ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C2 + 2, "%-12s",
                               str_trunc(fmt_net_rate(rx), 12).c_str());
         }
         if (C3 < ix + iw) {
             nc_set(n, theme().TEAL, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, C3, "▲ ");
+            ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().TEXT);
             ncplane_printf_yx(n, row, C3 + 2, "%-12s",
                               str_trunc(fmt_net_rate(tx), 12).c_str());
@@ -80,11 +80,11 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         if (row >= iy + ih) return;
         nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", name);
         if (C2 < ix + iw) {
-            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n,  row, C2,     "▼ ");
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n,  row, C2,     (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n,  row, C2 + 2, "%-12llu", rx_v);
         }
         if (C3 < ix + iw) {
-            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n,  row, C3 + 2, "%-12llu", tx_v);
         }
         row++;
@@ -107,11 +107,11 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Total");
         if (C2 < ix + iw) {
-            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_bytes(total_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_bytes(total_tx).c_str());
         }
         row++;
@@ -121,11 +121,11 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, theme().TEXT); ncplane_printf_yx(n, row, C1, "%-14s", "Peak");
         if (C2 < ix + iw) {
-            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     "▼ ");
+            nc_set(n, theme().PEACH);              ncplane_putstr_yx(n, row, C2,     (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_net_rate(G.peak_rx).c_str());
         }
         if (C3 < ix + iw) {
-            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     "▲ ");
+            nc_set(n, theme().TEAL, NCSTYLE_BOLD); ncplane_putstr_yx(n, row, C3,     (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().TEXT);               ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_net_rate(G.peak_tx).c_str());
         }
         row++;

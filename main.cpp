@@ -120,13 +120,15 @@ int main() {
     ncplane* n = notcurses_stdplane(nc);
     ncplane_set_bg_default(n);
 
-    // Theme / background — restore from ~/.config/vitals/config, or fall
-    // back to the defaults (Catppuccin Mocha, transparent) on first run.
+    // Theme / background / terminal mode — restore from
+    // ~/.config/vitals/config, or fall back to defaults on first run.
     {
         Config cfg = load_config();
         int ti = find_theme_index(cfg.theme_name);
         set_theme_index(ti >= 0 ? ti : 0);
-        G.bg_idx = (cfg.bg_mode == "solid") ? 1 : 0;
+        G.bg_idx     = (cfg.bg_mode == "solid") ? 1 : 0;
+        G.tty_force  = tty_force_from_string(cfg.tty_mode);
+        G.tty_active = resolve_tty_active(G.tty_force);
     }
 
     // Static init
@@ -169,6 +171,7 @@ int main() {
                 // can revert a live preview the person didn't confirm.
                 G.settings_saved_theme = G.theme_idx;
                 G.settings_saved_bg    = G.bg_idx;
+                G.settings_saved_tty   = G.tty_force;
                 G.settings_focus       = 0;
                 G.settings_open        = true;
             }
@@ -179,27 +182,40 @@ int main() {
             if (ch == NCKEY_ESC || ch == 27) {
                 G.theme_idx     = G.settings_saved_theme;
                 G.bg_idx        = G.settings_saved_bg;
+                G.tty_force     = G.settings_saved_tty;
+                G.tty_active    = resolve_tty_active(G.tty_force);
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = 1 - G.settings_focus;
+                G.settings_focus = (G.settings_focus + 1) % 3;
 
             } else if (ch == NCKEY_UP) {
-                if (G.settings_focus == 0)
+                if (G.settings_focus == 0) {
                     G.theme_idx = (G.theme_idx - 1 + n_themes) % n_themes;
-                else
+                } else if (G.settings_focus == 1) {
                     G.bg_idx    = (G.bg_idx - 1 + 2) % 2;
+                } else {
+                    int f = (static_cast<int>(G.tty_force) - 1 + 3) % 3;
+                    G.tty_force  = static_cast<TtyForce>(f);
+                    G.tty_active = resolve_tty_active(G.tty_force);
+                }
 
             } else if (ch == NCKEY_DOWN) {
-                if (G.settings_focus == 0)
+                if (G.settings_focus == 0) {
                     G.theme_idx = (G.theme_idx + 1) % n_themes;
-                else
+                } else if (G.settings_focus == 1) {
                     G.bg_idx    = (G.bg_idx + 1) % 2;
+                } else {
+                    int f = (static_cast<int>(G.tty_force) + 1) % 3;
+                    G.tty_force  = static_cast<TtyForce>(f);
+                    G.tty_active = resolve_tty_active(G.tty_force);
+                }
 
             } else if (ch == NCKEY_ENTER || ch == '\n' || ch == '\r') {
                 Config cfg;
                 cfg.theme_name = current_theme().name;
                 cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
+                cfg.tty_mode   = tty_force_to_string(G.tty_force);
                 save_config(cfg);
                 G.settings_open = false;
             }

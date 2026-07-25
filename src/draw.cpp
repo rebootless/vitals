@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "draw_tty.h"
 #include "sysinfo.h"
 
 #include <cstring>
@@ -30,6 +31,7 @@ static void hline(ncplane* n, int y, int x, int w, const char* glyph,
 std::tuple<int,int,int,int>
 draw_box(ncplane* n, int y, int x, int h, int w,
          const std::string& title, const std::string& bl_label) {
+    if (G.tty_active) return draw_box_tty(n, y, x, h, w, title, bl_label);
     if (h < 2 || w < 2) return {y, x, 0, 0};
 
     nc_set(n, theme().SURFACE2);
@@ -94,6 +96,7 @@ void rbr(ncplane* n, int y, int x) {
 
 // Gradient bar
 void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
+    if (G.tty_active) { draw_bar_tty(n, y, x, w, fill, gt); return; }
     if (w <= 0) return;
     fill = std::max(0.0, std::min(1.0, fill));
 
@@ -122,6 +125,7 @@ void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
 
 // Sparkline
 void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist) {
+    if (G.tty_active) { draw_spark_tty(n, y, x, w, hist); return; }
     if (w <= 0 || hist.empty()) return;
     int start = (static_cast<int>(hist.size()) > w)
                 ? static_cast<int>(hist.size()) - w : 0;
@@ -142,8 +146,10 @@ void draw_titlebar(ncplane* n, int cols) {
 
     int col = 0;
 
-    // Banner: "Vitals — Resource Monitor"
-    const char* banner = " Vitals \xe2\x80\x94 Resource Monitor";
+    // Banner: "Vitals — Resource Monitor" (ASCII dash in TTY mode)
+    const char* banner = G.tty_active
+        ? " Vitals - Resource Monitor"
+        : " Vitals \xe2\x80\x94 Resource Monitor";
     nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
     ncplane_putstr_yx(n, 0, col, banner);
     col += static_cast<int>(strlen(banner));

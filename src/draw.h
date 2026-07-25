@@ -2,6 +2,7 @@
 
 #include "colors.h"
 #include "format.h"
+#include "draw_tty.h"
 
 // Text utilities
 // Truncate s to at most maxcols terminal columns (UTF-8 aware, 1 col per codepoint).

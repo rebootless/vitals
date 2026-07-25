@@ -3,6 +3,7 @@
 #include "common.h"
 #include "procfs.h"
 #include "gpu.h"
+#include "tty.h"
 
 // Gradient type
 enum GradType { GRAD_CPU, GRAD_MEM, GRAD_TEMP, GRAD_STORAGE, GRAD_HIST };
@@ -46,11 +47,20 @@ struct AppState {
     int  theme_idx = 0;
     int  bg_idx    = 0;   // 0 = transparent (terminal default), 1 = theme's own BASE color
 
+    // Terminal mode — Auto detects a raw Linux VT (see tty.cpp) and swaps
+    // every panel to ASCII-only rendering (draw_tty.cpp); can be forced
+    // either way from the Settings overlay. tty_active is the *resolved*
+    // flag draw.cpp actually checks each frame; tty_force is the person's
+    // stored preference (persisted to config).
+    TtyForce tty_force  = TtyForce::Auto;
+    bool     tty_active = false;
+
     // Settings overlay state
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0 = theme column, 1 = background column
+    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode
     int  settings_saved_theme = 0;   // snapshot on open, restored if the person cancels (Esc)
     int  settings_saved_bg    = 0;
+    TtyForce settings_saved_tty = TtyForce::Auto;
 };
 
 // Defined in main.cpp, referenced throughout.
