@@ -2,6 +2,7 @@
 
 #include "colors.h"
 #include "format.h"
+#include "draw_tty.h"
 
 std::string str_trunc(const std::string& s, int maxcols);
 

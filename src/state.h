@@ -3,6 +3,7 @@
 #include "common.h"
 #include "procfs.h"
 #include "gpu.h"
+#include "tty.h"
 
 enum GradType { GRAD_CPU, GRAD_MEM, GRAD_TEMP, GRAD_STORAGE, GRAD_HIST };
 
@@ -40,10 +41,14 @@ struct AppState {
     int  theme_idx = 0;
     int  bg_idx    = 0;
 
+    TtyForce tty_force  = TtyForce::Auto;
+    bool     tty_active = false;
+
     bool settings_open        = false;
     int  settings_focus       = 0;
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
+    TtyForce settings_saved_tty = TtyForce::Auto;
 };
 
 extern AppState G;
