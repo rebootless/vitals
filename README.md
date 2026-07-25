@@ -89,19 +89,9 @@ Run directly from the build tree:
 LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 ```
 
-## Usage
-
-```bash
-vitals
-```
-
-| Key | Action |
-|-----|--------|
-| `q` | Quit   |
-
 ## Screenshots
 
-![](screenshots/2026-07-16_07-24.png)
+![](screenshots/2026-07-25_22-56.png)
 
 ## How it builds
 

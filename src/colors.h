@@ -9,7 +9,7 @@ inline const Theme& theme() { return current_theme(); }
 inline void nc_bg_apply(ncplane* n) {
     uint64_t channels = 0;
 
-    if (G.bg_idx == 1) {
+    if (!G.tty_active && G.bg_idx == 1) {
         uint32_t rgb = theme().BASE;
 
         ncchannels_set_fg_default(&channels);
@@ -28,6 +28,12 @@ inline void nc_bg_apply(ncplane* n) {
 }
 
 inline void nc_fg(ncplane* n, uint32_t rgb) {
+    if (G.tty_active) {
+        ncplane_set_fg_default(n);
+        nc_bg_apply(n);
+        return;
+    }
+
     ncplane_set_fg_rgb8(n,
         static_cast<unsigned>((rgb >> 16) & 0xFF),
         static_cast<unsigned>((rgb >>  8) & 0xFF),

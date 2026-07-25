@@ -10,7 +10,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
     int w = std::min(68, std::max(30, cols - 4));
     int right_rows = 2 + 2 + 3 + 1;
-    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 4;
+    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return;
 

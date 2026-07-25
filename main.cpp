@@ -38,10 +38,15 @@ static void render(notcurses* nc, ncplane* n,
     // GPU's content height is satisfied first, CPU gets the rest (the reverse starved GPU to 0 rows)
     auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
         if (gpus.empty()) return { col_h, 0 };
-        int gpu_rows = std::min<int>(4, static_cast<int>(gpus.size()));
-        int gpu_h    = gpu_rows + 2;
-        int cpu_h    = col_h - gpu_h;
-        if (cpu_h < 8) { cpu_h = std::max(6, col_h - 2); gpu_h = col_h - cpu_h; }
+        int shown    = std::min<int>(3, static_cast<int>(gpus.size()));
+        int gpu_rows = 0;
+        for (int i = 0; i < shown; ++i)
+            gpu_rows += (gpus[static_cast<size_t>(i)].mem_total_mb > 0) ? 3 : 2;
+        int gpu_want = gpu_rows + 2;
+
+        const int CPU_MIN = 5;
+        int gpu_h = std::min(gpu_want, std::max(0, col_h - CPU_MIN));
+        int cpu_h = col_h - gpu_h;
         return { cpu_h, gpu_h };
     };
 

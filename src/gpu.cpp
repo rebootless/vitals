@@ -255,6 +255,7 @@ std::vector<GpuInfo> parse_gpus() {
 
     const char* base = "/sys/class/drm";
     DIR* dir = opendir(base);
+    bool sysfs_enum_failed = (dir == nullptr);
     if (dir) {
         struct dirent* entry;
         while ((entry = readdir(dir)) != nullptr) {
@@ -276,7 +277,7 @@ std::vector<GpuInfo> parse_gpus() {
                 std::string driver = read_symlink_basename(device_dir + "/driver");
                 if (driver == "nouveau") {
                     result.push_back(parse_nouveau(device_dir, name));
-                } else if (driver == "nvidia") {
+                } else {
                     have_proprietary_nvidia = true;
                 }
             }
@@ -284,7 +285,7 @@ std::vector<GpuInfo> parse_gpus() {
         closedir(dir);
     }
 
-    if (have_proprietary_nvidia) {
+    if (have_proprietary_nvidia || sysfs_enum_failed) {
         auto nv = parse_nvidia_proprietary();
         result.insert(result.end(), nv.begin(), nv.end());
     }
