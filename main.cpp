@@ -38,16 +38,28 @@ static void render(notcurses* nc, ncplane* n,
     int bot_h = avail - top_h;
 
     // GPU sits only under the CPU column, sized to its content (2 border
-    // rows + one row per card, capped so a machine with many GPUs doesn't
-    // swallow the whole CPU panel) rather than a fixed proportion of top_h.
-    // If no GPU was found, CPU keeps the full column height and the panel
-    // isn't drawn at all.
+    // rows + 2-3 rows per card — "Model:", a UTIL bar, and a VRAM bar if
+    // the driver reports it, same as panel_gpu.cpp — capped so a machine
+    // with many GPUs doesn't swallow the whole CPU panel) rather than a
+    // fixed proportion of top_h. If no GPU was found, CPU keeps the full
+    // column height and the panel isn't drawn at all.
+    //
+    // GPU's content budget is satisfied FIRST (up to what it actually
+    // needs), and CPU gets whatever remains down to a legible floor —
+    // the reverse priority silently starved GPU down to border-only (0
+    // content rows) on shorter terminals, which looked like "GPU doesn't
+    // render" even though data was present and correct.
     auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
         if (gpus.empty()) return { col_h, 0 };
-        int gpu_rows = std::min<int>(4, static_cast<int>(gpus.size()));
-        int gpu_h    = gpu_rows + 2; // + top/bottom border
-        int cpu_h    = col_h - gpu_h;
-        if (cpu_h < 8) { cpu_h = std::max(6, col_h - 2); gpu_h = col_h - cpu_h; }
+        int shown    = std::min<int>(3, static_cast<int>(gpus.size()));
+        int gpu_rows = 0;
+        for (int i = 0; i < shown; ++i)
+            gpu_rows += (gpus[static_cast<size_t>(i)].mem_total_mb > 0) ? 3 : 2;
+        int gpu_want = gpu_rows + 2; // + top/bottom border
+
+        const int CPU_MIN = 5; // border(2) + Model + Usage + History, the bare minimum to stay legible
+        int gpu_h = std::min(gpu_want, std::max(0, col_h - CPU_MIN));
+        int cpu_h = col_h - gpu_h;
         return { cpu_h, gpu_h };
     };
 

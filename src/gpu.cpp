@@ -285,6 +285,7 @@ std::vector<GpuInfo> parse_gpus() {
 
     const char* base = "/sys/class/drm";
     DIR* dir = opendir(base);
+    bool sysfs_enum_failed = (dir == nullptr);
     if (dir) {
         struct dirent* entry;
         while ((entry = readdir(dir)) != nullptr) {
@@ -307,21 +308,30 @@ std::vector<GpuInfo> parse_gpus() {
                 // Same hardware, two possible drivers — dispatch on which
                 // one is actually bound, since they need entirely different
                 // data sources (nouveau: fdinfo; proprietary: nvidia-smi).
+                //
+                // This fails OPEN: only an explicit "nouveau" match takes
+                // the fdinfo path. Anything else — proprietary "nvidia",
+                // a differently-named module, or the driver symlink being
+                // unreadable/absent on some kernel/distro combo — falls
+                // back to trying nvidia-smi rather than silently dropping
+                // the card. nvidia-smi is a no-op (empty output) if there's
+                // genuinely nothing for it to query, so this is safe.
                 std::string driver = read_symlink_basename(device_dir + "/driver");
                 if (driver == "nouveau") {
                     result.push_back(parse_nouveau(device_dir, name));
-                } else if (driver == "nvidia") {
+                } else {
                     have_proprietary_nvidia = true;
                 }
-                // No driver bound at all: skip — nothing to read.
             }
         }
         closedir(dir);
     }
 
-    // Only spawn nvidia-smi if a proprietary-driven card was actually seen;
-    // avoids a pointless subprocess on nouveau-only / non-NVIDIA machines.
-    if (have_proprietary_nvidia) {
+    // Only spawn nvidia-smi if a proprietary-driven card was actually seen,
+    // or sysfs enumeration itself failed (unusual, but better to try than
+    // to silently show nothing) — avoids a pointless subprocess on
+    // nouveau-only / non-NVIDIA machines.
+    if (have_proprietary_nvidia || sysfs_enum_failed) {
         auto nv = parse_nvidia_proprietary();
         result.insert(result.end(), nv.begin(), nv.end());
     }

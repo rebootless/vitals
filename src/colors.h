@@ -13,10 +13,13 @@ inline const Theme& theme() { return current_theme(); }
 // Applies the currently configured background: either the terminal's own
 // default (transparent) or the active theme's own solid BASE color —
 // controlled by G.bg_idx, toggled from the Settings overlay (Esc).
+//
+// In TTY mode this is skipped entirely (always terminal-default) — see
+// nc_fg() below for why.
 inline void nc_bg_apply(ncplane* n) {
     uint64_t channels = 0;
 
-    if (G.bg_idx == 1) {
+    if (!G.tty_active && G.bg_idx == 1) {
         uint32_t rgb = theme().BASE;
 
         ncchannels_set_fg_default(&channels);
@@ -35,7 +38,20 @@ inline void nc_bg_apply(ncplane* n) {
 }
 
 // Set foreground from 0xRRGGBB, apply the currently configured background.
+//
+// In TTY mode, theme colors are ignored entirely and the terminal's own
+// default foreground/background is used instead (NCSTYLE_BOLD etc. still
+// apply for emphasis). Raw Linux consoles are frequently limited to a
+// handful of colors and don't reliably support arbitrary RGB — a color
+// that looks fine over SSH can render as black-on-black (or otherwise
+// illegible) on the physical console, so this is the one safe default.
 inline void nc_fg(ncplane* n, uint32_t rgb) {
+    if (G.tty_active) {
+        ncplane_set_fg_default(n);
+        nc_bg_apply(n);
+        return;
+    }
+
     ncplane_set_fg_rgb8(n,
         static_cast<unsigned>((rgb >> 16) & 0xFF),
         static_cast<unsigned>((rgb >>  8) & 0xFF),

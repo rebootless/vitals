@@ -32,8 +32,8 @@ fi
 
 echo ""
 echo "[INFO]"
-echo "    Build directory : $BUILD_DIR"
-echo "    Install target  : $INSTALL_BIN"
+echo "    Build directory: $BUILD_DIR"
+echo "    Install target:  $INSTALL_BIN"
 echo ""
 
 if command -v vitals &>/dev/null; then
@@ -84,8 +84,8 @@ echo "[+] Binary installed to $INSTALL_BIN"
 
 echo ""
 echo "[SUCCESS]"
-echo "    Binary  : $INSTALL_BIN"
-echo "    Commit  : $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+echo "    Binary: $INSTALL_BIN"
+echo "    Commit: $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 echo ""
 echo "    Run with: 'vitals'"
 echo ""

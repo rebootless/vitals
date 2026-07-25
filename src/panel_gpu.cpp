@@ -1,10 +1,14 @@
 #include "panels.h"
 
-// Compact GPU panel — one row per card, in the same visual grammar as the
-// per-core grid in panel_cpu.cpp: " (N) [UTIL: 67%][VRAM: 42%][bar]".
-// Temperature is intentionally NOT shown here (it lives in the Thermal
-// panel, alongside CPU/hwmon sensors) — this panel is squeezed under CPU,
-// so it only carries the two metrics that don't already have a home.
+// Compact GPU panel — for each card:
+//   Model: NVIDIA GeForce GT 730
+//   UTIL: [ 67%][=======bar=======]
+//   VRAM: [ 42%][=======bar=======]
+// Two separate bars (one per metric) instead of one shared bar, so it's
+// obvious which number each bar belongs to. VRAM's row is only drawn when
+// the driver actually reports usage. Temperature lives in the Thermal panel
+// instead — this panel is squeezed under CPU, so it only carries what has
+// no other home.
 void panel_gpu(ncplane* n, int y, int x, int h, int w,
               const std::vector<GpuInfo>& gpus) {
 
@@ -17,61 +21,63 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
         return;
     }
 
-    // " (N) [UTIL: 67%][VRAM: 42%][=====bar=====]"
-    // Content inside each bracket is a fixed 9 chars either way ("UTIL " +
-    // " 67%" / " n/a") so numeric and n/a rows line up in a mixed list.
-    for (size_t gi = 0; gi < gpus.size(); ++gi) {
-        int r = iy + static_cast<int>(gi);
-        if (r >= iy + ih) break;
+    const int LBL       = 7; // width of "Model: " / "UTIL:  " / "VRAM:  " labels
+    const int BRACKET_W = 6; // "[" + 4 content chars + "]" (" 67%" / " n/a")
+    const int bw = std::max(4, iw - LBL - BRACKET_W - 2); // -2 = bar's own brackets
 
-        const auto& g = gpus[gi];
-        bool has_vram   = g.mem_total_mb > 0;
-        int  bracket_w  = 11; // "[" + 9 content chars + "]"
-        int  fixed      = 6 + bracket_w + (has_vram ? bracket_w : 0);
-        int  bw         = std::max(4, iw - fixed - 2); // -2 = bar brackets
-
-        // (N)
-        nc_set(n, theme().OVERLAY0);
-        ncplane_putstr_yx(n, r, ix, " (");
+    // Draws "LABEL: [ nn%][=====bar=====]" at row, with the label dim and
+    // the value colored either graded (val_color) or n/a-dimmed.
+    auto stat_bar = [&](int row, const char* label, double val,
+                        uint32_t val_color, GradType gt) {
         nc_set(n, theme().BLUE);
-        ncplane_printf_yx(n, r, ix + 2, "%02d", static_cast<int>(gi));
-        nc_set(n, theme().OVERLAY0);
-        ncplane_putstr_yx(n, r, ix + 4, ") ");
+        ncplane_printf_yx(n, row, ix, "%-*s", LBL, label);
 
-        // [UTIL: nn%]
-        {
-            int bx = ix + 6;
-            lbr(n, r, bx);
-            nc_set(n, theme().SUBTEXT0);
-            ncplane_putstr_yx(n, r, bx + 1, "UTIL:");
-            if (g.util_pct >= 0) {
-                nc_set(n, pct_color(g.util_pct), NCSTYLE_BOLD);
-                ncplane_printf_yx(n, r, bx + 6, "%3.0f%%", g.util_pct);
-            } else {
-                nc_set(n, theme().SURFACE2);
-                ncplane_printf_yx(n, r, bx + 6, "%4s", "n/a");
-            }
-            rbr(n, r, bx + bracket_w - 1);
+        int bx = ix + LBL;
+        lbr(n, row, bx);
+        if (val >= 0) {
+            nc_set(n, val_color, NCSTYLE_BOLD);
+            ncplane_printf_yx(n, row, bx + 1, "%3.0f%%", val);
+        } else {
+            nc_set(n, theme().SURFACE2);
+            ncplane_printf_yx(n, row, bx + 1, "%4s", "n/a");
         }
+        rbr(n, row, bx + BRACKET_W - 1);
 
-        // [VRAM: nn%] — only when the driver actually reports VRAM usage
-        // (AMD does; Intel iGPUs and nouveau currently don't).
-        if (has_vram) {
+        int barx = bx + BRACKET_W;
+        lbr(n, row, barx);
+        draw_bar_grad(n, row, barx + 1, bw, std::max(0.0, val) / 100.0, gt);
+        rbr(n, row, barx + 1 + bw);
+    };
+
+    int row = iy;
+    for (size_t gi = 0; gi < gpus.size(); ++gi) {
+        if (row >= iy + ih) break;
+        const auto& g = gpus[gi];
+
+        // Model: <name>
+        nc_set(n, theme().BLUE);
+        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
+        nc_set(n, theme().TEXT);
+        ncplane_putstr_yx(n, row, ix + LBL,
+                          str_trunc(g.name, iw - LBL).c_str());
+        row++;
+        if (row >= iy + ih) break;
+
+        // UTIL: [ nn%][bar]
+        stat_bar(row, "UTIL:", g.util_pct,
+                pct_color(std::max(0.0, g.util_pct)), GRAD_CPU);
+        row++;
+
+        // VRAM: [ nn%][bar]
+        if (g.mem_total_mb > 0 && row < iy + ih) {
             double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
-            int bx = ix + 6 + bracket_w;
-            lbr(n, r, bx);
-            nc_set(n, theme().SUBTEXT0);
-            ncplane_putstr_yx(n, r, bx + 1, "VRAM:");
-            nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, r, bx + 6, "%3.0f%%", mpct);
-            rbr(n, r, bx + bracket_w - 1);
+            stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
+            row++;
         }
 
-        // [bar] — util%, same gradient family as the CPU Usage bar
-        int bx = ix + fixed;
-        lbr(n, r, bx);
-        double frac = std::max(0.0, g.util_pct) / 100.0;
-        draw_bar_grad(n, r, bx + 1, bw, frac, GRAD_CPU);
-        rbr(n, r, bx + 1 + bw);
+        if (gi + 1 < gpus.size() && row < iy + ih) {
+            draw_sep(n, row, ix, iw);
+            row++;
+        }
     }
 }

@@ -14,7 +14,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
     // Right column now stacks Background (2) + Terminal (3) groups, each
     // with its own header — that's the tallest column, so it drives h.
     int right_rows = 2 + 2 + 3 + 1; // "Background" hdr+2 + "Terminal" hdr+3 + gap
-    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 4;
+    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return; // terminal too small to show the overlay
 

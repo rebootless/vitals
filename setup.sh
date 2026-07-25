@@ -78,7 +78,7 @@ echo "[+] Submodules ready."
 echo ""
 
 echo "[SUCCESS]"
-echo "    Repo     : $SCRIPT_DIR"
+echo "    Repo:      $SCRIPT_DIR"
 echo "    notcurses: $SCRIPT_DIR/notcurses"
 echo ""
 echo "[NOTE] Build vitals:"
