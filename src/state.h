@@ -55,12 +55,18 @@ struct AppState {
     TtyForce tty_force  = TtyForce::Auto;
     bool     tty_active = false;
 
+    // Refresh interval — how often the main loop re-reads procfs/sysfs and
+    // redraws (default 1000ms). Adjustable from the Settings overlay with
+    // Left/Right when the Refresh row is focused, persisted to config.
+    int refresh_ms = 1000;
+
     // Settings overlay state
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode
+    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode, 3 = refresh rate
     int  settings_saved_theme = 0;   // snapshot on open, restored if the person cancels (Esc)
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
+    int  settings_saved_refresh = 1000;
 };
 
 // Defined in main.cpp, referenced throughout.

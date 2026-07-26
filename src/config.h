@@ -6,10 +6,12 @@
 //   theme=Catppuccin Mocha
 //   background=transparent      (or "solid")
 //   terminal=auto                (or "tty" / "graphics")
+//   refresh_ms=1000              (100-60000)
 struct Config {
     std::string theme_name  = "Catppuccin Mocha";
     std::string bg_mode     = "transparent"; // "transparent" | "solid"
     std::string tty_mode    = "auto";        // "auto" | "tty" | "graphics"
+    int         refresh_ms  = 1000;          // 100-60000
 };
 
 // Reads the config file. Returns defaults (Catppuccin Mocha, transparent) if

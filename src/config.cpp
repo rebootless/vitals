@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -45,6 +46,12 @@ Config load_config() {
         if (key == "theme")           cfg.theme_name = val;
         else if (key == "background") cfg.bg_mode    = val;
         else if (key == "terminal")   cfg.tty_mode    = val;
+        else if (key == "refresh_ms") {
+            try {
+                int v = std::stoi(val);
+                cfg.refresh_ms = std::max(100, std::min(60000, v));
+            } catch (...) { /* keep default */ }
+        }
     }
     return cfg;
 }
@@ -65,4 +72,5 @@ void save_config(const Config& cfg) {
     f << "theme=" << cfg.theme_name << "\n";
     f << "background=" << cfg.bg_mode << "\n";
     f << "terminal=" << cfg.tty_mode << "\n";
+    f << "refresh_ms=" << cfg.refresh_ms << "\n";
 }
