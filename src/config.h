@@ -6,6 +6,7 @@ struct Config {
     std::string theme_name  = "Catppuccin Mocha";
     std::string bg_mode     = "transparent";
     std::string tty_mode    = "auto";
+    int         refresh_ms  = 1000;
 };
 
 Config load_config();

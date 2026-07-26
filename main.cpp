@@ -3,11 +3,28 @@
 #include "config.h"
 
 #include <clocale>
+#include <cstdlib>
 #include <thread>
 #include <chrono>
 #include <utility>
 
 AppState G;
+
+static const int REFRESH_STEPS[] = {
+    100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000,
+    7500, 10000, 15000, 20000, 30000, 45000, 60000
+};
+static const int REFRESH_STEPS_N = sizeof(REFRESH_STEPS) / sizeof(REFRESH_STEPS[0]);
+
+static int refresh_step_index() {
+    int best = 0;
+    int best_diff = std::abs(REFRESH_STEPS[0] - G.refresh_ms);
+    for (int i = 1; i < REFRESH_STEPS_N; ++i) {
+        int diff = std::abs(REFRESH_STEPS[i] - G.refresh_ms);
+        if (diff < best_diff) { best = i; best_diff = diff; }
+    }
+    return best;
+}
 
 static void render(notcurses* nc, ncplane* n,
                    const cpustat&                cur_cpu,
@@ -124,6 +141,7 @@ int main() {
         G.bg_idx     = (cfg.bg_mode == "solid") ? 1 : 0;
         G.tty_force  = tty_force_from_string(cfg.tty_mode);
         G.tty_active = resolve_tty_active(G.tty_force);
+        G.refresh_ms = cfg.refresh_ms;
     }
 
     try { G.ci = parse_cpuinfo();     } catch (...) {}
@@ -156,11 +174,12 @@ int main() {
 
             // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
             if (ch == NCKEY_ESC || ch == 27) {
-                G.settings_saved_theme = G.theme_idx;
-                G.settings_saved_bg    = G.bg_idx;
-                G.settings_saved_tty   = G.tty_force;
-                G.settings_focus       = 0;
-                G.settings_open        = true;
+                G.settings_saved_theme   = G.theme_idx;
+                G.settings_saved_bg      = G.bg_idx;
+                G.settings_saved_tty     = G.tty_force;
+                G.settings_saved_refresh = G.refresh_ms;
+                G.settings_focus         = 0;
+                G.settings_open          = true;
             }
         } else {
             const int n_themes = static_cast<int>(all_themes().size());
@@ -171,20 +190,24 @@ int main() {
                 G.bg_idx        = G.settings_saved_bg;
                 G.tty_force     = G.settings_saved_tty;
                 G.tty_active    = resolve_tty_active(G.tty_force);
+                G.refresh_ms    = G.settings_saved_refresh;
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 3;
+                G.settings_focus = (G.settings_focus + 1) % 4;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
                     G.theme_idx = (G.theme_idx - 1 + n_themes) % n_themes;
                 } else if (G.settings_focus == 1) {
                     G.bg_idx    = (G.bg_idx - 1 + 2) % 2;
-                } else {
+                } else if (G.settings_focus == 2) {
                     int f = (static_cast<int>(G.tty_force) - 1 + 3) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else {
+                    int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
+                    G.refresh_ms = REFRESH_STEPS[idx];
                 }
 
             } else if (ch == NCKEY_DOWN) {
@@ -192,10 +215,13 @@ int main() {
                     G.theme_idx = (G.theme_idx + 1) % n_themes;
                 } else if (G.settings_focus == 1) {
                     G.bg_idx    = (G.bg_idx + 1) % 2;
-                } else {
+                } else if (G.settings_focus == 2) {
                     int f = (static_cast<int>(G.tty_force) + 1) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else {
+                    int idx = std::max(0, refresh_step_index() - 1);
+                    G.refresh_ms = REFRESH_STEPS[idx];
                 }
 
             } else if (ch == NCKEY_ENTER || ch == '\n' || ch == '\r') {
@@ -203,6 +229,7 @@ int main() {
                 cfg.theme_name = current_theme().name;
                 cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
                 cfg.tty_mode   = tty_force_to_string(G.tty_force);
+                cfg.refresh_ms = G.refresh_ms;
                 save_config(cfg);
                 G.settings_open = false;
             }
@@ -280,7 +307,7 @@ int main() {
         G.prev_disk = std::move(cur_disk);
         G.t_prev    = t_now;
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(G.refresh_ms));
     }
 
     notcurses_stop(nc);

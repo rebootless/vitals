@@ -85,10 +85,13 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        nc_set(n, theme().OVERLAY0);
-        std::string note = G.tty_active
-            ? " Preview applies live - Enter saves, Esc reverts"
-            : " Preview applies live \xe2\x80\x94 Enter saves, Esc reverts";
-        ncplane_putstr_yx(n, frow, ix, str_trunc(note, iw).c_str());
+        bool focused = (G.settings_focus == 3);
+
+        nc_set(n, theme().BLUE);
+        ncplane_putstr_yx(n, frow, ix, " Refresh: ");
+
+        nc_set(n, focused ? theme().GREEN : theme().TEXT, focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        std::string val = std::to_string(G.refresh_ms) + "ms";
+        ncplane_putstr_yx(n, frow, ix + 10, val.c_str());
     }
 }

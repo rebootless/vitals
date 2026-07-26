@@ -44,11 +44,14 @@ struct AppState {
     TtyForce tty_force  = TtyForce::Auto;
     bool     tty_active = false;
 
+    int refresh_ms = 1000;
+
     bool settings_open        = false;
     int  settings_focus       = 0;
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
+    int  settings_saved_refresh = 1000;
 };
 
 extern AppState G;
