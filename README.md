@@ -34,7 +34,7 @@ A terminal resource monitor for Linux built with [notcurses](https://github.com/
 Downloads, builds, and installs the binary to `/usr/local/bin` in one step:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/VargKernel/vitals/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/install.sh)
 ```
 
 The installer handles everything automatically: apt dependencies, cloning notcurses into the repo, building, and placing the binary in PATH. Safe to re-run.
@@ -44,7 +44,7 @@ The installer handles everything automatically: apt dependencies, cloning notcur
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/VargKernel/vitals.git
+git clone https://github.com/rebootless/vitals.git
 cd vitals
 ```
 
@@ -76,7 +76,7 @@ sudo ldconfig
 ### Manual build (run in place, no system install)
 
 ```bash
-git clone https://github.com/VargKernel/vitals.git
+git clone https://github.com/rebootless/vitals.git
 cd vitals
 bash setup.sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
