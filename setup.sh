@@ -7,15 +7,10 @@
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ $EUID -eq 0 ]]; then
-    echo -e "${RED}[!] Do not run this script as root.${NC}"
-    echo "    Run it as a regular user — sudo will be called where needed."
+    echo "Do not run this script as root."
     exit 1
 fi
 
@@ -48,40 +43,39 @@ sudo apt-get install -y --no-install-recommends \
     libqrcodegen-dev
 
 if ! sudo apt-get install -y --no-install-recommends libstb-dev 2>/dev/null; then
-    echo "[i] libstb-dev not found — downloading stb_image.h directly..."
+    echo "libstb-dev not found — downloading stb_image.h directly..."
     sudo mkdir -p /usr/local/include/stb
     sudo wget -qO /usr/local/include/stb/stb_image.h \
         https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
 fi
 
 if ! sudo apt-get install -y --no-install-recommends doctest-dev 2>/dev/null; then
-    echo "[i] doctest-dev not found — downloading doctest.h directly..."
+    echo "doctest-dev not found — downloading doctest.h directly..."
     sudo mkdir -p /usr/local/include/doctest
     sudo wget -qO /usr/local/include/doctest/doctest.h \
         https://raw.githubusercontent.com/doctest/doctest/master/doctest/doctest.h
 fi
 
-echo "[+] Dependencies installed."
 echo ""
+echo "Dependencies installed."
 
 if [[ -d "$SCRIPT_DIR/notcurses" ]]; then
-    echo "[i] notcurses/ already present — skipping clone."
+    echo "notcurses already present — skipping clone."
 else
     git clone --depth 1 https://github.com/dankamongmen/notcurses.git \
         "$SCRIPT_DIR/notcurses"
-    echo "[+] notcurses cloned."
+    echo "notcurses cloned."
 fi
 
-echo "[*] Updating notcurses submodules..."
+echo "Updating notcurses submodules..."
 git -C "$SCRIPT_DIR/notcurses" submodule update --init --recursive
-echo "[+] Submodules ready."
-echo ""
+echo "Submodules ready."
 
-echo "[SUCCESS]"
-echo "    Repo:      $SCRIPT_DIR"
-echo "    notcurses: $SCRIPT_DIR/notcurses"
 echo ""
-echo "[NOTE] Build vitals:"
-echo "    cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF"
-echo "    cmake --build build -j\$(nproc)"
+echo "  Repo:      $SCRIPT_DIR"
+echo "  notcurses: $SCRIPT_DIR/notcurses"
+
 echo ""
+echo "Build vitals:"
+echo "  cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF"
+echo "  cmake --build build -j\$(nproc)"
