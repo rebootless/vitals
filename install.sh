@@ -27,6 +27,7 @@ fi
 echo ""
 echo "  Build directory: $BUILD_DIR"
 echo "  Install target:  $INSTALL_BIN"
+echo ""
 
 if command -v vitals &>/dev/null; then
     EXISTING="$(command -v vitals)"
