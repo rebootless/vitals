@@ -43,7 +43,7 @@ GPU is shown only when a supported device is detected; otherwise the CPU panel k
 
 ## Installation
 
-### Quick install
+### Quick Install
 
 Downloads, builds, and installs the binary to `/usr/local/bin` in one step:
 
@@ -53,7 +53,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/insta
 
 The installer handles everything automatically: apt dependencies, cloning notcurses into the repo, building, and placing the binary in PATH. Safe to re-run.
 
-### Manual install
+### Manual Install
 
 **1. Clone the repository**
 
@@ -87,7 +87,7 @@ sudo ldconfig
 
 `cmake --install` places the `vitals` binary in `/usr/local/bin` and the notcurses shared libraries in `/usr/local/lib`.
 
-### Manual build (run in place, no system install)
+### Manual Build (run in place, no system install)
 
 ```bash
 git clone https://github.com/rebootless/vitals.git
