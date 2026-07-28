@@ -21,11 +21,25 @@ A terminal resource monitor for Linux built with [notcurses](https://github.com/
 
 | Panel | Data source | What it shows |
 |---|---|---|
-| **CPU**     | `/proc/stat` | Overall % + per-core bars + sparkline history + frequencies |
+| **CPU**     | `/proc/stat`, cpufreq | Overall % + per-core bars + sparkline history + frequencies |
+| **GPU**     | DRM sysfs, hwmon, `nvidia-smi` | Utilization, VRAM (when available), temp/power; AMD, Intel, nouveau, proprietary NVIDIA |
 | **Memory**  | `/proc/meminfo` | RAM and swap usage with gradient bars |
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput with peak tracking |
 | **Storage** | `/proc/diskstats`, `statvfs` | Root filesystem bar + per-disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | Thermal zones + hwmon sensors (coretemp, k10temp) |
+
+GPU is shown only when a supported device is detected; otherwise the CPU panel keeps the full column height.
+
+## Controls
+
+| Key | Action |
+|---|---|
+| `q` | Quit |
+| `Esc` | Open settings (theme, background, TTY mode, refresh rate) |
+| `Tab` | Next setting (while settings are open) |
+| `↑` / `↓` | Change the focused setting |
+| `Enter` | Save settings and close |
+| `Esc` (in settings) | Cancel and restore previous values |
 
 ## Installation
 
