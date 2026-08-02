@@ -80,4 +80,5 @@ echo "  Binary: $INSTALL_BIN"
 echo "  Commit: $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 
 echo ""
-echo "Run with: 'vitals'"
+echo "Run:"
+echo "  vitals"
