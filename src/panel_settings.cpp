@@ -4,12 +4,13 @@
 
 static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
 static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
+static const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    int right_rows = 2 + 2 + 3 + 1;
+    int right_rows = 2 + 2 + 3 + 2 + 2;
     int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return;
@@ -27,18 +28,28 @@ void panel_settings(ncplane* n, int rows, int cols) {
     int left_w  = iw * 3 / 5;
     int right_x = ix + left_w + 1;
 
-    nc_set(n, theme().BLUE, NCSTYLE_BOLD);
-    ncplane_putstr_yx(n, iy, ix, " Theme");
+    auto draw_group_header = [&](int r, int group_idx, const char* title) {
+        bool focused = (G.settings_focus == group_idx);
+        nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+        std::string hdr = std::string(focused ? "> " : "  ") + title;
+        ncplane_putstr_yx(n, r, right_x, hdr.c_str());
+    };
+
+    {
+        bool focused = (G.settings_focus == 0);
+        nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+        std::string hdr = std::string(focused ? "> " : "  ") + "Theme";
+        ncplane_putstr_yx(n, iy, ix, hdr.c_str());
+    }
 
     for (size_t i = 0; i < themes.size(); ++i) {
         int r = iy + 2 + static_cast<int>(i);
         if (r >= iy + ih) break;
 
         bool selected = (static_cast<int>(i) == G.theme_idx);
-        bool focused  = (G.settings_focus == 0);
 
         uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
-        nc_set(n, col, selected && focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        nc_set(n, col, NCSTYLE_NONE);
 
         std::string label = (selected ? "> " : "  ") +
                             str_trunc(themes[i].name, left_w - 3);
@@ -48,16 +59,14 @@ void panel_settings(ncplane* n, int rows, int cols) {
     if (right_x < ix + iw - 3) {
         int r = iy;
 
-        nc_set(n, theme().BLUE, NCSTYLE_BOLD);
-        ncplane_putstr_yx(n, r, right_x, " Background");
+        draw_group_header(r, 1, "Background");
         r += 2;
 
         for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
             bool selected = (i == G.bg_idx);
-            bool focused  = (G.settings_focus == 1);
 
             uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
-            nc_set(n, col, selected && focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+            nc_set(n, col, NCSTYLE_NONE);
 
             std::string label = std::string(selected ? "> " : "  ") + BG_MODE_NAMES[i];
             ncplane_putstr_yx(n, r, right_x, label.c_str());
@@ -66,18 +75,33 @@ void panel_settings(ncplane* n, int rows, int cols) {
         r++;
 
         if (r < iy + ih) {
-            nc_set(n, theme().BLUE, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, r, right_x, " Terminal");
+            draw_group_header(r, 2, "Terminal");
             r += 2;
 
             for (int i = 0; i < 3 && r < iy + ih; ++i, ++r) {
                 bool selected = (static_cast<int>(G.tty_force) == i);
-                bool focused  = (G.settings_focus == 2);
 
                 uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
-                nc_set(n, col, selected && focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+                nc_set(n, col, NCSTYLE_NONE);
 
                 std::string label = std::string(selected ? "> " : "  ") + TTY_MODE_NAMES[i];
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
+
+        r++;
+
+        if (r < iy + ih) {
+            draw_group_header(r, 3, "Corners");
+            r += 2;
+
+            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
+                bool selected = (i == G.corners_idx);
+
+                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                nc_set(n, col, NCSTYLE_NONE);
+
+                std::string label = std::string(selected ? "> " : "  ") + CORNER_MODE_NAMES[i];
                 ncplane_putstr_yx(n, r, right_x, label.c_str());
             }
         }
@@ -85,13 +109,14 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        bool focused = (G.settings_focus == 3);
+        bool focused = (G.settings_focus == 4);
 
         nc_set(n, theme().BLUE);
-        ncplane_putstr_yx(n, frow, ix, " Refresh: ");
+        std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";
+        ncplane_putstr_yx(n, frow, ix, lead.c_str());
 
-        nc_set(n, focused ? theme().GREEN : theme().TEXT, focused ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        nc_set(n, focused ? theme().GREEN : theme().TEXT, NCSTYLE_NONE);
         std::string val = std::to_string(G.refresh_ms) + "ms";
-        ncplane_putstr_yx(n, frow, ix + 10, val.c_str());
+        ncplane_putstr_yx(n, frow, ix + static_cast<int>(lead.size()), val.c_str());
     }
 }

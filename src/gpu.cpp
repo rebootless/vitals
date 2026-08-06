@@ -212,7 +212,7 @@ std::vector<GpuInfo> parse_nvidia_proprietary() {
     std::vector<GpuInfo> result;
 
     FILE* pipe = popen(
-        "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,"
+        "nvidia-smi -i 0 --query-gpu=name,utilization.gpu,memory.used,memory.total,"
         "temperature.gpu,power.draw --format=csv,noheader,nounits 2>/dev/null",
         "r");
     if (!pipe) return result;
@@ -251,11 +251,15 @@ std::vector<GpuInfo> parse_nvidia_proprietary() {
 
 std::vector<GpuInfo> parse_gpus() {
     std::vector<GpuInfo> result;
-    bool have_proprietary_nvidia = false;
 
     const char* base = "/sys/class/drm";
     DIR* dir = opendir(base);
     bool sysfs_enum_failed = (dir == nullptr);
+
+    // sort cardN: readdir order is unspecified, and card0 is normally the primary GPU
+    struct Candidate { int index; std::string name, device_dir, vendor_id; };
+    std::vector<Candidate> candidates;
+
     if (dir) {
         struct dirent* entry;
         while ((entry = readdir(dir)) != nullptr) {
@@ -264,30 +268,42 @@ std::vector<GpuInfo> parse_gpus() {
             if (!std::isdigit(static_cast<unsigned char>(name[4]))) continue;
             if (name.find('-') != std::string::npos) continue;
 
+            int idx = 0;
+            try { idx = std::stoi(name.substr(4)); } catch (...) { continue; }
+
             const std::string device_dir = std::string(base) + "/" + name + "/device";
-            const std::string vendor_id  = read_line(device_dir + "/vendor");
-
-            if (vendor_id == "0x1002") {
-                result.push_back(parse_amd(device_dir, name));
-
-            } else if (vendor_id == "0x8086") {
-                result.push_back(parse_intel(device_dir, name));
-
-            } else if (vendor_id == "0x10de") {
-                std::string driver = read_symlink_basename(device_dir + "/driver");
-                if (driver == "nouveau") {
-                    result.push_back(parse_nouveau(device_dir, name));
-                } else {
-                    have_proprietary_nvidia = true;
-                }
-            }
+            candidates.push_back({idx, name, device_dir, read_line(device_dir + "/vendor")});
         }
         closedir(dir);
     }
+    std::sort(candidates.begin(), candidates.end(),
+             [](const Candidate& a, const Candidate& b) { return a.index < b.index; });
 
-    if (have_proprietary_nvidia || sysfs_enum_failed) {
+    for (const auto& c : candidates) {
+        if (c.vendor_id == "0x1002") {
+            result.push_back(parse_amd(c.device_dir, c.name));
+            break;
+
+        } else if (c.vendor_id == "0x8086") {
+            result.push_back(parse_intel(c.device_dir, c.name));
+            break;
+
+        } else if (c.vendor_id == "0x10de") {
+            // fails open: only an explicit "nouveau" skips nvidia-smi
+            std::string driver = read_symlink_basename(c.device_dir + "/driver");
+            if (driver == "nouveau") {
+                result.push_back(parse_nouveau(c.device_dir, c.name));
+            } else {
+                auto nv = parse_nvidia_proprietary();
+                if (!nv.empty()) result.push_back(std::move(nv.front()));
+            }
+            break;
+        }
+    }
+
+    if (result.empty() && (sysfs_enum_failed || candidates.empty())) {
         auto nv = parse_nvidia_proprietary();
-        result.insert(result.end(), nv.begin(), nv.end());
+        if (!nv.empty()) result.push_back(std::move(nv.front()));
     }
 
     return result;

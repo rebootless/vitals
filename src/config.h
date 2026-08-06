@@ -7,6 +7,7 @@ struct Config {
     std::string bg_mode     = "transparent";
     std::string tty_mode    = "auto";
     int         refresh_ms  = 1000;
+    std::string corners     = "square";
 };
 
 Config load_config();

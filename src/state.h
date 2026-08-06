@@ -17,8 +17,14 @@ struct HwmonSensor {
     bool        has_crit     = false;
 };
 
+enum class HwmonCategory {
+    CPU, Motherboard, Storage, Network, Laptop, Other, Unknown
+};
+
 struct HwmonChip {
     std::string              name;
+    std::string              display;
+    HwmonCategory             category = HwmonCategory::Unknown;
     std::vector<HwmonSensor> sensors;
 };
 
@@ -46,12 +52,15 @@ struct AppState {
 
     int refresh_ms = 1000;
 
+    int corners_idx = 0;
+
     bool settings_open        = false;
     int  settings_focus       = 0;
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
+    int  settings_saved_corners = 0;
 };
 
 extern AppState G;

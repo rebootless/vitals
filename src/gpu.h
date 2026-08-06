@@ -17,4 +17,5 @@ struct GpuInfo {
     double power_w        = -1.0;
 };
 
+// at most one entry: the lowest-numbered /sys/class/drm/cardN
 std::vector<GpuInfo> parse_gpus();

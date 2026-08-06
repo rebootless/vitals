@@ -37,6 +37,7 @@ meminfo parse_meminfo() {
     if (!f) throw std::runtime_error("cannot open /proc/meminfo");
 
     meminfo m{};
+    bool has_available = false;
     std::string line;
     while (std::getline(f, line)) {
         std::istringstream ss(line);
@@ -45,7 +46,7 @@ meminfo parse_meminfo() {
         ss >> key >> value;
         if      (key == "MemTotal:")     m.MemTotal     = value;
         else if (key == "MemFree:")      m.MemFree      = value;
-        else if (key == "MemAvailable:") m.MemAvailable = value;
+        else if (key == "MemAvailable:") { m.MemAvailable = value; has_available = true; }
         else if (key == "Buffers:")      m.Buffers      = value;
         else if (key == "Cached:")       m.Cached       = value;
         else if (key == "SwapTotal:")    m.SwapTotal    = value;
@@ -56,6 +57,14 @@ meminfo parse_meminfo() {
         else if (key == "Writeback:")    m.Writeback    = value;
         else if (key == "Slab:")         m.Slab         = value;
         else if (key == "Shmem:")        m.Shmem        = value;
+        else if (key == "SReclaimable:") m.SReclaimable = value;
+    }
+
+    // fallback without MemAvailable (< 3.14): reclaimable memory minus Shmem, as old procps did
+    if (!has_available) {
+        unsigned long long reclaimable = m.Buffers + m.Cached + m.SReclaimable;
+        unsigned long long shmem_adj   = std::min(reclaimable, m.Shmem);
+        m.MemAvailable = m.MemFree + reclaimable - shmem_adj;
     }
     return m;
 }

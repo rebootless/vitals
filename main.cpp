@@ -55,10 +55,7 @@ static void render(notcurses* nc, ncplane* n,
     // GPU's content height is satisfied first, CPU gets the rest (the reverse starved GPU to 0 rows)
     auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
         if (gpus.empty()) return { col_h, 0 };
-        int shown    = std::min<int>(3, static_cast<int>(gpus.size()));
-        int gpu_rows = 0;
-        for (int i = 0; i < shown; ++i)
-            gpu_rows += (gpus[static_cast<size_t>(i)].mem_total_mb > 0) ? 3 : 2;
+        int gpu_rows = (gpus.front().mem_total_mb > 0) ? 3 : 2;
         int gpu_want = gpu_rows + 2;
 
         const int CPU_MIN = 5;
@@ -142,6 +139,7 @@ int main() {
         G.tty_force  = tty_force_from_string(cfg.tty_mode);
         G.tty_active = resolve_tty_active(G.tty_force);
         G.refresh_ms = cfg.refresh_ms;
+        G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
     }
 
     try { G.ci = parse_cpuinfo();     } catch (...) {}
@@ -169,6 +167,9 @@ int main() {
         ncinput ni{};
         uint32_t ch = notcurses_get_nblock(nc, &ni);
 
+        // Kitty protocol sends RELEASE events too; ignore them or Esc-up re-closes Settings
+        if (ni.evtype == NCTYPE_RELEASE) ch = 0;
+
         if (!G.settings_open) {
             if (ch == 'q' || ch == 'Q') break;
 
@@ -178,6 +179,7 @@ int main() {
                 G.settings_saved_bg      = G.bg_idx;
                 G.settings_saved_tty     = G.tty_force;
                 G.settings_saved_refresh = G.refresh_ms;
+                G.settings_saved_corners = G.corners_idx;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
             }
@@ -191,10 +193,11 @@ int main() {
                 G.tty_force     = G.settings_saved_tty;
                 G.tty_active    = resolve_tty_active(G.tty_force);
                 G.refresh_ms    = G.settings_saved_refresh;
+                G.corners_idx   = G.settings_saved_corners;
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 4;
+                G.settings_focus = (G.settings_focus + 1) % 5;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
@@ -205,6 +208,8 @@ int main() {
                     int f = (static_cast<int>(G.tty_force) - 1 + 3) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else if (G.settings_focus == 3) {
+                    G.corners_idx = (G.corners_idx - 1 + 2) % 2;
                 } else {
                     int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -219,6 +224,8 @@ int main() {
                     int f = (static_cast<int>(G.tty_force) + 1) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else if (G.settings_focus == 3) {
+                    G.corners_idx = (G.corners_idx + 1) % 2;
                 } else {
                     int idx = std::max(0, refresh_step_index() - 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -230,6 +237,7 @@ int main() {
                 cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
                 cfg.tty_mode   = tty_force_to_string(G.tty_force);
                 cfg.refresh_ms = G.refresh_ms;
+                cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
                 save_config(cfg);
                 G.settings_open = false;
             }

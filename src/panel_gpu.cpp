@@ -11,6 +11,7 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
         ncplane_putstr_yx(n, iy, ix, str_trunc("No GPU found", iw).c_str());
         return;
     }
+    const auto& g = gpus.front();
 
     const int LBL       = 7;
     const int BRACKET_W = 6;
@@ -39,31 +40,21 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
     };
 
     int row = iy;
-    for (size_t gi = 0; gi < gpus.size(); ++gi) {
-        if (row >= iy + ih) break;
-        const auto& g = gpus[gi];
 
-        nc_set(n, theme().BLUE);
-        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
-        nc_set(n, theme().TEXT);
-        ncplane_putstr_yx(n, row, ix + LBL,
-                          str_trunc(g.name, iw - LBL).c_str());
-        row++;
-        if (row >= iy + ih) break;
+    nc_set(n, theme().BLUE);
+    ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
+    nc_set(n, theme().TEXT);
+    ncplane_putstr_yx(n, row, ix + LBL,
+                      str_trunc(g.name, iw - LBL).c_str());
+    row++;
+    if (row >= iy + ih) return;
 
-        stat_bar(row, "UTIL:", g.util_pct,
-                pct_color(std::max(0.0, g.util_pct)), GRAD_CPU);
-        row++;
+    stat_bar(row, "Util:", g.util_pct,
+            pct_color(std::max(0.0, g.util_pct)), GRAD_CPU);
+    row++;
 
-        if (g.mem_total_mb > 0 && row < iy + ih) {
-            double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
-            stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
-            row++;
-        }
-
-        if (gi + 1 < gpus.size() && row < iy + ih) {
-            draw_sep(n, row, ix, iw);
-            row++;
-        }
+    if (g.mem_total_mb > 0 && row < iy + ih) {
+        double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
+        stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
     }
 }

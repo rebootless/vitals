@@ -8,8 +8,9 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     int row = iy;
     const int LBL = 8;
 
-    const ull used_kb  = (mi.MemTotal > mi.MemAvailable)
-                         ? mi.MemTotal - mi.MemAvailable : 0;
+    const ull reclaimable = mi.Buffers + mi.Cached + mi.SReclaimable;
+    const ull used_kb = (mi.MemTotal > mi.MemFree + reclaimable)
+                        ? mi.MemTotal - mi.MemFree - reclaimable : 0;
     const double rampct = mi.MemTotal > 0
                           ? 100.0 * static_cast<double>(used_kb) / mi.MemTotal : 0.0;
 
@@ -46,35 +47,23 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
         nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Swap:");
 
-        if (mi.SwapTotal > 0) {
-            const ull    swp_used = (mi.SwapTotal > mi.SwapFree)
-                                    ? mi.SwapTotal - mi.SwapFree : 0;
-            const double spct     = 100.0 * static_cast<double>(swp_used) / mi.SwapTotal;
-            uint32_t sc = pct_color(spct);
+        const bool   has_swap = mi.SwapTotal > 0;
+        const ull    swp_used = (has_swap && mi.SwapTotal > mi.SwapFree)
+                                ? mi.SwapTotal - mi.SwapFree : 0;
+        const double spct     = has_swap
+                                ? 100.0 * static_cast<double>(swp_used) / mi.SwapTotal : 0.0;
+        uint32_t sc = has_swap ? pct_color(spct) : theme().SURFACE2;
 
-            lbr(n, row, ix + LBL);
-            nc_set(n, sc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", spct);
-            rbr(n, row, ix + LBL + 5);
+        lbr(n, row, ix + LBL);
+        nc_set(n, sc, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", spct);
+        rbr(n, row, ix + LBL + 5);
 
-            int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
-            if (bw > 2) {
-                lbr(n, row, bx);
-                draw_bar_grad(n, row, bx + 1, bw, spct / 100.0, GRAD_MEM);
-                rbr(n, row, bx + 1 + bw);
-            }
-        } else {
-            lbr(n, row, ix + LBL);
-            nc_set(n, theme().SURFACE2);
-            ncplane_putstr_yx(n, row, ix + LBL + 1, " 0%");
-            rbr(n, row, ix + LBL + 4);
-
-            int bx = ix + LBL + 5, bw = iw - (LBL + 5 + 2);
-            if (bw > 2) {
-                lbr(n, row, bx);
-                draw_bar_grad(n, row, bx + 1, bw, 0.0, GRAD_MEM);
-                rbr(n, row, bx + 1 + bw);
-            }
+        int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
+        if (bw > 2) {
+            lbr(n, row, bx);
+            draw_bar_grad(n, row, bx + 1, bw, spct / 100.0, GRAD_MEM);
+            rbr(n, row, bx + 1 + bw);
         }
         row++;
     }
