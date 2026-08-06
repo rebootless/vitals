@@ -49,6 +49,7 @@ meminfo parse_meminfo() {
     if (!f) throw std::runtime_error("cannot open /proc/meminfo");
 
     meminfo m{};
+    bool has_available = false;
     std::string line;
     while (std::getline(f, line)) {
         std::istringstream ss(line);
@@ -57,7 +58,7 @@ meminfo parse_meminfo() {
         ss >> key >> value;
         if      (key == "MemTotal:")     m.MemTotal     = value;
         else if (key == "MemFree:")      m.MemFree      = value;
-        else if (key == "MemAvailable:") m.MemAvailable = value;
+        else if (key == "MemAvailable:") { m.MemAvailable = value; has_available = true; }
         else if (key == "Buffers:")      m.Buffers      = value;
         else if (key == "Cached:")       m.Cached       = value;
         else if (key == "SwapTotal:")    m.SwapTotal    = value;
@@ -68,6 +69,19 @@ meminfo parse_meminfo() {
         else if (key == "Writeback:")    m.Writeback    = value;
         else if (key == "Slab:")         m.Slab         = value;
         else if (key == "Shmem:")        m.Shmem        = value;
+        else if (key == "SReclaimable:") m.SReclaimable = value;
+    }
+
+    // MemAvailable (kernel 3.14+, March 2014) is present on every kernel
+    // still in practical use, but fall back rather than silently showing
+    // "100% used" on the rare system without it (old containers/kernels).
+    // Mirrors the pre-3.14 estimate procps/free used: reclaimable memory
+    // (page cache + reclaimable slab) minus Shmem, since tmpfs/shm pages
+    // live in Cached but can't actually be freed like file cache can.
+    if (!has_available) {
+        unsigned long long reclaimable = m.Buffers + m.Cached + m.SReclaimable;
+        unsigned long long shmem_adj   = std::min(reclaimable, m.Shmem);
+        m.MemAvailable = m.MemFree + reclaimable - shmem_adj;
     }
     return m;
 }

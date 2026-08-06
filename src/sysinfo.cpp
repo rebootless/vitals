@@ -90,6 +90,45 @@ std::pair<double,double> thermal_trip_limits(int zone) {
     return {hi, crit};
 }
 
+// Identifies the real-world device behind a hwmon chip name, driving both
+// the friendly group header shown in the Thermal panel and whether an
+// unlabeled sensor (bare "tempN", no temp*_label file) is shown at all —
+// unidentifiable unlabeled sensors are dropped rather than shown as
+// meaningless "temp1" rows. amdgpu/nouveau/nvidia are intentionally
+// excluded here: those chips are already surfaced through parse_gpus()
+// (gpu.cpp reads their hwmon node directly for GPU temperature), so
+// picking them up again in this generic scan would duplicate the GPU
+// panel's own reading under a second, unlabeled "temp1" entry.
+static bool classify_hwmon_chip(const std::string& name,
+                                HwmonCategory& cat, std::string& display) {
+    static const std::map<std::string, std::pair<HwmonCategory, const char*>> table = {
+        {"coretemp",  {HwmonCategory::CPU,         "CPU"}},
+        {"k10temp",   {HwmonCategory::CPU,         "CPU"}},
+        {"zenpower",  {HwmonCategory::CPU,         "CPU"}},
+        {"acpitz",    {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6775",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6776",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6779",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6791",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6792",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6793",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6795",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6796",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"it8792",    {HwmonCategory::Motherboard, "Motherboard"}},
+        {"it8686",    {HwmonCategory::Motherboard, "Motherboard"}},
+        {"w83627ehf", {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nvme",      {HwmonCategory::Storage,     "SSD"}},
+        {"drivetemp", {HwmonCategory::Storage,     "Storage"}},
+        {"iwlwifi",   {HwmonCategory::Network,     "Wi-Fi"}},
+        {"thinkpad",  {HwmonCategory::Laptop,      "Laptop"}},
+    };
+    auto it = table.find(name);
+    if (it == table.end()) return false;
+    cat     = it->second.first;
+    display = it->second.second;
+    return true;
+}
+
 // Hwmon reader (/sys/class/hwmon/hwmonN/)
 std::vector<HwmonChip> parse_hwmon() {
     std::map<std::string, HwmonChip> chips_map;
@@ -117,8 +156,15 @@ std::vector<HwmonChip> parse_hwmon() {
         { std::ifstream nf(dir + "/name"); if (!nf) continue; std::getline(nf, chip_name); }
         if (chip_name.empty()) continue;
 
+        // GPUs are read separately (gpu.cpp / parse_gpus()) and shown in
+        // their own "GPU" section — skip here to avoid a duplicate entry.
+        if (chip_name == "amdgpu" || chip_name == "nouveau" || chip_name == "nvidia")
+            continue;
+
         HwmonChip& chip = chips_map[chip_name];
         chip.name = chip_name;
+        classify_hwmon_chip(chip_name, chip.category, chip.display);
+        if (chip.display.empty()) chip.display = chip_name;
 
         // Collect temp*_input entries
         DIR* d = opendir(dir.c_str());
@@ -133,17 +179,36 @@ std::vector<HwmonChip> parse_hwmon() {
             }
         }
         closedir(d);
+        std::sort(prefixes.begin(), prefixes.end());
 
+        int unlabeled_seen = 0;
         for (const auto& pfx : prefixes) {
             auto [val, ok] = read_mc(dir + "/" + pfx + "_input");
             if (!ok) continue;
 
+            std::string real_label;
+            { std::ifstream lf(dir + "/" + pfx + "_label");
+              if (lf) std::getline(lf, real_label); }
+
             HwmonSensor s;
             s.temp_celsius = val;
 
-            { std::ifstream lf(dir + "/" + pfx + "_label");
-              if (lf) std::getline(lf, s.label); }
-            if (s.label.empty()) s.label = pfx;
+            if (!real_label.empty()) {
+                s.label = real_label;
+            } else if (chip.category != HwmonCategory::Unknown) {
+                // No temp*_label, but the chip itself is identified (e.g.
+                // acpitz's lone sensor) — use the chip's friendly name.
+                // Numbered only if the chip exposes more than one such
+                // sensor (e.g. a Super-I/O chip with several unlabeled
+                // probes).
+                unlabeled_seen++;
+                s.label = chip.display;
+            } else {
+                // Neither the sensor nor its chip could be identified —
+                // a bare "temp1" tells the person nothing useful, so
+                // skip it rather than show a meaningless row.
+                continue;
+            }
 
             auto [mx, hmx] = read_mc(dir + "/" + pfx + "_max");
             s.temp_max = mx; s.has_max = hmx;
@@ -152,6 +217,16 @@ std::vector<HwmonChip> parse_hwmon() {
 
             s.is_package = (s.label.rfind("Package", 0) == 0);
             chip.sensors.push_back(s);
+        }
+
+        // Retroactively number unlabeled sensors sharing one chip's
+        // friendly name ("Motherboard" -> "Motherboard 1"/"Motherboard 2")
+        // so they're distinguishable — only when there's more than one.
+        if (unlabeled_seen > 1) {
+            int n = 0;
+            for (auto& s : chip.sensors)
+                if (s.label == chip.display)
+                    s.label = chip.display + " " + std::to_string(++n);
         }
     }
     closedir(base);

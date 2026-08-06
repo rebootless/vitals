@@ -19,10 +19,14 @@ struct GpuInfo {
     double power_w        = -1.0;
 };
 
-// Enumerates all GPUs found on the system:
+// Detects the system's (one) GPU:
 //  - AMD / Intel: pure sysfs (/sys/class/drm/card*/device), no external deps.
 //  - NVIDIA: sysfs exposes almost nothing useful under the proprietary driver,
 //    so this shells out to `nvidia-smi` instead. If the binary isn't present
 //    (no NVIDIA driver installed), this silently contributes zero rows.
-// Never throws; on any read failure a GPU is simply omitted.
+// Returns at most one entry — the lowest-numbered /sys/class/drm/cardN,
+// which is normally the boot/primary GPU. Still a vector (empty when no
+// GPU is found, one element otherwise) purely so callers don't need a
+// separate "found or not" branch; multi-GPU machines only ever get their
+// first card reported. Never throws; a read failure just omits the card.
 std::vector<GpuInfo> parse_gpus();

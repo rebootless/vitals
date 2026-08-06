@@ -1,14 +1,18 @@
 #include "panels.h"
 
-// Compact GPU panel — for each card:
+// Compact GPU panel — for the system's one GPU:
 //   Model: NVIDIA GeForce GT 730
-//   UTIL: [ 67%][=======bar=======]
+//   Util: [ 67%][=======bar=======]
 //   VRAM: [ 42%][=======bar=======]
 // Two separate bars (one per metric) instead of one shared bar, so it's
 // obvious which number each bar belongs to. VRAM's row is only drawn when
 // the driver actually reports usage. Temperature lives in the Thermal panel
 // instead — this panel is squeezed under CPU, so it only carries what has
 // no other home.
+//
+// gpus holds at most one entry (parse_gpus() only reports the primary
+// card — see gpu.h) — still a vector so the empty/"no GPU" case doesn't
+// need a separate type, not because multiple cards are expected here.
 void panel_gpu(ncplane* n, int y, int x, int h, int w,
               const std::vector<GpuInfo>& gpus) {
 
@@ -20,8 +24,9 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
         ncplane_putstr_yx(n, iy, ix, str_trunc("No GPU found", iw).c_str());
         return;
     }
+    const auto& g = gpus.front();
 
-    const int LBL       = 7; // width of "Model: " / "UTIL:  " / "VRAM:  " labels
+    const int LBL       = 7; // width of "Model: " / "Util:  " / "VRAM:  " labels
     const int BRACKET_W = 6; // "[" + 4 content chars + "]" (" 67%" / " n/a")
     const int bw = std::max(4, iw - LBL - BRACKET_W - 2); // -2 = bar's own brackets
 
@@ -50,34 +55,24 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
     };
 
     int row = iy;
-    for (size_t gi = 0; gi < gpus.size(); ++gi) {
-        if (row >= iy + ih) break;
-        const auto& g = gpus[gi];
 
-        // Model: <name>
-        nc_set(n, theme().BLUE);
-        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
-        nc_set(n, theme().TEXT);
-        ncplane_putstr_yx(n, row, ix + LBL,
-                          str_trunc(g.name, iw - LBL).c_str());
-        row++;
-        if (row >= iy + ih) break;
+    // Model: <name>
+    nc_set(n, theme().BLUE);
+    ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
+    nc_set(n, theme().TEXT);
+    ncplane_putstr_yx(n, row, ix + LBL,
+                      str_trunc(g.name, iw - LBL).c_str());
+    row++;
+    if (row >= iy + ih) return;
 
-        // UTIL: [ nn%][bar]
-        stat_bar(row, "UTIL:", g.util_pct,
-                pct_color(std::max(0.0, g.util_pct)), GRAD_CPU);
-        row++;
+    // Util: [ nn%][bar]
+    stat_bar(row, "Util:", g.util_pct,
+            pct_color(std::max(0.0, g.util_pct)), GRAD_CPU);
+    row++;
 
-        // VRAM: [ nn%][bar]
-        if (g.mem_total_mb > 0 && row < iy + ih) {
-            double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
-            stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
-            row++;
-        }
-
-        if (gi + 1 < gpus.size() && row < iy + ih) {
-            draw_sep(n, row, ix, iw);
-            row++;
-        }
+    // VRAM: [ nn%][bar]
+    if (g.mem_total_mb > 0 && row < iy + ih) {
+        double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
+        stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
     }
 }

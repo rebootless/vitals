@@ -36,10 +36,19 @@ draw_box(ncplane* n, int y, int x, int h, int w,
 
     nc_set(n, theme().SURFACE2);
 
-    // Top border: ┌─────┐
-    ncplane_putstr_yx(n, y, x, "┌");
+    // Corner glyphs — square by default, ╭╮╰╯ when the person picks
+    // "Rounded" in Settings. Only the four corners differ; edges are
+    // still drawn with the plain ─/│ glyphs either way.
+    const bool rounded = (G.corners_idx == 1);
+    const char* tl = rounded ? "╭" : "┌";
+    const char* tr = rounded ? "╮" : "┐";
+    const char* bl = rounded ? "╰" : "└";
+    const char* br = rounded ? "╯" : "┘";
+
+    // Top border: ┌─────┐ / ╭─────╮
+    ncplane_putstr_yx(n, y, x, tl);
     hline(n, y, x + 1, w - 2, "─", theme().SURFACE2);
-    ncplane_putstr_yx(n, y, x + w - 1, "┐");
+    ncplane_putstr_yx(n, y, x + w - 1, tr);
 
     // Side borders + background fill
     for (int i = 1; i < h - 1; ++i) {
@@ -53,11 +62,11 @@ draw_box(ncplane* n, int y, int x, int h, int w,
             ncplane_putstr_yx(n, y + i, j, " ");
     }
 
-    // Bottom border: └─────┘
+    // Bottom border: └─────┘ / ╰─────╯
     nc_set(n, theme().SURFACE2);
-    ncplane_putstr_yx(n, y + h - 1, x, "└");
+    ncplane_putstr_yx(n, y + h - 1, x, bl);
     hline(n, y + h - 1, x + 1, w - 2, "─", theme().SURFACE2);
-    ncplane_putstr_yx(n, y + h - 1, x + w - 1, "┘");
+    ncplane_putstr_yx(n, y + h - 1, x + w - 1, br);
 
     // Title embedded in top border: ─ Title ─
     if (!title.empty() && w > 4) {

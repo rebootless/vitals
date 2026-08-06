@@ -46,6 +46,7 @@ Config load_config() {
         if (key == "theme")           cfg.theme_name = val;
         else if (key == "background") cfg.bg_mode    = val;
         else if (key == "terminal")   cfg.tty_mode    = val;
+        else if (key == "corners")    cfg.corners     = val;
         else if (key == "refresh_ms") {
             try {
                 int v = std::stoi(val);
@@ -73,4 +74,5 @@ void save_config(const Config& cfg) {
     f << "background=" << cfg.bg_mode << "\n";
     f << "terminal=" << cfg.tty_mode << "\n";
     f << "refresh_ms=" << cfg.refresh_ms << "\n";
+    f << "corners=" << cfg.corners << "\n";
 }

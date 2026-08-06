@@ -8,8 +8,27 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     int row = iy;
     const int LBL = 8;   // "Memory: " / "Swap: "
 
-    const ull used_kb  = (mi.MemTotal > mi.MemAvailable)
-                         ? mi.MemTotal - mi.MemAvailable : 0;
+    // "Used" memory, matching what current htop (3.2.1+, linux/Platform.c
+    // Platform_setMemoryValues + linux/LinuxMachine.c) actually displays.
+    //
+    // This is NOT MemTotal - MemAvailable, despite that being the more
+    // commonly cited "modern" formula — MemAvailable is a kernel estimate
+    // of how much could be freed under pressure, not what htop reports as
+    // currently in use. Verified numerically against a real /proc/meminfo
+    // + matching htop screenshots posted in htop-dev/htop#1051: for that
+    // dataset, MemTotal-MemAvailable gives ~774MB (matches neither
+    // version shown), while this formula gives ~109MB, matching the
+    // ~111MB htop 3.2.1 actually displayed.
+    //
+    // SReclaimable (reclaimable slab, e.g. dentry/inode caches) is folded
+    // in alongside Cached since it's freeable the same way page cache is;
+    // Shmem (tmpfs/shared-memory pages) is intentionally left inside
+    // Cached rather than added back — htop's own arithmetic works out the
+    // same whether or not Shmem is separately netted out, since it's
+    // already counted once within Cached.
+    const ull reclaimable = mi.Buffers + mi.Cached + mi.SReclaimable;
+    const ull used_kb = (mi.MemTotal > mi.MemFree + reclaimable)
+                        ? mi.MemTotal - mi.MemFree - reclaimable : 0;
     const double rampct = mi.MemTotal > 0
                           ? 100.0 * static_cast<double>(used_kb) / mi.MemTotal : 0.0;
 
@@ -49,35 +68,30 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
         nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Swap:");
 
-        if (mi.SwapTotal > 0) {
-            const ull    swp_used = (mi.SwapTotal > mi.SwapFree)
-                                    ? mi.SwapTotal - mi.SwapFree : 0;
-            const double spct     = 100.0 * static_cast<double>(swp_used) / mi.SwapTotal;
-            uint32_t sc = pct_color(spct);
+        // Same layout whether or not swap is configured — previously the
+        // "no swap" branch hand-formatted " 0%" (one column narrower than
+        // "%3.0f%%" ever produces) and closed its bracket one column
+        // early, so the bar started one column to the left of where it
+        // sits whenever swap *is* in use. Always going through the same
+        // "%3.0f%%" formatting keeps the bracket — and therefore the bar
+        // — at an identical column regardless of spct.
+        const bool   has_swap = mi.SwapTotal > 0;
+        const ull    swp_used = (has_swap && mi.SwapTotal > mi.SwapFree)
+                                ? mi.SwapTotal - mi.SwapFree : 0;
+        const double spct     = has_swap
+                                ? 100.0 * static_cast<double>(swp_used) / mi.SwapTotal : 0.0;
+        uint32_t sc = has_swap ? pct_color(spct) : theme().SURFACE2;
 
-            lbr(n, row, ix + LBL);
-            nc_set(n, sc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", spct);
-            rbr(n, row, ix + LBL + 5);
+        lbr(n, row, ix + LBL);
+        nc_set(n, sc, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", spct);
+        rbr(n, row, ix + LBL + 5);
 
-            int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
-            if (bw > 2) {
-                lbr(n, row, bx);
-                draw_bar_grad(n, row, bx + 1, bw, spct / 100.0, GRAD_MEM);
-                rbr(n, row, bx + 1 + bw);
-            }
-        } else {
-            lbr(n, row, ix + LBL);
-            nc_set(n, theme().SURFACE2);
-            ncplane_putstr_yx(n, row, ix + LBL + 1, " 0%");
-            rbr(n, row, ix + LBL + 4);
-
-            int bx = ix + LBL + 5, bw = iw - (LBL + 5 + 2);
-            if (bw > 2) {
-                lbr(n, row, bx);
-                draw_bar_grad(n, row, bx + 1, bw, 0.0, GRAD_MEM);
-                rbr(n, row, bx + 1 + bw);
-            }
+        int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
+        if (bw > 2) {
+            lbr(n, row, bx);
+            draw_bar_grad(n, row, bx + 1, bw, spct / 100.0, GRAD_MEM);
+            rbr(n, row, bx + 1 + bw);
         }
         row++;
     }

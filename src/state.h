@@ -19,8 +19,19 @@ struct HwmonSensor {
     bool        has_crit     = false;
 };
 
+// Which real-world device a hwmon chip belongs to, identified from its
+// sysfs "name" node (coretemp, k10temp, acpitz, nvme, ...) — drives both
+// the friendly category label in the Thermal panel and whether a sensor
+// with no temp*_label (bare "tempN") gets shown at all. See
+// classify_hwmon_chip() in sysinfo.cpp for the name -> category table.
+enum class HwmonCategory {
+    CPU, Motherboard, Storage, Network, Laptop, Other, Unknown
+};
+
 struct HwmonChip {
-    std::string              name;
+    std::string              name;      // raw sysfs chip name, e.g. "coretemp"
+    std::string              display;   // friendly device name, e.g. "Motherboard"
+    HwmonCategory             category = HwmonCategory::Unknown;
     std::vector<HwmonSensor> sensors;
 };
 
@@ -60,13 +71,19 @@ struct AppState {
     // Left/Right when the Refresh row is focused, persisted to config.
     int refresh_ms = 1000;
 
+    // Box corner style — 0 = square (┌┐└┘), 1 = rounded (╭╮╰╯). Checked by
+    // draw_box() every frame; persisted to config. No effect in TTY mode,
+    // which already uses its own plain "+/-/|" glyphs (draw_box_tty).
+    int corners_idx = 0;
+
     // Settings overlay state
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode, 3 = refresh rate
+    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode, 3 = corners, 4 = refresh rate
     int  settings_saved_theme = 0;   // snapshot on open, restored if the person cancels (Esc)
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
+    int  settings_saved_corners = 0;
 };
 
 // Defined in main.cpp, referenced throughout.

@@ -37,6 +37,7 @@ struct meminfo {
 
     unsigned long long Slab;
     unsigned long long Shmem;
+    unsigned long long SReclaimable; // only used as a MemAvailable fallback input
 };
 
 // /proc/uptime

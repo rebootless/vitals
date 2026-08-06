@@ -105,7 +105,8 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 
 ## Screenshots
 
-![](screenshots/2026-07-25_22-56.png)
+![](screenshots/2026-08-06_06-39.png)
+![](screenshots/2026-08-06_06-40.png)
 
 ## How it builds
 

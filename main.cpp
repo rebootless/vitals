@@ -61,11 +61,10 @@ static void render(notcurses* nc, ncplane* n,
     int bot_h = avail - top_h;
 
     // GPU sits only under the CPU column, sized to its content (2 border
-    // rows + 2-3 rows per card — "Model:", a UTIL bar, and a VRAM bar if
-    // the driver reports it, same as panel_gpu.cpp — capped so a machine
-    // with many GPUs doesn't swallow the whole CPU panel) rather than a
-    // fixed proportion of top_h. If no GPU was found, CPU keeps the full
-    // column height and the panel isn't drawn at all.
+    // rows + 2-3 rows — "Model:", a UTIL bar, and a VRAM bar if the driver
+    // reports it, same as panel_gpu.cpp) rather than a fixed proportion of
+    // top_h. If no GPU was found, CPU keeps the full column height and the
+    // panel isn't drawn at all. gpus holds at most one entry — see gpu.h.
     //
     // GPU's content budget is satisfied FIRST (up to what it actually
     // needs), and CPU gets whatever remains down to a legible floor —
@@ -74,10 +73,7 @@ static void render(notcurses* nc, ncplane* n,
     // render" even though data was present and correct.
     auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
         if (gpus.empty()) return { col_h, 0 };
-        int shown    = std::min<int>(3, static_cast<int>(gpus.size()));
-        int gpu_rows = 0;
-        for (int i = 0; i < shown; ++i)
-            gpu_rows += (gpus[static_cast<size_t>(i)].mem_total_mb > 0) ? 3 : 2;
+        int gpu_rows = (gpus.front().mem_total_mb > 0) ? 3 : 2;
         int gpu_want = gpu_rows + 2; // + top/bottom border
 
         const int CPU_MIN = 5; // border(2) + Model + Usage + History, the bare minimum to stay legible
@@ -165,6 +161,7 @@ int main() {
         G.tty_force  = tty_force_from_string(cfg.tty_mode);
         G.tty_active = resolve_tty_active(G.tty_force);
         G.refresh_ms = cfg.refresh_ms;
+        G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
     }
 
     // Static init
@@ -198,6 +195,19 @@ int main() {
         ncinput ni{};
         uint32_t ch = notcurses_get_nblock(nc, &ni);
 
+        // Terminals that negotiate the Kitty keyboard protocol (kitty,
+        // foot, wezterm, ... — common under Wayland/sway; rare on X11
+        // terminals like Konsole/xterm) report separate PRESS and
+        // RELEASE events per keystroke instead of a single legacy byte.
+        // Every branch below is written for "key was pressed", so treat
+        // a RELEASE the same as "no key" (ch == 0) rather than acting on
+        // it — otherwise releasing Esc immediately re-triggers whatever
+        // branch matches NCKEY_ESC, e.g. closing the just-opened Settings
+        // overlay a frame after it opened. Terminals that don't report
+        // event types leave evtype at NCTYPE_UNKNOWN, which is left
+        // alone here, so behavior is unchanged where this bug can't occur.
+        if (ni.evtype == NCTYPE_RELEASE) ch = 0;
+
         if (!G.settings_open) {
             if (ch == 'q' || ch == 'Q') break;
 
@@ -209,6 +219,7 @@ int main() {
                 G.settings_saved_bg      = G.bg_idx;
                 G.settings_saved_tty     = G.tty_force;
                 G.settings_saved_refresh = G.refresh_ms;
+                G.settings_saved_corners = G.corners_idx;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
             }
@@ -222,10 +233,11 @@ int main() {
                 G.tty_force     = G.settings_saved_tty;
                 G.tty_active    = resolve_tty_active(G.tty_force);
                 G.refresh_ms    = G.settings_saved_refresh;
+                G.corners_idx   = G.settings_saved_corners;
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 4;
+                G.settings_focus = (G.settings_focus + 1) % 5;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
@@ -236,6 +248,8 @@ int main() {
                     int f = (static_cast<int>(G.tty_force) - 1 + 3) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else if (G.settings_focus == 3) {
+                    G.corners_idx = (G.corners_idx - 1 + 2) % 2;
                 } else {
                     int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -250,6 +264,8 @@ int main() {
                     int f = (static_cast<int>(G.tty_force) + 1) % 3;
                     G.tty_force  = static_cast<TtyForce>(f);
                     G.tty_active = resolve_tty_active(G.tty_force);
+                } else if (G.settings_focus == 3) {
+                    G.corners_idx = (G.corners_idx + 1) % 2;
                 } else {
                     int idx = std::max(0, refresh_step_index() - 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -261,6 +277,7 @@ int main() {
                 cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
                 cfg.tty_mode   = tty_force_to_string(G.tty_force);
                 cfg.refresh_ms = G.refresh_ms;
+                cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
                 save_config(cfg);
                 G.settings_open = false;
             }

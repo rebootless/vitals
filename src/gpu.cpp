@@ -242,7 +242,7 @@ std::vector<GpuInfo> parse_nvidia_proprietary() {
     std::vector<GpuInfo> result;
 
     FILE* pipe = popen(
-        "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,"
+        "nvidia-smi -i 0 --query-gpu=name,utilization.gpu,memory.used,memory.total,"
         "temperature.gpu,power.draw --format=csv,noheader,nounits 2>/dev/null",
         "r");
     if (!pipe) return result;
@@ -281,11 +281,20 @@ std::vector<GpuInfo> parse_nvidia_proprietary() {
 
 std::vector<GpuInfo> parse_gpus() {
     std::vector<GpuInfo> result;
-    bool have_proprietary_nvidia = false;
 
     const char* base = "/sys/class/drm";
     DIR* dir = opendir(base);
     bool sysfs_enum_failed = (dir == nullptr);
+
+    // Collect every "cardN" first and sort by N, rather than acting on
+    // whichever one readdir() happens to return first (directory order
+    // isn't guaranteed) — card0 is normally the boot/primary GPU, so
+    // sorting makes "which GPU do we report" deterministic across runs
+    // on hybrid-graphics laptops (Intel iGPU + AMD/NVIDIA dGPU) instead
+    // of flipping depending on filesystem enumeration order.
+    struct Candidate { int index; std::string name, device_dir, vendor_id; };
+    std::vector<Candidate> candidates;
+
     if (dir) {
         struct dirent* entry;
         while ((entry = readdir(dir)) != nullptr) {
@@ -295,45 +304,56 @@ std::vector<GpuInfo> parse_gpus() {
             if (!std::isdigit(static_cast<unsigned char>(name[4]))) continue;
             if (name.find('-') != std::string::npos) continue;
 
+            int idx = 0;
+            try { idx = std::stoi(name.substr(4)); } catch (...) { continue; }
+
             const std::string device_dir = std::string(base) + "/" + name + "/device";
-            const std::string vendor_id  = read_line(device_dir + "/vendor");
-
-            if (vendor_id == "0x1002") {
-                result.push_back(parse_amd(device_dir, name));
-
-            } else if (vendor_id == "0x8086") {
-                result.push_back(parse_intel(device_dir, name));
-
-            } else if (vendor_id == "0x10de") {
-                // Same hardware, two possible drivers — dispatch on which
-                // one is actually bound, since they need entirely different
-                // data sources (nouveau: fdinfo; proprietary: nvidia-smi).
-                //
-                // This fails OPEN: only an explicit "nouveau" match takes
-                // the fdinfo path. Anything else — proprietary "nvidia",
-                // a differently-named module, or the driver symlink being
-                // unreadable/absent on some kernel/distro combo — falls
-                // back to trying nvidia-smi rather than silently dropping
-                // the card. nvidia-smi is a no-op (empty output) if there's
-                // genuinely nothing for it to query, so this is safe.
-                std::string driver = read_symlink_basename(device_dir + "/driver");
-                if (driver == "nouveau") {
-                    result.push_back(parse_nouveau(device_dir, name));
-                } else {
-                    have_proprietary_nvidia = true;
-                }
-            }
+            candidates.push_back({idx, name, device_dir, read_line(device_dir + "/vendor")});
         }
         closedir(dir);
     }
+    std::sort(candidates.begin(), candidates.end(),
+             [](const Candidate& a, const Candidate& b) { return a.index < b.index; });
 
-    // Only spawn nvidia-smi if a proprietary-driven card was actually seen,
-    // or sysfs enumeration itself failed (unusual, but better to try than
-    // to silently show nothing) — avoids a pointless subprocess on
-    // nouveau-only / non-NVIDIA machines.
-    if (have_proprietary_nvidia || sysfs_enum_failed) {
+    for (const auto& c : candidates) {
+        if (c.vendor_id == "0x1002") {
+            result.push_back(parse_amd(c.device_dir, c.name));
+            break;
+
+        } else if (c.vendor_id == "0x8086") {
+            result.push_back(parse_intel(c.device_dir, c.name));
+            break;
+
+        } else if (c.vendor_id == "0x10de") {
+            // Same hardware, two possible drivers — dispatch on which one
+            // is actually bound, since they need entirely different data
+            // sources (nouveau: fdinfo; proprietary: nvidia-smi).
+            //
+            // This fails OPEN: only an explicit "nouveau" match takes the
+            // fdinfo path. Anything else — proprietary "nvidia", a
+            // differently-named module, or the driver symlink being
+            // unreadable/absent on some kernel/distro combo — falls back
+            // to trying nvidia-smi rather than silently dropping the card.
+            std::string driver = read_symlink_basename(c.device_dir + "/driver");
+            if (driver == "nouveau") {
+                result.push_back(parse_nouveau(c.device_dir, c.name));
+            } else {
+                auto nv = parse_nvidia_proprietary();
+                if (!nv.empty()) result.push_back(std::move(nv.front()));
+            }
+            break;
+        }
+        // Unrecognized vendor on this card — try the next one instead of
+        // giving up (e.g. a card0 the driver can't identify ahead of the
+        // real GPU at card1).
+    }
+
+    // sysfs enumeration itself failed, or produced no supported card —
+    // still worth trying nvidia-smi once, since a proprietary NVIDIA
+    // install is the main case where /sys/class/drm can be unhelpful.
+    if (result.empty() && (sysfs_enum_failed || candidates.empty())) {
         auto nv = parse_nvidia_proprietary();
-        result.insert(result.end(), nv.begin(), nv.end());
+        if (!nv.empty()) result.push_back(std::move(nv.front()));
     }
 
     return result;
