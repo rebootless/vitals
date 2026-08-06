@@ -17,8 +17,8 @@
 </div>
 
 <p align="center">
-  <img src="screenshots/2026-08-06_06-39.png" width="440" alt="Overview">
-  <img src="screenshots/2026-08-06_06-40.png" width="440" alt="Settings">
+  <img src="screenshots/2026-08-06_06-39.png" width="420" alt="Overview">
+  <img src="screenshots/2026-08-06_06-40.png" width="420" alt="Settings">
 </p>
 
 ## ⚡ Installation
