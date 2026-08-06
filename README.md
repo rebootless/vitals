@@ -16,10 +16,16 @@
 
 </div>
 
-<p align="center">
-  <img src="screenshots/2026-08-06_06-39.png" width="420" alt="Overview">
-  <img src="screenshots/2026-08-06_06-40.png" width="420" alt="Settings">
-</p>
+<table align="center">
+  <tr>
+    <td width="50%">
+      <img src="screenshots/2026-08-06_06-39.png" width="100%" alt="Overview">
+    </td>
+    <td width="50%">
+      <img src="screenshots/2026-08-06_06-40.png" width="100%" alt="Settings">
+    </td>
+  </tr>
+</table>
 
 ## ⚡ Installation
 
