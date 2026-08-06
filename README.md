@@ -1,83 +1,71 @@
-<div align="center">
+<h1 align="center">Vitals</h1>
+<h3 align="center">A terminal resource monitor for Linux built with notcurses.</h3>
 
-# Vitals
+<div align="center">
 
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
 [![CMake](https://img.shields.io/badge/CMake-build-064F8C?logo=cmake)](https://cmake.org/)
-[![notcurses](https://img.shields.io/badge/notcurses-1A1A2E)](https://github.com/dankamongmen/notcurses)
+[![notcurses](https://img.shields.io/badge/notcurses-lightgrey)](https://github.com/dankamongmen/notcurses)
 
 [![Debian 12 (Bookworm)](https://github.com/rebootless/vitals/actions/workflows/build-debian-12.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-debian-12.yml)
 [![Debian 13 (Trixie)](https://github.com/rebootless/vitals/actions/workflows/build-debian-13.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-debian-13.yml)
 [![Ubuntu 22.04 (Jammy)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml)
 [![Ubuntu 24.04 (Noble)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml)
 
-A terminal resource monitor for Linux built with [notcurses](https://github.com/dankamongmen/notcurses). Displays CPU, memory, network, storage, and thermal data in a responsive multi-panel TUI.
-
 </div>
 
-## Panels
+<p align="center">
+  <img src="screenshots/2026-08-06_06-39.png" width="440" alt="Overview">
+  <img src="screenshots/2026-08-06_06-40.png" width="440" alt="Settings">
+</p>
 
-| Panel | Data source | What it shows |
-|---|---|---|
-| **CPU**     | `/proc/stat`, cpufreq | Overall % + per-core bars + sparkline history + frequencies |
-| **GPU**     | DRM sysfs, hwmon, `nvidia-smi` | Utilization, VRAM (when available), temp/power; AMD, Intel, nouveau, proprietary NVIDIA |
-| **Memory**  | `/proc/meminfo` | RAM and swap usage with gradient bars |
-| **Network** | `/proc/net/dev` | Per-interface RX/TX throughput with peak tracking |
-| **Storage** | `/proc/diskstats`, `statvfs` | Root filesystem bar + per-disk I/O |
-| **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | Thermal zones + hwmon sensors (coretemp, k10temp) |
-
-GPU is shown only when a supported device is detected; otherwise the CPU panel keeps the full column height.
-
-## Controls
-
-| Key | Action |
-|---|---|
-| `q` | Quit |
-| `Esc` | Open settings (theme, background, TTY mode, refresh rate) |
-| `Tab` | Next setting (while settings are open) |
-| `↑` / `↓` | Change the focused setting |
-| `Enter` | Save settings and close |
-| `Esc` (in settings) | Cancel and restore previous values |
-
-## Installation
+## ⚡ Installation
 
 ### Quick Install
 
-Downloads, builds, and installs the binary to `/usr/local/bin` in one step:
+Install the latest version with a single command:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/install.sh)
 ```
 
-The installer handles everything automatically: apt dependencies, cloning notcurses into the repo, building, and placing the binary in PATH. Safe to re-run.
+The installer automatically:
 
-### Manual Install
+* Installs the required build dependencies
+* Clones the notcurses source
+* Builds the project
+* Installs `vitals` to `/usr/local/bin`
+* Installs the required libraries to `/usr/local/lib`
 
-**1. Clone the repository**
+Safe to run multiple times.
+
+<details>
+<summary align="center"><b>Build from Source</b> <i>(click to expand)</i></summary>
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/rebootless/vitals.git
 cd vitals
-```
+````
 
-**2. Prepare the build environment**
-
-`setup.sh` installs apt dependencies and clones notcurses as a required subdirectory:
+Prepare the build environment:
 
 ```bash
-bash setup.sh
+chmod +x setup.sh
+./setup.sh
 ```
 
-**3. Build**
+Build:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
 cmake --build build -j$(nproc)
 ```
 
-**4. Install**
+Install:
 
 ```bash
 sudo cmake --install build
@@ -85,41 +73,61 @@ echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf
 sudo ldconfig
 ```
 
-`cmake --install` places the `vitals` binary in `/usr/local/bin` and the notcurses shared libraries in `/usr/local/lib`.
+</details>
 
-### Manual Build (run in place, no system install)
+<details>
+<summary align="center"><b>Run Without Installing</b> <i>(click to expand)</i></summary>
 
 ```bash
 git clone https://github.com/rebootless/vitals.git
 cd vitals
-bash setup.sh
+
+chmod +x setup.sh
+./setup.sh
+
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
 cmake --build build -j$(nproc)
-```
 
-Run directly from the build tree:
-
-```bash
 LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 ```
 
-## Screenshots
+</details>
 
-![](screenshots/2026-08-06_06-39.png)
-![](screenshots/2026-08-06_06-40.png)
+## 📊 Panels
 
-## How it builds
+| Panel | Data source | What it shows |
+| :--- | :--- | :--- |
+| **CPU** | `/proc/stat`, cpufreq | CPU usage, per-core activity, frequencies, history |
+| **GPU** | DRM sysfs, hwmon, `nvidia-smi` | Utilization, VRAM, temperature, power |
+| **Memory** | `/proc/meminfo` | RAM and swap usage |
+| **Network** | `/proc/net/dev` | Per-interface RX/TX throughput |
+| **Storage** | `/proc/diskstats`, `statvfs` | Filesystem usage and disk I/O |
+| **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard sensors |
 
-notcurses is included as a source subdirectory (`add_subdirectory(notcurses)`) and compiled together with vitals. This means no pre-installed notcurses package is required — `setup.sh` clones the source and cmake takes care of the rest.
+> [!NOTE]
+> The GPU panel is displayed only when a supported device is detected. Otherwise, the CPU panel expands to use the available space.
 
-## Requirements
+## ⌨️ Controls
+
+| Key | Action |
+| :--- | :--- |
+| `q` | Quit |
+| `Esc` | Open the settings menu |
+| `Tab` | Select the next option |
+| `↑` / `↓` | Change the selected value |
+| `Enter` | Save changes and close |
+| `Esc` *(in settings)* | Discard changes and close |
+
+## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)
 - GCC or Clang with C++20 support
 - CMake ≥ 3.14
-- Internet access (notcurses is cloned from source)
+- Internet access (required to download notcurses during setup)
 - Debian 12 / 13 or Ubuntu 22.04 / 24.04
 
-## License
+## 📄 License
 
-This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
+<p align="center">
+  Licensed under the <strong>GNU General Public License v3.0</strong>. See the <a href="LICENSE">LICENSE</a> file for details.
+</p>
