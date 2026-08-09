@@ -163,12 +163,19 @@ int main() {
     std::vector<double>    last_core_pcts;
     std::vector<HwmonChip> last_hwmon;
 
+    // input is polled every INPUT_POLL_MS, independent of the refresh tick (up to 60s)
+    const auto INPUT_POLL = std::chrono::milliseconds(30);
+
+    auto last_tick = Clock::now() - std::chrono::hours(1);
+
     for (;;) {
         ncinput ni{};
         uint32_t ch = notcurses_get_nblock(nc, &ni);
 
         // Kitty protocol sends RELEASE events too; ignore them or Esc-up re-closes Settings
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
+
+        bool settings_was_open = G.settings_open;
 
         if (!G.settings_open) {
             if (ch == 'q' || ch == 'Q') break;
@@ -241,81 +248,86 @@ int main() {
                 save_config(cfg);
                 G.settings_open = false;
             }
-
-            render(nc, n, last_cpu, last_pct, last_net, last_disk,
-                  last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus);
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            continue;
         }
 
         const auto t_now = Clock::now();
-        G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
-        if (G.dt < 0.001) G.dt = 1.0;
+        bool due_for_tick = !G.settings_open &&
+            (t_now - last_tick >= std::chrono::milliseconds(G.refresh_ms));
 
-        cpustat                cur_cpu{};
-        std::vector<cpustat>   cur_core;
-        std::vector<netdev>    cur_net;
-        std::vector<diskstats> cur_disk;
-        std::vector<thermal>   therm;
-        std::vector<cpufreq>   freqs;
-        std::vector<HwmonChip> hwmon;
+        if (due_for_tick) {
+            G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
+            if (G.dt < 0.001) G.dt = 1.0;
 
-        try { cur_cpu  = parse_cpustat();   } catch (...) { cur_cpu = G.prev_cpu; }
-        try { cur_core = parse_percpu();    } catch (...) {}
-        try { cur_net  = parse_netdev();    } catch (...) {}
-        try { cur_disk = parse_diskstats(); } catch (...) {}
-        try { therm    = parse_thermal();   } catch (...) {}
-        try { freqs    = parse_cpufreq();   } catch (...) {}
-        try { hwmon    = parse_hwmon();     } catch (...) {}
-        try { G.gpus   = parse_gpus();      } catch (...) {}
+            cpustat                cur_cpu{};
+            std::vector<cpustat>   cur_core;
+            std::vector<netdev>    cur_net;
+            std::vector<diskstats> cur_disk;
+            std::vector<thermal>   therm;
+            std::vector<cpufreq>   freqs;
+            std::vector<HwmonChip> hwmon;
 
-        const double pct = cpu_delta(G.prev_cpu, cur_cpu);
-        G.cpu_hist.push_back(pct);
-        if (static_cast<int>(G.cpu_hist.size()) > 200)
-            G.cpu_hist.pop_front();
+            try { cur_cpu  = parse_cpustat();   } catch (...) { cur_cpu = G.prev_cpu; }
+            try { cur_core = parse_percpu();    } catch (...) {}
+            try { cur_net  = parse_netdev();    } catch (...) {}
+            try { cur_disk = parse_diskstats(); } catch (...) {}
+            try { therm    = parse_thermal();   } catch (...) {}
+            try { freqs    = parse_cpufreq();   } catch (...) {}
+            try { hwmon    = parse_hwmon();     } catch (...) {}
+            try { G.gpus   = parse_gpus();      } catch (...) {}
 
-        std::vector<double> core_pcts;
-        core_pcts.reserve(cur_core.size());
-        for (size_t i = 0; i < cur_core.size(); ++i) {
-            core_pcts.push_back(
-                i < G.prev_core.size()
-                ? cpu_delta(G.prev_core[i], cur_core[i])
-                : 0.0);
-        }
+            const double pct = cpu_delta(G.prev_cpu, cur_cpu);
+            G.cpu_hist.push_back(pct);
+            if (static_cast<int>(G.cpu_hist.size()) > 200)
+                G.cpu_hist.pop_front();
 
-        double rx_now = 0.0, tx_now = 0.0;
-        for (const auto& nd : cur_net) {
-            if (nd.interface == "lo") continue;
-            for (const auto& p : G.prev_net) {
-                if (p.interface != nd.interface) continue;
-                if (nd.rx_bytes >= p.rx_bytes)
-                    rx_now += static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
-                if (nd.tx_bytes >= p.tx_bytes)
-                    tx_now += static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
-                break;
+            std::vector<double> core_pcts;
+            core_pcts.reserve(cur_core.size());
+            for (size_t i = 0; i < cur_core.size(); ++i) {
+                core_pcts.push_back(
+                    i < G.prev_core.size()
+                    ? cpu_delta(G.prev_core[i], cur_core[i])
+                    : 0.0);
             }
+
+            double rx_now = 0.0, tx_now = 0.0;
+            for (const auto& nd : cur_net) {
+                if (nd.interface == "lo") continue;
+                for (const auto& p : G.prev_net) {
+                    if (p.interface != nd.interface) continue;
+                    if (nd.rx_bytes >= p.rx_bytes)
+                        rx_now += static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
+                    if (nd.tx_bytes >= p.tx_bytes)
+                        tx_now += static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
+                    break;
+                }
+            }
+            G.peak_rx = std::max(G.peak_rx, rx_now);
+            G.peak_tx = std::max(G.peak_tx, tx_now);
+
+            last_cpu       = cur_cpu;
+            last_pct       = pct;
+            last_net       = cur_net;
+            last_disk      = cur_disk;
+            last_therm     = therm;
+            last_freqs     = freqs;
+            last_core_pcts = core_pcts;
+            last_hwmon     = hwmon;
+
+            G.prev_cpu  = cur_cpu;
+            G.prev_core = std::move(cur_core);
+            G.prev_net  = std::move(cur_net);
+            G.prev_disk = std::move(cur_disk);
+            G.t_prev    = t_now;
+
+            last_tick = t_now;
         }
-        G.peak_rx = std::max(G.peak_rx, rx_now);
-        G.peak_tx = std::max(G.peak_tx, tx_now);
 
-        render(nc, n, cur_cpu, pct, cur_net, cur_disk, therm, freqs, core_pcts, hwmon, G.gpus);
+        if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
+            render(nc, n, last_cpu, last_pct, last_net, last_disk,
+                  last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus);
+        }
 
-        last_cpu       = cur_cpu;
-        last_pct       = pct;
-        last_net       = cur_net;
-        last_disk      = cur_disk;
-        last_therm     = therm;
-        last_freqs     = freqs;
-        last_core_pcts = core_pcts;
-        last_hwmon     = hwmon;
-
-        G.prev_cpu  = cur_cpu;
-        G.prev_core = std::move(cur_core);
-        G.prev_net  = std::move(cur_net);
-        G.prev_disk = std::move(cur_disk);
-        G.t_prev    = t_now;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(G.refresh_ms));
+        std::this_thread::sleep_for(INPUT_POLL);
     }
 
     notcurses_stop(nc);

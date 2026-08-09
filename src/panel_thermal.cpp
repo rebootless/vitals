@@ -31,9 +31,9 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (ih <= 0 || iw <= 0) return;
 
     int row = iy;
-    const int LBL_W  = 11;
+    const int LBL_W  = 12;
     const int TEMP_W =  9;
-    int bar_w = iw - LBL_W - TEMP_W - 2;
+    int bar_w = iw - LBL_W - TEMP_W - 3;
 
     double hi_limit   = 74.0;
     double crit_limit = 94.0;
@@ -74,7 +74,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         nc_set(n, theme().BLUE, NCSTYLE_NONE);
         ncplane_putstr_yx(n, r, ix, lbl);
 
-        int tx = ix + LBL_W;
+        int tx = ix + LBL_W + 1;
 
         char tbuf[32];
         snprintf(tbuf, sizeof(tbuf), "+%.1f%s", shown, deg_suffix());
@@ -94,6 +94,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     std::vector<ThermItem> cpu_items, mobo_items, storage_items,
                             network_items, laptop_items;
     std::map<std::string, std::vector<ThermItem>> other_items;
+
+    // CPU header: package reading if the chip has one, else the core average
+    double cpu_header_temp = -1.0;
+    bool   cpu_has_package = false;
 
     for (const auto& chip : hwmon) {
         std::vector<ThermItem>* bucket = nullptr;
@@ -118,9 +122,19 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                     lbl = fmt_lbl;
                 }
             }
-            if (s.is_package) lbl = "Package";
+            if (s.is_package) {
+                cpu_header_temp = s.temp_celsius;
+                cpu_has_package = true;
+                continue;
+            }
             bucket->push_back({lbl, s.temp_celsius, s.is_package, -1.0, -1.0});
         }
+    }
+
+    if (!cpu_has_package && !cpu_items.empty()) {
+        double sum = 0.0;
+        for (const auto& it : cpu_items) sum += it.temp;
+        cpu_header_temp = sum / cpu_items.size();
     }
 
     std::vector<ThermItem> zone_items;
@@ -131,7 +145,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
     std::vector<ThermItem> gpu_items;
     if (!gpus.empty() && gpus.front().temp_c >= 0)
-        gpu_items.push_back({"GPU", gpus.front().temp_c, false, 75.0, 85.0});
+        gpu_items.push_back({"GPU", gpus.front().temp_c, false, -1.0, -1.0});
 
     std::vector<ThermGroup> groups;
     push_group(groups, "CPU",         cpu_items);
@@ -159,8 +173,21 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
         if (show_header) {
             if (row >= iy + ih - 1) break;
-            nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, ix, g.name.c_str());
+
+            if (g.name == "CPU") {
+                if (cpu_header_temp >= 0)
+                    draw_temp_row(row, "CPU", cpu_header_temp, false, -1.0, -1.0);
+                else {
+                    nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                    ncplane_putstr_yx(n, row, ix, g.name.c_str());
+                }
+            } else if (g.name == "Storage") {
+                nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+                ncplane_putstr_yx(n, row, ix, g.name.c_str());
+            } else {
+                nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                ncplane_putstr_yx(n, row, ix, g.name.c_str());
+            }
             row++;
 
             for (size_t i = 0; i < g.items.size() && row < iy + ih - 1; ++i) {
