@@ -35,11 +35,13 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (ih <= 0 || iw <= 0) return;
 
     int row = iy;
-    const int LBL_W  = 11;  // label column (tight text + ':', no forced
-                             // padding — was 14, moved 2 cols left so the
-                             // temperature bracket/bar gain those 2 columns)
+    const int LBL_W  = 12;  // label column (text + ':', no padding).
+                             // 12 rather than the original 11 so an
+                             // 11-char label ("Motherboard") or a 9-char
+                             // label behind a 2-col tree prefix
+                             // ("├─Composite") both fit without truncating.
     const int TEMP_W =  9;  // "[+99.0°C]" = 9 visible columns
-    int bar_w = iw - LBL_W - TEMP_W - 2;
+    int bar_w = iw - LBL_W - TEMP_W - 3;
 
     // Determine trip limits (shared by every group except GPU, which uses
     // its own fixed thresholds since crit/max sysfs nodes aren't reliably
@@ -78,11 +80,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                                             : theme().GREEN;
 
         char lbl[64];
-        // Tight "<label>:" with no padding before the colon — the
-        // bracket below sits at a fixed column regardless (ix + LBL_W),
-        // so a short label like "GPU" just leaves blank space before the
-        // bracket instead of padding filling that space with spaces
-        // between the label text and its own colon.
+        // Tight "<label>:" — colon right after the text, no padding. The
+        // bracket below still sits at a fixed column (ix + LBL_W)
+        // regardless, so a short label like "GPU" just leaves blank
+        // space before the bracket.
         snprintf(lbl, sizeof(lbl), "%s:",
                  str_trunc(label, LBL_W - 1).c_str());
         // "Package" no longer gets a distinct color from the rest of the
@@ -91,7 +92,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         nc_set(n, theme().BLUE, NCSTYLE_NONE);
         ncplane_putstr_yx(n, r, ix, lbl);
 
-        int tx = ix + LBL_W;
+        int tx = ix + LBL_W + 1;
 
         char tbuf[32];
         snprintf(tbuf, sizeof(tbuf), "+%.1f%s", shown, deg_suffix());
@@ -115,6 +116,13 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     std::vector<ThermItem> cpu_items, mobo_items, storage_items,
                             network_items, laptop_items;
     std::map<std::string, std::vector<ThermItem>> other_items; // by chip name
+
+    // CPU header value: the package sensor's own reading if the chip
+    // exposes one (coretemp/k10temp usually do), otherwise the average of
+    // whatever core readings were found. Package itself no longer gets a
+    // row in the tree — its job is now just this header number.
+    double cpu_header_temp = -1.0;
+    bool   cpu_has_package = false;
 
     for (const auto& chip : hwmon) {
         std::vector<ThermItem>* bucket = nullptr;
@@ -141,9 +149,23 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                     lbl = fmt_lbl;
                 }
             }
-            if (s.is_package) lbl = "Package";
+            if (s.is_package) {
+                // No longer shown as its own tree row — it becomes the
+                // CPU header's value instead.
+                cpu_header_temp = s.temp_celsius;
+                cpu_has_package = true;
+                continue;
+            }
             bucket->push_back({lbl, s.temp_celsius, s.is_package, -1.0, -1.0});
         }
+    }
+
+    // No package sensor on this chip (e.g. some Xeons) — fall back to the
+    // average of whatever core readings were found.
+    if (!cpu_has_package && !cpu_items.empty()) {
+        double sum = 0.0;
+        for (const auto& it : cpu_items) sum += it.temp;
+        cpu_header_temp = sum / cpu_items.size();
     }
 
     // Thermal-zone fallback (no hwmon chips found at all) — each zone
@@ -157,9 +179,12 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     // gpus holds at most one entry (parse_gpus() only reports the primary
     // card — see gpu.h), so this is really "if a GPU was found", not a loop
     // in the multi-card sense.
+    // Row colored the same way as CPU: no fixed GPU-only thresholds
+    // anymore, so it grades green/yellow/red off the same hi/crit limits
+    // as everything else in the panel instead of its own 75/85 cutoffs.
     std::vector<ThermItem> gpu_items;
     if (!gpus.empty() && gpus.front().temp_c >= 0)
-        gpu_items.push_back({"GPU", gpus.front().temp_c, false, 75.0, 85.0});
+        gpu_items.push_back({"GPU", gpus.front().temp_c, false, -1.0, -1.0});
 
     std::vector<ThermGroup> groups;
     push_group(groups, "CPU",         cpu_items);
@@ -195,8 +220,25 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
         if (show_header) {
             if (row >= iy + ih - 1) break;
-            nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, ix, g.name.c_str());
+
+            if (g.name == "CPU") {
+                // Header row is now a real data row: "CPU:" + the
+                // package/average reading, instead of a bare bold label.
+                if (cpu_header_temp >= 0)
+                    draw_temp_row(row, "CPU", cpu_header_temp, false, -1.0, -1.0);
+                else {
+                    nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                    ncplane_putstr_yx(n, row, ix, g.name.c_str());
+                }
+            } else if (g.name == "Storage") {
+                // Recolored to match CPU's label color (blue) instead of
+                // the generic mauve group-header color.
+                nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+                ncplane_putstr_yx(n, row, ix, g.name.c_str());
+            } else {
+                nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                ncplane_putstr_yx(n, row, ix, g.name.c_str());
+            }
             row++;
 
             for (size_t i = 0; i < g.items.size() && row < iy + ih - 1; ++i) {

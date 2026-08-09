@@ -190,6 +190,19 @@ int main() {
     std::vector<double>    last_core_pcts;
     std::vector<HwmonChip> last_hwmon;
 
+    // Input is now polled on a short, fixed cadence (INPUT_POLL_MS) that's
+    // independent of the data-refresh tick (G.refresh_ms, which can be as
+    // long as 60s). Previously a single notcurses_get_nblock() call sat at
+    // the top of a loop that then blocked for the full refresh interval —
+    // a keypress (q, Esc, ...) only registered once that whole tick had
+    // elapsed. Now each loop iteration is cheap (poll input, maybe render
+    // from cache) and the expensive procfs read + full render only runs
+    // when a tick is actually due, tracked via last_tick below.
+    const auto INPUT_POLL = std::chrono::milliseconds(30);
+
+    // Force an immediate first tick regardless of G.refresh_ms.
+    auto last_tick = Clock::now() - std::chrono::hours(1);
+
     // Main loop
     for (;;) {
         ncinput ni{};
@@ -207,6 +220,8 @@ int main() {
         // event types leave evtype at NCTYPE_UNKNOWN, which is left
         // alone here, so behavior is unchanged where this bug can't occur.
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
+
+        bool settings_was_open = G.settings_open;
 
         if (!G.settings_open) {
             if (ch == 'q' || ch == 'Q') break;
@@ -281,89 +296,98 @@ int main() {
                 save_config(cfg);
                 G.settings_open = false;
             }
+        }
 
-            // While the overlay is open, skip this iteration's data refresh —
-            // just re-render the last known frame (so panels behind the
-            // overlay don't blank out) and poll input again quickly so
-            // navigation feels instant.
+        // While the overlay is open, data refresh is skipped entirely —
+        // only cached (last_*) data is ever rendered, so navigating
+        // themes never triggers a procfs re-read. Reopening/closing the
+        // overlay also forces a re-render on this same iteration so the
+        // transition feels instant rather than waiting for the next poll.
+        const auto t_now = Clock::now();
+        bool due_for_tick = !G.settings_open &&
+            (t_now - last_tick >= std::chrono::milliseconds(G.refresh_ms));
+
+        if (due_for_tick) {
+            G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
+            if (G.dt < 0.001) G.dt = 1.0;
+
+            // Read current data
+            cpustat                cur_cpu{};
+            std::vector<cpustat>   cur_core;
+            std::vector<netdev>    cur_net;
+            std::vector<diskstats> cur_disk;
+            std::vector<thermal>   therm;
+            std::vector<cpufreq>   freqs;
+            std::vector<HwmonChip> hwmon;
+
+            try { cur_cpu  = parse_cpustat();   } catch (...) { cur_cpu = G.prev_cpu; }
+            try { cur_core = parse_percpu();    } catch (...) {}
+            try { cur_net  = parse_netdev();    } catch (...) {}
+            try { cur_disk = parse_diskstats(); } catch (...) {}
+            try { therm    = parse_thermal();   } catch (...) {}
+            try { freqs    = parse_cpufreq();   } catch (...) {}
+            try { hwmon    = parse_hwmon();     } catch (...) {}
+            try { G.gpus   = parse_gpus();      } catch (...) {}
+
+            // Derived metrics
+            const double pct = cpu_delta(G.prev_cpu, cur_cpu);
+            G.cpu_hist.push_back(pct);
+            if (static_cast<int>(G.cpu_hist.size()) > 200)
+                G.cpu_hist.pop_front();
+
+            std::vector<double> core_pcts;
+            core_pcts.reserve(cur_core.size());
+            for (size_t i = 0; i < cur_core.size(); ++i) {
+                core_pcts.push_back(
+                    i < G.prev_core.size()
+                    ? cpu_delta(G.prev_core[i], cur_core[i])
+                    : 0.0);
+            }
+
+            double rx_now = 0.0, tx_now = 0.0;
+            for (const auto& nd : cur_net) {
+                if (nd.interface == "lo") continue;
+                for (const auto& p : G.prev_net) {
+                    if (p.interface != nd.interface) continue;
+                    if (nd.rx_bytes >= p.rx_bytes)
+                        rx_now += static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
+                    if (nd.tx_bytes >= p.tx_bytes)
+                        tx_now += static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
+                    break;
+                }
+            }
+            G.peak_rx = std::max(G.peak_rx, rx_now);
+            G.peak_tx = std::max(G.peak_tx, tx_now);
+
+            // Cache for the settings overlay and for in-between polls
+            last_cpu       = cur_cpu;
+            last_pct       = pct;
+            last_net       = cur_net;
+            last_disk      = cur_disk;
+            last_therm     = therm;
+            last_freqs     = freqs;
+            last_core_pcts = core_pcts;
+            last_hwmon     = hwmon;
+
+            // State rollover
+            G.prev_cpu  = cur_cpu;
+            G.prev_core = std::move(cur_core);
+            G.prev_net  = std::move(cur_net);
+            G.prev_disk = std::move(cur_disk);
+            G.t_prev    = t_now;
+
+            last_tick = t_now;
+        }
+
+        // Render every poll (not just on tick) so keypresses — opening/
+        // closing Settings, navigating it, quitting — show up within one
+        // INPUT_POLL interval instead of waiting for the next full tick.
+        if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
             render(nc, n, last_cpu, last_pct, last_net, last_disk,
                   last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus);
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            continue;
         }
 
-        const auto t_now = Clock::now();
-        G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
-        if (G.dt < 0.001) G.dt = 1.0;
-
-        // Read current data
-        cpustat                cur_cpu{};
-        std::vector<cpustat>   cur_core;
-        std::vector<netdev>    cur_net;
-        std::vector<diskstats> cur_disk;
-        std::vector<thermal>   therm;
-        std::vector<cpufreq>   freqs;
-        std::vector<HwmonChip> hwmon;
-
-        try { cur_cpu  = parse_cpustat();   } catch (...) { cur_cpu = G.prev_cpu; }
-        try { cur_core = parse_percpu();    } catch (...) {}
-        try { cur_net  = parse_netdev();    } catch (...) {}
-        try { cur_disk = parse_diskstats(); } catch (...) {}
-        try { therm    = parse_thermal();   } catch (...) {}
-        try { freqs    = parse_cpufreq();   } catch (...) {}
-        try { hwmon    = parse_hwmon();     } catch (...) {}
-        try { G.gpus   = parse_gpus();      } catch (...) {}
-
-        // Derived metrics
-        const double pct = cpu_delta(G.prev_cpu, cur_cpu);
-        G.cpu_hist.push_back(pct);
-        if (static_cast<int>(G.cpu_hist.size()) > 200)
-            G.cpu_hist.pop_front();
-
-        std::vector<double> core_pcts;
-        core_pcts.reserve(cur_core.size());
-        for (size_t i = 0; i < cur_core.size(); ++i) {
-            core_pcts.push_back(
-                i < G.prev_core.size()
-                ? cpu_delta(G.prev_core[i], cur_core[i])
-                : 0.0);
-        }
-
-        double rx_now = 0.0, tx_now = 0.0;
-        for (const auto& nd : cur_net) {
-            if (nd.interface == "lo") continue;
-            for (const auto& p : G.prev_net) {
-                if (p.interface != nd.interface) continue;
-                if (nd.rx_bytes >= p.rx_bytes)
-                    rx_now += static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
-                if (nd.tx_bytes >= p.tx_bytes)
-                    tx_now += static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
-                break;
-            }
-        }
-        G.peak_rx = std::max(G.peak_rx, rx_now);
-        G.peak_tx = std::max(G.peak_tx, tx_now);
-
-        render(nc, n, cur_cpu, pct, cur_net, cur_disk, therm, freqs, core_pcts, hwmon, G.gpus);
-
-        // Cache for the settings overlay (see main loop top)
-        last_cpu       = cur_cpu;
-        last_pct       = pct;
-        last_net       = cur_net;
-        last_disk      = cur_disk;
-        last_therm     = therm;
-        last_freqs     = freqs;
-        last_core_pcts = core_pcts;
-        last_hwmon     = hwmon;
-
-        // State rollover
-        G.prev_cpu  = cur_cpu;
-        G.prev_core = std::move(cur_core);
-        G.prev_net  = std::move(cur_net);
-        G.prev_disk = std::move(cur_disk);
-        G.t_prev    = t_now;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(G.refresh_ms));
+        std::this_thread::sleep_for(INPUT_POLL);
     }
 
     notcurses_stop(nc);
