@@ -72,6 +72,13 @@ sudo cmake --install build
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
 sudo ldconfig
 
+# Persist the full list of installed files (vitals + notcurses) so
+# uninstall.sh can remove exactly what this script put on the system.
+MANIFEST_DIR="/usr/local/share/vitals"
+sudo mkdir -p "$MANIFEST_DIR"
+sudo cp "build/install_manifest.txt" "$MANIFEST_DIR/install_manifest.txt"
+echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
+
 echo ""
 echo "Binary installed to $INSTALL_BIN"
 
