@@ -44,6 +44,23 @@ The installer automatically:
 
 Safe to run multiple times.
 
+### Quick Uninstall
+
+Remove `vitals` and the notcurses files installed alongside it with a single command:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/uninstall.sh)
+```
+
+The uninstaller:
+
+* Reads the manifest left by `install.sh` and removes every file it installed (binary, notcurses libraries/headers/pkgconfig files)
+* Prunes any directories left empty
+* Removes the `/etc/ld.so.conf.d` entry added for `/usr/local/lib` and refreshes the linker cache
+* Asks before deleting your saved config at `~/.config/vitals`
+
+If `vitals` was installed a different way (no manifest present), it falls back to a best-effort removal of the vitals binary and matching notcurses libraries.
+
 <details>
 <summary align="center"><b>Build from Source</b> <i>(click to expand)</i></summary>
 
