@@ -1,7 +1,9 @@
 #include "panels.h"
 
 void panel_network(ncplane* n, int y, int x, int h, int w,
-                   const std::vector<netdev>& cur_net) {
+                   const std::vector<netdev>& cur_net,
+                   const std::map<std::string, double>& rx_rates,
+                   const std::map<std::string, double>& tx_rates) {
 
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Network", "q:Quit Esc:Settings");
     if (ih <= 0 || iw <= 0) return;
@@ -31,14 +33,8 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     for (const auto& nd : cur_net) {
         if (nd.interface == "lo") continue;
         double rx = 0, tx = 0;
-        for (const auto& p : G.prev_net) {
-            if (p.interface != nd.interface) continue;
-            if (nd.rx_bytes >= p.rx_bytes)
-                rx = static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
-            if (nd.tx_bytes >= p.tx_bytes)
-                tx = static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
-            break;
-        }
+        if (auto it = rx_rates.find(nd.interface); it != rx_rates.end()) rx = it->second;
+        if (auto it = tx_rates.find(nd.interface); it != tx_rates.end()) tx = it->second;
         total_rx += nd.rx_bytes;
         total_tx += nd.tx_bytes;
 

@@ -1,7 +1,9 @@
 #include "panels.h"
 
 void panel_storage(ncplane* n, int y, int x, int h, int w,
-                   const std::vector<diskstats>& cur_disk) {
+                   const std::vector<diskstats>& cur_disk,
+                   const std::map<std::string, double>& rd_rates,
+                   const std::map<std::string, double>& wr_rates) {
 
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Storage");
     if (ih <= 0 || iw <= 0) return;
@@ -64,14 +66,8 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     // Compute read/write rate for one device
     auto rate = [&](const diskstats& ds) -> std::pair<double, double> {
         double rd = 0, wr = 0;
-        for (const auto& p : G.prev_disk) {
-            if (p.device != ds.device) continue;
-            if (ds.sectors_read     >= p.sectors_read)
-                rd = static_cast<double>(ds.sectors_read    - p.sectors_read)    * 512.0 / G.dt;
-            if (ds.sectors_written  >= p.sectors_written)
-                wr = static_cast<double>(ds.sectors_written - p.sectors_written) * 512.0 / G.dt;
-            break;
-        }
+        if (auto it = rd_rates.find(ds.device); it != rd_rates.end()) rd = it->second;
+        if (auto it = wr_rates.find(ds.device); it != wr_rates.end()) wr = it->second;
         return {rd, wr};
     };
 

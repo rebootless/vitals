@@ -43,7 +43,11 @@ static void render(notcurses* nc, ncplane* n,
                    const std::vector<cpufreq>&   freqs,
                    const std::vector<double>&    core_pcts,
                    const std::vector<HwmonChip>& hwmon,
-                   const std::vector<GpuInfo>&   gpus) {
+                   const std::vector<GpuInfo>&   gpus,
+                   const std::map<std::string, double>& net_rx_rate,
+                   const std::map<std::string, double>& net_tx_rate,
+                   const std::map<std::string, double>& disk_rd_rate,
+                   const std::map<std::string, double>& disk_wr_rate) {
 
     nc_bg_apply(n);
     ncplane_erase(n);
@@ -97,8 +101,8 @@ static void render(notcurses* nc, ncplane* n,
             panel_gpu(n, 1+cpu_h,  0,     gpu_h, c1,       gpus);
         panel_memory (n, 1,        c1,    top_h, c2);
         panel_thermal(n, 1,        c1+c2, top_h, c3,       therm, hwmon, gpus);
-        panel_network(n, 1+top_h,  0,     bot_h, b1,       cur_net);
-        panel_storage(n, 1+top_h,  b1,    bot_h, b2,       cur_disk);
+        panel_network(n, 1+top_h,  0,     bot_h, b1,       cur_net,  net_rx_rate,  net_tx_rate);
+        panel_storage(n, 1+top_h,  b1,    bot_h, b2,       cur_disk, disk_rd_rate, disk_wr_rate);
 
     } else if (cols >= 80) {
         int half  = cols / 2;
@@ -112,8 +116,8 @@ static void render(notcurses* nc, ncplane* n,
         if (gpu_h > 0)
             panel_gpu(n, 1+cpu_h,       0,    gpu_h, half,      gpus);
         panel_memory (n, 1,             half, top_h, cols-half);
-        panel_network(n, 1+top_h,       0,    mid_h, half,      cur_net);
-        panel_storage(n, 1+top_h,       half, mid_h, cols-half, cur_disk);
+        panel_network(n, 1+top_h,       0,    mid_h, half,      cur_net,  net_rx_rate,  net_tx_rate);
+        panel_storage(n, 1+top_h,       half, mid_h, cols-half, cur_disk, disk_rd_rate, disk_wr_rate);
         panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, cols,      therm, hwmon, gpus);
 
     } else {
@@ -125,8 +129,8 @@ static void render(notcurses* nc, ncplane* n,
         panel_cpu    (n, ph*r,   0, ph, cols, cur_cpu, cpu_pct, freqs, core_pcts); r++;
         if (!gpus.empty()) { panel_gpu(n, ph*r, 0, ph, cols, gpus); r++; }
         panel_memory (n, ph*r,   0, ph, cols); r++;
-        panel_network(n, ph*r,   0, ph, cols, cur_net); r++;
-        panel_storage(n, ph*r,   0, ph, cols, cur_disk); r++;
+        panel_network(n, ph*r,   0, ph, cols, cur_net,  net_rx_rate,  net_tx_rate); r++;
+        panel_storage(n, ph*r,   0, ph, cols, cur_disk, disk_rd_rate, disk_wr_rate); r++;
         panel_thermal(n, ph*r,   0, ph+rem, cols, therm, hwmon, gpus);
     }
 
@@ -189,6 +193,8 @@ int main() {
     std::vector<cpufreq>   last_freqs;
     std::vector<double>    last_core_pcts;
     std::vector<HwmonChip> last_hwmon;
+    std::map<std::string, double> last_net_rx, last_net_tx;
+    std::map<std::string, double> last_disk_rd, last_disk_wr;
 
     // Input is now polled on a short, fixed cadence (INPUT_POLL_MS) that's
     // independent of the data-refresh tick (G.refresh_ms, which can be as
@@ -344,20 +350,50 @@ int main() {
                     : 0.0);
             }
 
+            // Per-interface / per-device rates must be computed here, against
+            // G.prev_net / G.prev_disk, BEFORE the state rollover below
+            // overwrites them with this tick's data. panel_network/panel_storage
+            // used to recompute these themselves from the G.prev_* globals at
+            // render time, but render() always runs after the rollover, so
+            // prev == cur by then and every interface/device rate read as 0
+            // (only the totals computed right here, before rollover, ever
+            // showed real numbers — which is why Packets/Throughput worked
+            // but per-interface RX/TX, and disk Read/Write, stayed at 0).
+            std::map<std::string, double> net_rx_rate, net_tx_rate;
             double rx_now = 0.0, tx_now = 0.0;
             for (const auto& nd : cur_net) {
                 if (nd.interface == "lo") continue;
+                double rx = 0.0, tx = 0.0;
                 for (const auto& p : G.prev_net) {
                     if (p.interface != nd.interface) continue;
                     if (nd.rx_bytes >= p.rx_bytes)
-                        rx_now += static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
+                        rx = static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
                     if (nd.tx_bytes >= p.tx_bytes)
-                        tx_now += static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
+                        tx = static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
                     break;
                 }
+                net_rx_rate[nd.interface] = rx;
+                net_tx_rate[nd.interface] = tx;
+                rx_now += rx;
+                tx_now += tx;
             }
             G.peak_rx = std::max(G.peak_rx, rx_now);
             G.peak_tx = std::max(G.peak_tx, tx_now);
+
+            std::map<std::string, double> disk_rd_rate, disk_wr_rate;
+            for (const auto& ds : cur_disk) {
+                double rd = 0.0, wr = 0.0;
+                for (const auto& p : G.prev_disk) {
+                    if (p.device != ds.device) continue;
+                    if (ds.sectors_read >= p.sectors_read)
+                        rd = static_cast<double>(ds.sectors_read - p.sectors_read) * 512.0 / G.dt;
+                    if (ds.sectors_written >= p.sectors_written)
+                        wr = static_cast<double>(ds.sectors_written - p.sectors_written) * 512.0 / G.dt;
+                    break;
+                }
+                disk_rd_rate[ds.device] = rd;
+                disk_wr_rate[ds.device] = wr;
+            }
 
             // Cache for the settings overlay and for in-between polls
             last_cpu       = cur_cpu;
@@ -368,6 +404,10 @@ int main() {
             last_freqs     = freqs;
             last_core_pcts = core_pcts;
             last_hwmon     = hwmon;
+            last_net_rx    = std::move(net_rx_rate);
+            last_net_tx    = std::move(net_tx_rate);
+            last_disk_rd   = std::move(disk_rd_rate);
+            last_disk_wr   = std::move(disk_wr_rate);
 
             // State rollover
             G.prev_cpu  = cur_cpu;
@@ -384,7 +424,8 @@ int main() {
         // INPUT_POLL interval instead of waiting for the next full tick.
         if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
             render(nc, n, last_cpu, last_pct, last_net, last_disk,
-                  last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus);
+                  last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus,
+                  last_net_rx, last_net_tx, last_disk_rd, last_disk_wr);
         }
 
         std::this_thread::sleep_for(INPUT_POLL);
