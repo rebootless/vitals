@@ -13,10 +13,14 @@ void panel_cpu    (ncplane* n, int y, int x, int h, int w,
 void panel_memory (ncplane* n, int y, int x, int h, int w);
 
 void panel_network(ncplane* n, int y, int x, int h, int w,
-                   const std::vector<netdev>& cur_net);
+                   const std::vector<netdev>&        cur_net,
+                   const std::map<std::string, double>& rx_rates,
+                   const std::map<std::string, double>& tx_rates);
 
 void panel_storage(ncplane* n, int y, int x, int h, int w,
-                   const std::vector<diskstats>& cur_disk);
+                   const std::vector<diskstats>&        cur_disk,
+                   const std::map<std::string, double>& rd_rates,
+                   const std::map<std::string, double>& wr_rates);
 
 void panel_thermal(ncplane* n, int y, int x, int h, int w,
                    const std::vector<thermal>&   zones,
