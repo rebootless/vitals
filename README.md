@@ -9,12 +9,23 @@
 [![CMake](https://img.shields.io/badge/CMake-build-064F8C?logo=cmake)](https://cmake.org/)
 [![notcurses](https://img.shields.io/badge/notcurses-lightgrey)](https://github.com/dankamongmen/notcurses)
 
-[![Debian 12 (Bookworm)](https://github.com/rebootless/vitals/actions/workflows/build-debian-12.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-debian-12.yml)
-[![Debian 13 (Trixie)](https://github.com/rebootless/vitals/actions/workflows/build-debian-13.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-debian-13.yml)
-[![Ubuntu 22.04 (Jammy)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-22.04.yml)
-[![Ubuntu 24.04 (Noble)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml/badge.svg)](https://github.com/rebootless/vitals/actions/workflows/build-ubuntu-24.04.yml)
-
 </div>
+
+## Build Status
+
+[![Debian 12](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2012%20%28Bookworm%29&label=Debian%2012)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Debian 13](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2013%20%28Trixie%29&label=Debian%2013)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Ubuntu 22.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2022.04%20%28Jammy%29&label=Ubuntu%2022.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Ubuntu 24.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2024.04%20%28Noble%29&label=Ubuntu%2024.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Ubuntu 26.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2026.04%20%28Resolute%29&label=Ubuntu%2026.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Fedora 43](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2043&label=Fedora%2043)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Fedora 44](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2044&label=Fedora%2044)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![AlmaLinux 8](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%208%20%28RHEL%208%29&label=AlmaLinux%208)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![AlmaLinux 9](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%209%20%28RHEL%209%29&label=AlmaLinux%209)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![AlmaLinux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%2010%20%28RHEL%2010%29&label=AlmaLinux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![openSUSE Tumbleweed](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Tumbleweed&label=openSUSE%20Tumbleweed)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![openSUSE Leap 16.0](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Leap%2016.0&label=openSUSE%20Leap%2016.0)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Arch Linux](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Arch%20Linux&label=Arch%20Linux)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 
 <p align="center">
   <img src="screenshots/2026-08-06_06-39.png" width="100%" alt="Overview">
@@ -40,7 +51,7 @@ The installer automatically:
 * Clones the notcurses source
 * Builds the project
 * Installs `vitals` to `/usr/local/bin`
-* Installs the required libraries to `/usr/local/lib`
+* Installs the required libraries under `/usr/local` and registers them with the dynamic linker
 
 Safe to run multiple times.
 
@@ -56,7 +67,7 @@ The uninstaller:
 
 * Reads the manifest left by `install.sh` and removes every file it installed (binary, notcurses libraries/headers/pkgconfig files)
 * Prunes any directories left empty
-* Removes the `/etc/ld.so.conf.d` entry added for `/usr/local/lib` and refreshes the linker cache
+* Removes the `/etc/ld.so.conf.d` entry added for the notcurses libraries and refreshes the linker cache
 * Asks before deleting your saved config at `~/.config/vitals`
 
 If `vitals` was installed a different way (no manifest present), it falls back to a best-effort removal of the vitals binary and matching notcurses libraries.
@@ -81,7 +92,7 @@ chmod +x setup.sh
 Build:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
@@ -89,7 +100,7 @@ Install:
 
 ```bash
 sudo cmake --install build
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf
+dirname "$(grep -m1 'libnotcurses\.so' build/install_manifest.txt)" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf
 sudo ldconfig
 ```
 
@@ -105,7 +116,7 @@ cd vitals
 chmod +x setup.sh
 ./setup.sh
 
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 
 LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
@@ -142,9 +153,8 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 
 - Linux (kernel ≥ 4.x)
 - GCC or Clang with C++20 support
-- CMake ≥ 3.14
+- CMake ≥ 3.21
 - Internet access (required to download notcurses during setup)
-- Debian 12 / 13 or Ubuntu 22.04 / 24.04
 
 ## 📄 License
 

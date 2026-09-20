@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Prepares the vitals build environment.
-# Workflow: installs build deps (scripts/deps.sh), clones notcurses into the repo as a subdirectory.
+# Workflow: installs build deps (deps.sh), clones notcurses into the repo as a subdirectory.
 # Requirements: run from the vitals repo root, internet access, sudo privileges.
 
 set -euo pipefail
@@ -14,7 +14,7 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-bash "$SCRIPT_DIR/scripts/deps.sh"
+bash "$SCRIPT_DIR/deps.sh"
 
 echo ""
 echo "Dependencies installed."

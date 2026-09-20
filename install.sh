@@ -2,7 +2,7 @@
 
 # Installs vitals from source to /usr/local/bin.
 # Workflow: installs build deps -> clones vitals + notcurses -> builds -> installs binary + libs.
-# Requirements: a distribution supported by scripts/deps.sh, internet access, sudo privileges.
+# Requirements: a distribution supported by deps.sh, internet access, sudo privileges.
 
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
