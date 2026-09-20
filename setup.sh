@@ -10,7 +10,7 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-bash "$SCRIPT_DIR/scripts/deps.sh"
+bash "$SCRIPT_DIR/deps.sh"
 
 echo ""
 echo "Dependencies installed."
