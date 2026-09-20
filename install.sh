@@ -60,14 +60,22 @@ echo "Build successful."
 # cmake --install strips the build-tree RPATH
 sudo cmake --install build
 
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
-sudo ldconfig
+# register the notcurses lib dir (lib or lib64); musl has no ldconfig
+LDCONF_WRITTEN=0
+if command -v ldconfig &>/dev/null && [[ -d /etc/ld.so.conf.d ]]; then
+    LIBDIR="$(dirname "$(grep -m1 'libnotcurses\.so' build/install_manifest.txt)")"
+    echo "$LIBDIR" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
+    sudo ldconfig
+    LDCONF_WRITTEN=1
+fi
 
 # manifest lets uninstall.sh remove exactly what was installed
 MANIFEST_DIR="/usr/local/share/vitals"
 sudo mkdir -p "$MANIFEST_DIR"
 sudo cp "build/install_manifest.txt" "$MANIFEST_DIR/install_manifest.txt"
-echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
+if [[ $LDCONF_WRITTEN -eq 1 ]]; then
+    echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
+fi
 
 echo ""
 echo "Binary installed to $INSTALL_BIN"

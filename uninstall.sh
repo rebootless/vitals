@@ -77,10 +77,11 @@ else
     echo ""
 
     sudo rm -f "$INSTALL_BIN"
-    sudo rm -f /usr/local/lib/libnotcurses*.so*
-    sudo rm -f /usr/local/lib/libnotcurses*.a
-    sudo rm -rf /usr/local/lib/cmake/Notcurses* /usr/local/lib/cmake/NotcursesCore
-    sudo rm -f /usr/local/lib/pkgconfig/notcurses*.pc
+    for libdir in /usr/local/lib /usr/local/lib64; do
+        sudo rm -f "$libdir"/libnotcurses*.so* "$libdir"/libnotcurses*.a
+        sudo rm -rf "$libdir"/cmake/Notcurses* "$libdir"/cmake/NotcursesCore
+        sudo rm -f "$libdir"/pkgconfig/notcurses*.pc
+    done
     sudo rm -rf /usr/local/include/notcurses /usr/local/include/ncpp
     echo "Best-effort removal done."
 fi
@@ -88,7 +89,9 @@ fi
 if [[ -f /etc/ld.so.conf.d/usr_local_lib.conf ]]; then
     sudo rm -f /etc/ld.so.conf.d/usr_local_lib.conf
 fi
-sudo ldconfig
+if command -v ldconfig &>/dev/null; then
+    sudo ldconfig
+fi
 
 echo ""
 if [[ -d "$CONFIG_DIR" ]]; then

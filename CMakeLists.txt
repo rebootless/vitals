@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
 project(vitals LANGUAGES CXX)
 
@@ -6,7 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(USE_PANDOC OFF CACHE BOOL "" FORCE)
+# skip notcurses C++ bindings, multimedia, tests, demos and docs; zlib instead of libdeflate
+set(USE_PANDOC        OFF  CACHE BOOL   "" FORCE)
+set(USE_CXX           OFF  CACHE BOOL   "" FORCE)
+set(USE_MULTIMEDIA    none CACHE STRING "" FORCE)
+set(USE_DEFLATE       OFF  CACHE BOOL   "" FORCE)
+set(USE_DOCTEST       OFF  CACHE BOOL   "" FORCE)
+set(USE_STATIC        OFF  CACHE BOOL   "" FORCE)
+set(USE_POC           OFF  CACHE BOOL   "" FORCE)
+set(BUILD_EXECUTABLES OFF  CACHE BOOL   "" FORCE)
+set(BUILD_FFI_LIBRARY OFF  CACHE BOOL   "" FORCE)
 add_subdirectory(notcurses)
 
 set(SOURCES
