@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Installs vitals from source to /usr/local/bin.
-# Workflow: installs apt deps -> clones vitals + notcurses -> builds -> installs binary + libs.
-# Requirements: Debian/Ubuntu, internet access, sudo privileges.
+# Workflow: installs build deps -> clones vitals + notcurses -> builds -> installs binary + libs.
+# Requirements: a distribution supported by scripts/deps.sh, internet access, sudo privileges.
 
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -44,7 +44,7 @@ git clone --depth 1 "$REPO_URL" "$BUILD_DIR/vitals"
 echo "vitals cloned."
 echo ""
 
-# setup.sh installs apt deps and clones notcurses as a subdirectory.
+# setup.sh installs build deps and clones notcurses as a subdirectory.
 # Must run from inside the vitals repo root.
 bash "$BUILD_DIR/vitals/setup.sh"
 
@@ -68,16 +68,24 @@ echo "Build successful."
 # It strips the build-tree RPATH so the installed binary uses the system linker.
 sudo cmake --install build
 
-# Ensure /usr/local/lib is registered so notcurses.so is found at runtime.
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
-sudo ldconfig
+# Register the notcurses library directory (lib or lib64, depending on the distro)
+# so notcurses.so is found at runtime. Systems without ldconfig (musl) don't need this.
+LDCONF_WRITTEN=0
+if command -v ldconfig &>/dev/null && [[ -d /etc/ld.so.conf.d ]]; then
+    LIBDIR="$(dirname "$(grep -m1 'libnotcurses\.so' build/install_manifest.txt)")"
+    echo "$LIBDIR" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
+    sudo ldconfig
+    LDCONF_WRITTEN=1
+fi
 
 # Persist the full list of installed files (vitals + notcurses) so
 # uninstall.sh can remove exactly what this script put on the system.
 MANIFEST_DIR="/usr/local/share/vitals"
 sudo mkdir -p "$MANIFEST_DIR"
 sudo cp "build/install_manifest.txt" "$MANIFEST_DIR/install_manifest.txt"
-echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
+if [[ $LDCONF_WRITTEN -eq 1 ]]; then
+    echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
+fi
 
 echo ""
 echo "Binary installed to $INSTALL_BIN"

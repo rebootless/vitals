@@ -1,0 +1,79 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    container:
+      image: ${{ matrix.image }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Debian 12 (Bookworm)",  image: "debian:12" }
+          - { name: "Debian 13 (Trixie)",    image: "debian:13" }
+          - { name: "Ubuntu 22.04 (Jammy)",  image: "ubuntu:22.04" }
+          - { name: "Ubuntu 24.04 (Noble)",  image: "ubuntu:24.04" }
+          - { name: "Ubuntu 26.04 (Resolute)", image: "ubuntu:26.04" }
+          - { name: "Fedora 43",             image: "fedora:43" }
+          - { name: "Fedora 44",             image: "fedora:44" }
+          - { name: "AlmaLinux 8 (RHEL 8)",  image: "almalinux:8" }
+          - { name: "AlmaLinux 9 (RHEL 9)",  image: "almalinux:9" }
+          - { name: "AlmaLinux 10 (RHEL 10)", image: "almalinux:10" }
+          - { name: "openSUSE Tumbleweed",   image: "opensuse/tumbleweed:latest" }
+          - { name: "openSUSE Leap 16.0",    image: "opensuse/leap:16.0" }
+          - { name: "Arch Linux",            image: "archlinux:latest" }
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Minimal container images ship without git; the rest of the dependencies
+    # come from scripts/deps.sh, which needs the repository first.
+    - name: Install git
+      run: |
+        set -eux
+        if   command -v apt-get >/dev/null; then apt-get update -q && apt-get install -y --no-install-recommends ca-certificates git
+        elif command -v dnf     >/dev/null; then dnf install -y git
+        elif command -v zypper  >/dev/null; then zypper --non-interactive install --no-recommends git
+        elif command -v pacman  >/dev/null; then pacman -Syu --noconfirm --needed git
+        fi
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: bash scripts/deps.sh
+
+    - name: Clone notcurses
+      run: |
+        set -eux
+        git clone --depth 1 https://github.com/dankamongmen/notcurses.git
+        git -C notcurses submodule update --init --recursive
+
+    - name: Configure vitals
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build vitals
+      run: cmake --build build --parallel "$(nproc)"
+
+    - name: Verify binary
+      run: |
+        set -eux
+        test -x build/vitals
+        ldd build/vitals
+        if ldd build/vitals | grep -q "not found"; then
+          echo "::error::unresolved shared libraries"
+          exit 1
+        fi
