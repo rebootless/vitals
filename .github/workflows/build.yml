@@ -59,7 +59,9 @@ jobs:
     - name: Clone notcurses
       run: |
         set -eux
-        git clone --depth 1 https://github.com/dankamongmen/notcurses.git
+        NOTCURSES_VERSION="$(sed -n 's/^NOTCURSES_VERSION="\(.*\)"$/\1/p' setup.sh)"
+        git clone --depth 1 --branch "$NOTCURSES_VERSION" \
+            https://github.com/dankamongmen/notcurses.git
         git -C notcurses submodule update --init --recursive
 
     - name: Configure vitals

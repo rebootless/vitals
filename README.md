@@ -48,7 +48,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/insta
 The installer automatically:
 
 * Installs the required build dependencies
-* Clones the notcurses source
+* Clones the notcurses source (release pinned by `NOTCURSES_VERSION` in `setup.sh`)
 * Builds the project
 * Installs `vitals` to `/usr/local/bin`
 * Installs the required libraries under `/usr/local` and registers them with the dynamic linker
