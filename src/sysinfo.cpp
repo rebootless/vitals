@@ -60,6 +60,15 @@ std::string get_local_ip() {
     return result;
 }
 
+// Interfaces hidden from the Network panel and its totals
+bool is_hidden_iface(const std::string& name) {
+    static const char* const prefixes[] = {"ifb", "veth", "docker", "br-", "virbr", "vnet"};
+    if (name == "lo") return true;
+    for (const char* p : prefixes)
+        if (name.rfind(p, 0) == 0) return true;
+    return false;
+}
+
 // Thermal zone type string
 std::string thermal_zone_type(int zone) {
     std::ifstream f("/sys/class/thermal/thermal_zone" + std::to_string(zone) + "/type");

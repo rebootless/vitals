@@ -66,8 +66,8 @@ Result check_network() {
     if (nets.empty()) return fail("no interfaces in /proc/net/dev");
     (void)parse_snmp();
     for (const netdev& nd : nets)
-        if (nd.interface != "lo") return ok();
-    return skip("only the loopback interface");
+        if (!is_hidden_iface(nd.interface)) return ok();
+    return skip("no non-virtual network interfaces");
 }
 
 Result check_thermal() {

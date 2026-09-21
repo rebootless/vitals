@@ -60,6 +60,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         if (d.size() >= 4 && d.substr(0, 4) == "loop")  return true;
         if (d.size() >= 2 && d.substr(0, 2) == "sr")    return true;
         if (d.size() >= 3 && d.substr(0, 3) == "ram")   return true;
+        if (d.size() >= 4 && d.substr(0, 4) == "zram")  return true;
         return false;
     };
 

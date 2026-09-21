@@ -8,6 +8,9 @@ double               cpu_delta(const cpustat& prev, const cpustat& cur);
 
 // Network
 std::string get_local_ip();
+// True for interfaces the Network panel hides: loopback plus virtual/container
+// plumbing (ifb*, veth*, docker*, br-*, virbr*, vnet*). VPN links stay visible.
+bool is_hidden_iface(const std::string& name);
 
 // Thermal zones
 std::string           thermal_zone_type  (int zone);

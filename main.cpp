@@ -367,7 +367,7 @@ int main(int argc, char** argv) {
             std::map<std::string, double> net_rx_rate, net_tx_rate;
             double rx_now = 0.0, tx_now = 0.0;
             for (const auto& nd : cur_net) {
-                if (nd.interface == "lo") continue;
+                if (is_hidden_iface(nd.interface)) continue;
                 double rx = 0.0, tx = 0.0;
                 for (const auto& p : G.prev_net) {
                     if (p.interface != nd.interface) continue;

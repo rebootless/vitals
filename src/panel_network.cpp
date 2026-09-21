@@ -31,7 +31,7 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     ull total_rx = 0, total_tx = 0;
 
     for (const auto& nd : cur_net) {
-        if (nd.interface == "lo") continue;
+        if (is_hidden_iface(nd.interface)) continue;
         double rx = 0, tx = 0;
         if (auto it = rx_rates.find(nd.interface); it != rx_rates.end()) rx = it->second;
         if (auto it = tx_rates.find(nd.interface); it != tx_rates.end()) tx = it->second;
