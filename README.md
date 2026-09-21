@@ -6,7 +6,7 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
-[![CMake](https://img.shields.io/badge/CMake-build-064F8C?logo=cmake)](https://cmake.org/)
+[![CMake](https://img.shields.io/badge/CMake-064F8C?logo=cmake)](https://cmake.org/)
 [![notcurses](https://img.shields.io/badge/notcurses-lightgrey)](https://github.com/dankamongmen/notcurses)
 
 </div>
