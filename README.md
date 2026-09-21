@@ -149,6 +149,14 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 | `Enter` | Save changes and close |
 | `Esc` *(in settings)* | Discard changes and close |
 
+## 🧪 Self-test
+
+```bash
+vitals --self-test
+```
+
+Checks, without a terminal, that every data source vitals reads (CPU, memory, GPU, storage, network, thermal sensors, system info) is available and returns sane values. It prints one line per component — `OK`, `SKIP` (optional hardware that isn't present, e.g. no GPU) or `FAIL` — and exits with `0` unless something failed, so it can be used in CI.
+
 ## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)

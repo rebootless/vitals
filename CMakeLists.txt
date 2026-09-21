@@ -38,6 +38,7 @@ set(SOURCES
     src/panel_thermal.cpp
     src/panel_gpu.cpp
     src/panel_settings.cpp
+    src/selftest.cpp
 )
 
 add_executable(vitals ${SOURCES})

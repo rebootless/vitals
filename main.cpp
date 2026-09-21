@@ -1,6 +1,7 @@
 #include "panels.h"
 #include "theme.h"
 #include "config.h"
+#include "selftest.h"
 
 #include <clocale>
 #include <cstdlib>
@@ -141,7 +142,11 @@ static void render(notcurses* nc, ncplane* n,
 }
 
 // Main
-int main() {
+int main(int argc, char** argv) {
+    // Headless self-test for CI: runs before notcurses is initialised.
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--self-test") return run_self_test();
+
     setlocale(LC_ALL, "");
 
     notcurses_options opts{};

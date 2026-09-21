@@ -77,3 +77,6 @@ jobs:
           echo "::error::unresolved shared libraries"
           exit 1
         fi
+
+    - name: Self-test
+      run: timeout 60 build/vitals --self-test
