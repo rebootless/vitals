@@ -126,14 +126,14 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 
 ## 📊 Panels
 
-| Panel | Data source | What it shows |
-| :--- | :--- | :--- |
-| **CPU** | `/proc/stat`, cpufreq | CPU usage, per-core activity, frequencies, history |
-| **GPU** | DRM sysfs, hwmon, `nvidia-smi` | Utilization, VRAM, temperature, power |
-| **Memory** | `/proc/meminfo` | RAM and swap usage |
+| Panel | Data source | Metrics |
+| ---- | ---- | ---- |
+| **CPU** | `/proc/stat`, `/sys/devices/system/cpu/cpu*/cpufreq/` | CPU usage, per-core activity, frequency, history |
+| **GPU** | `/sys/class/drm`, `/sys/class/hwmon`, `nvidia-smi` | GPU utilization, VRAM, temperature, power |
+| **Memory**  | `/proc/meminfo` | RAM and swap usage |
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput |
-| **Storage** | `/proc/diskstats`, `statvfs` | Filesystem usage and disk I/O |
-| **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard sensors |
+| **Storage** | `/proc/diskstats`, `statvfs()` | Filesystem usage and disk I/O |
+| **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard temperatures |
 
 > [!NOTE]
 > The GPU panel is displayed only when a supported device is detected. Otherwise, the CPU panel expands to use the available space.
