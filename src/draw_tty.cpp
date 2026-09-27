@@ -99,6 +99,44 @@ void draw_spark_tty(ncplane* n, int y, int x, int w, const std::deque<double>& h
     }
 }
 
+// Bidirectional ASCII-ramp fallback — see draw_tty.h for the contract.
+void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
+                          const std::deque<double>& top_hist, uint32_t top_color,
+                          const std::deque<double>& bot_hist, uint32_t bot_color) {
+    if (w <= 0) return;
+
+    static const char RAMP[] = " .,:;=+*#@";
+    constexpr int RAMP_N = static_cast<int>(sizeof(RAMP) / sizeof(RAMP[0])) - 2;
+
+    auto visible_max = [&](const std::deque<double>& h) {
+        int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
+        double m = 0.0;
+        for (int i = st; i < static_cast<int>(h.size()); ++i) m = std::max(m, h[i]);
+        return m;
+    };
+    double max_v = std::max({ visible_max(top_hist), visible_max(bot_hist), 1.0 });
+
+    auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color) {
+        int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
+        int drawn = static_cast<int>(h.size()) - st;
+        for (int i = st, col = x; i < static_cast<int>(h.size()); ++i, ++col) {
+            double v   = std::max(0.0, std::min(max_v, h[i]));
+            int    idx = static_cast<int>(v / max_v * RAMP_N + 0.5);
+            idx = std::max(0, std::min(RAMP_N, idx));
+            nc_set(n, color);
+            char glyph[2] = { RAMP[idx], '\0' };
+            ncplane_putstr_yx(n, row, col, glyph);
+        }
+        // Not-yet-filled tail — ASCII dot, same convention as draw_bar_tty's
+        // empty portion.
+        nc_set(n, theme().SURFACE1);
+        for (int col = x + drawn; col < x + w; ++col)
+            ncplane_putstr_yx(n, row, col, ".");
+    };
+    draw_row(top_hist, y,     top_color);
+    draw_row(bot_hist, y + 1, bot_color);
+}
+
 const char* glyph_down() { return G.tty_active ? "v" : "\xe2\x96\xbc"; }
 const char* glyph_up()   { return G.tty_active ? "^" : "\xe2\x96\xb2"; }
 const char* glyph_dash() { return G.tty_active ? "-" : "\xe2\x80\x94"; }

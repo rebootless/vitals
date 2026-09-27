@@ -29,8 +29,13 @@
 using ull   = unsigned long long;
 using Clock = std::chrono::steady_clock;
 
+// Rolling-history buffer cap, shared by cpu_hist and the aggregated
+// net/disk rate histories (see AppState in state.h).
+inline constexpr int HIST_CAP = 200;
+
 // Block / sparkline / bar-background glyphs
 // Each glyph is a valid UTF-8 sequence rendered as exactly 1 terminal cell.
 static const char* BLOCK[] = { " ","▏","▎","▍","▌","▋","▊","▉","█" };
 static const char* SPARK[] = { "▁","▂","▃","▄","▅","▆","▇","█" };
+static const char* SPARK_BRAILLE[] = { "⣀","⣀","⣤","⣤","⣶","⣶","⣿","⣿" };
 static const char* BAR_BG  = "•";

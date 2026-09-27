@@ -27,6 +27,12 @@ draw_box_tty(ncplane* n, int y, int x, int h, int w,
 void draw_bar_tty  (ncplane* n, int y, int x, int w, double fill, GradType gt);
 void draw_spark_tty(ncplane* n, int y, int x, int w, const std::deque<double>& hist);
 
+// Bidirectional ASCII-ramp fallback for draw_spark_bidir — same auto-scaled
+// shared max, RAMP glyphs instead of braille/blocks, direction colors kept.
+void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
+                          const std::deque<double>& top_hist, uint32_t top_color,
+                          const std::deque<double>& bot_hist, uint32_t bot_color);
+
 // Small glyph swaps, resolved against G.tty_active — used directly by
 // panel_network.cpp, panel_storage.cpp, panel_thermal.cpp, panel_settings.cpp,
 // and draw.cpp's title bar.

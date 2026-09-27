@@ -47,6 +47,7 @@ Config load_config() {
         else if (key == "background") cfg.bg_mode    = val;
         else if (key == "terminal")   cfg.tty_mode    = val;
         else if (key == "corners")    cfg.corners     = val;
+        else if (key == "graph_style") cfg.graph_style = val;
         else if (key == "refresh_ms") {
             try {
                 int v = std::stoi(val);
@@ -75,4 +76,5 @@ void save_config(const Config& cfg) {
     f << "terminal=" << cfg.tty_mode << "\n";
     f << "refresh_ms=" << cfg.refresh_ms << "\n";
     f << "corners=" << cfg.corners << "\n";
+    f << "graph_style=" << cfg.graph_style << "\n";
 }

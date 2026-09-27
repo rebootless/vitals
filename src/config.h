@@ -8,12 +8,14 @@
 //   terminal=auto                (or "tty" / "graphics")
 //   refresh_ms=1000              (100-60000)
 //   corners=square                (or "rounded")
+//   graph_style=sparkline         (or "braille")
 struct Config {
     std::string theme_name  = "Catppuccin Mocha";
     std::string bg_mode     = "transparent"; // "transparent" | "solid"
     std::string tty_mode    = "auto";        // "auto" | "tty" | "graphics"
     int         refresh_ms  = 1000;          // 100-60000
     std::string corners     = "square";      // "square" | "rounded"
+    std::string graph_style = "sparkline";   // "sparkline" | "braille"
 };
 
 // Reads the config file. Returns defaults (Catppuccin Mocha, transparent) if

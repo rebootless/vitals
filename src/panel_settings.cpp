@@ -7,16 +7,18 @@
 static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
 static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
 static const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
+static const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    // Right column stacks Background (2) + Terminal (3) + Corners (2)
-    // groups, each with its own header — that's the tallest column, so
-    // it drives h. (In practice the theme list on the left is taller
-    // still, so this rarely ends up being the binding constraint.)
-    int right_rows = 2 + 2 + 3 + 2 + 2; // hdr+2 + hdr+3 + hdr+2, +1 gap each between groups
+    // Right column stacks Background (2) + Terminal (3) + Corners (2) +
+    // Graph style (2) groups, each with its own header — that's the
+    // tallest column, so it drives h. (In practice the theme list on the
+    // left is taller still, so this rarely ends up being the binding
+    // constraint.)
+    int right_rows = 2 + 2 + 3 + 2 + 2 + 2 + 2; // hdr+2 + hdr+3 + hdr+2 + hdr+2, +1 gap each between groups
     int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return; // terminal too small to show the overlay
@@ -118,14 +120,31 @@ void panel_settings(ncplane* n, int rows, int cols) {
                 ncplane_putstr_yx(n, r, right_x, label.c_str());
             }
         }
+
+        r++; // gap between groups
+
+        if (r < iy + ih) {
+            draw_group_header(r, 4, "Graph style");
+            r += 2;
+
+            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
+                bool selected = (i == G.graph_style_idx);
+
+                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                nc_set(n, col, NCSTYLE_NONE);
+
+                std::string label = std::string(selected ? "> " : "  ") + GRAPH_STYLE_NAMES[i];
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
     }
 
-    // Footer row: Refresh rate control (focus group 4, Up/Down to adjust).
+    // Footer row: Refresh rate control (focus group 5, Up/Down to adjust).
     // Reuses the existing last row rather than adding a new row group, so
     // the panel's w/h stay exactly as sized.
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        bool focused = (G.settings_focus == 4);
+        bool focused = (G.settings_focus == 5);
 
         nc_set(n, theme().BLUE);
         std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";

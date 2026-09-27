@@ -120,4 +120,39 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
                      *children[ci]);
         }
     }
+
+    if (row + 1 < iy + ih) { draw_sep(n, row, ix, iw); row++; }
+
+    // Bidirectional history — Write (▼ PEACH, first row) / Read (▲ TEAL,
+    // second row), aggregated across all devices. Shares one auto-scaled
+    // max between the two rows (see draw_spark_bidir). Format: "<arrow>
+    // <label> [<graph>]" — label field is fixed-width (max of "Write"/
+    // "Read", i.e. 5) so both bracket pairs start in the same column;
+    // "Read" gets one trailing pad space inside that field.
+    if (row + 2 < iy + ih) {
+        nc_set(n, theme().BLUE);
+        ncplane_putstr_yx(n, row, ix, "History:");
+        row++;
+
+        constexpr int label_w = 5; // len("Write")
+        int bx = ix + 1 /*arrow*/ + 1 /*space*/ + label_w + 1 /*space*/; // '['
+        int sx = bx + 1;                                                 // spark start
+        int sw = iw - (sx - ix) - 1;                                     // reserve ']'
+
+        nc_set(n, theme().PEACH, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row, ix, "%s %-*s ", glyph_down(), label_w, "Write");
+        nc_set(n, theme().TEAL, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row + 1, ix, "%s %-*s ", glyph_up(), label_w, "Read");
+
+        if (sw > 0) {
+            lbr(n, row,     bx);
+            lbr(n, row + 1, bx);
+            draw_spark_bidir(n, row, sx, sw,
+                             G.disk_wr_hist, theme().PEACH,
+                             G.disk_rd_hist, theme().TEAL);
+            rbr(n, row,     sx + sw);
+            rbr(n, row + 1, sx + sw);
+        }
+        row += 2;
+    }
 }

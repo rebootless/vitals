@@ -40,6 +40,13 @@ struct AppState {
     cpustat                prev_cpu  = {};
     std::vector<cpustat>   prev_core;
     std::deque<double>     cpu_hist; // Rolling CPU% history for sparkline
+
+    // Aggregated (total, across all interfaces/devices) rate history —
+    // feeds the bidirectional Network/Storage graphs. Capped at HIST_CAP,
+    // same as cpu_hist.
+    std::deque<double>     net_rx_hist, net_tx_hist;
+    std::deque<double>     disk_rd_hist, disk_wr_hist;
+
     std::vector<netdev>    prev_net;
     std::vector<diskstats> prev_disk;
     Clock::time_point      t_prev;
@@ -76,14 +83,22 @@ struct AppState {
     // which already uses its own plain "+/-/|" glyphs (draw_box_tty).
     int corners_idx = 0;
 
+    // Graph style for CPU History and the Network/Storage bidirectional
+    // graphs — 0 = sparkline (▁▂▃▄▅▆▇█ blocks), 1 = braille (2 samples/col,
+    // 4 levels/direction). Checked by draw_spark()/draw_spark_bidir() every
+    // frame; persisted to config. Forced to sparkline in TTY mode regardless
+    // of this value (draw_spark_tty has no braille path).
+    int graph_style_idx = 0;
+
     // Settings overlay state
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0 = theme, 1 = background, 2 = terminal mode, 3 = corners, 4 = refresh rate
+    int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=refresh
     int  settings_saved_theme = 0;   // snapshot on open, restored if the person cancels (Esc)
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
     int  settings_saved_corners = 0;
+    int  settings_saved_graph_style = 0;
 };
 
 // Defined in main.cpp, referenced throughout.

@@ -171,6 +171,7 @@ int main(int argc, char** argv) {
         G.tty_active = resolve_tty_active(G.tty_force);
         G.refresh_ms = cfg.refresh_ms;
         G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
+        G.graph_style_idx = (cfg.graph_style == "braille") ? 1 : 0;
     }
 
     // Static init
@@ -246,6 +247,7 @@ int main(int argc, char** argv) {
                 G.settings_saved_tty     = G.tty_force;
                 G.settings_saved_refresh = G.refresh_ms;
                 G.settings_saved_corners = G.corners_idx;
+                G.settings_saved_graph_style = G.graph_style_idx;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
             }
@@ -260,10 +262,11 @@ int main(int argc, char** argv) {
                 G.tty_active    = resolve_tty_active(G.tty_force);
                 G.refresh_ms    = G.settings_saved_refresh;
                 G.corners_idx   = G.settings_saved_corners;
+                G.graph_style_idx = G.settings_saved_graph_style;
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 5;
+                G.settings_focus = (G.settings_focus + 1) % 6;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
@@ -276,6 +279,8 @@ int main(int argc, char** argv) {
                     G.tty_active = resolve_tty_active(G.tty_force);
                 } else if (G.settings_focus == 3) {
                     G.corners_idx = (G.corners_idx - 1 + 2) % 2;
+                } else if (G.settings_focus == 4) {
+                    G.graph_style_idx = (G.graph_style_idx - 1 + 2) % 2;
                 } else {
                     int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -292,6 +297,8 @@ int main(int argc, char** argv) {
                     G.tty_active = resolve_tty_active(G.tty_force);
                 } else if (G.settings_focus == 3) {
                     G.corners_idx = (G.corners_idx + 1) % 2;
+                } else if (G.settings_focus == 4) {
+                    G.graph_style_idx = (G.graph_style_idx + 1) % 2;
                 } else {
                     int idx = std::max(0, refresh_step_index() - 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -304,6 +311,7 @@ int main(int argc, char** argv) {
                 cfg.tty_mode   = tty_force_to_string(G.tty_force);
                 cfg.refresh_ms = G.refresh_ms;
                 cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
+                cfg.graph_style = (G.graph_style_idx == 1) ? "braille" : "sparkline";
                 save_config(cfg);
                 G.settings_open = false;
             }
@@ -343,7 +351,7 @@ int main(int argc, char** argv) {
             // Derived metrics
             const double pct = cpu_delta(G.prev_cpu, cur_cpu);
             G.cpu_hist.push_back(pct);
-            if (static_cast<int>(G.cpu_hist.size()) > 200)
+            if (static_cast<int>(G.cpu_hist.size()) > HIST_CAP)
                 G.cpu_hist.pop_front();
 
             std::vector<double> core_pcts;
@@ -385,6 +393,14 @@ int main(int argc, char** argv) {
             G.peak_rx = std::max(G.peak_rx, rx_now);
             G.peak_tx = std::max(G.peak_tx, tx_now);
 
+            G.net_rx_hist.push_back(rx_now);
+            if (static_cast<int>(G.net_rx_hist.size()) > HIST_CAP)
+                G.net_rx_hist.pop_front();
+            G.net_tx_hist.push_back(tx_now);
+            if (static_cast<int>(G.net_tx_hist.size()) > HIST_CAP)
+                G.net_tx_hist.pop_front();
+
+            double disk_rd_now = 0.0, disk_wr_now = 0.0;
             std::map<std::string, double> disk_rd_rate, disk_wr_rate;
             for (const auto& ds : cur_disk) {
                 double rd = 0.0, wr = 0.0;
@@ -398,7 +414,16 @@ int main(int argc, char** argv) {
                 }
                 disk_rd_rate[ds.device] = rd;
                 disk_wr_rate[ds.device] = wr;
+                disk_rd_now += rd;
+                disk_wr_now += wr;
             }
+
+            G.disk_rd_hist.push_back(disk_rd_now);
+            if (static_cast<int>(G.disk_rd_hist.size()) > HIST_CAP)
+                G.disk_rd_hist.pop_front();
+            G.disk_wr_hist.push_back(disk_wr_now);
+            if (static_cast<int>(G.disk_wr_hist.size()) > HIST_CAP)
+                G.disk_wr_hist.pop_front();
 
             // Cache for the settings overlay and for in-between polls
             last_cpu       = cur_cpu;
