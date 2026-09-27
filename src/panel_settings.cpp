@@ -5,12 +5,13 @@
 static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
 static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
 static const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
+static const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    int right_rows = 2 + 2 + 3 + 2 + 2;
+    int right_rows = 2 + 2 + 3 + 2 + 2 + 2 + 2;
     int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return;
@@ -105,11 +106,28 @@ void panel_settings(ncplane* n, int rows, int cols) {
                 ncplane_putstr_yx(n, r, right_x, label.c_str());
             }
         }
+
+        r++;
+
+        if (r < iy + ih) {
+            draw_group_header(r, 4, "Graph style");
+            r += 2;
+
+            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
+                bool selected = (i == G.graph_style_idx);
+
+                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                nc_set(n, col, NCSTYLE_NONE);
+
+                std::string label = std::string(selected ? "> " : "  ") + GRAPH_STYLE_NAMES[i];
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
     }
 
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        bool focused = (G.settings_focus == 4);
+        bool focused = (G.settings_focus == 5);
 
         nc_set(n, theme().BLUE);
         std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";

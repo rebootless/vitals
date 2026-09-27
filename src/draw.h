@@ -19,4 +19,8 @@ void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt);
 
 void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist);
 
+void draw_spark_bidir(ncplane* n, int y, int x, int w,
+                      const std::deque<double>& top_hist, uint32_t top_color,
+                      const std::deque<double>& bot_hist, uint32_t bot_color);
+
 void draw_titlebar(ncplane* n, int cols);

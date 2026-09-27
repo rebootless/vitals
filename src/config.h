@@ -8,6 +8,7 @@ struct Config {
     std::string tty_mode    = "auto";
     int         refresh_ms  = 1000;
     std::string corners     = "square";
+    std::string graph_style = "sparkline";
 };
 
 Config load_config();

@@ -32,6 +32,10 @@ struct AppState {
     cpustat                prev_cpu  = {};
     std::vector<cpustat>   prev_core;
     std::deque<double>     cpu_hist;
+
+    std::deque<double>     net_rx_hist, net_tx_hist;
+    std::deque<double>     disk_rd_hist, disk_wr_hist;
+
     std::vector<netdev>    prev_net;
     std::vector<diskstats> prev_disk;
     Clock::time_point      t_prev;
@@ -54,6 +58,8 @@ struct AppState {
 
     int corners_idx = 0;
 
+    int graph_style_idx = 0;
+
     bool settings_open        = false;
     int  settings_focus       = 0;
     int  settings_saved_theme = 0;
@@ -61,6 +67,7 @@ struct AppState {
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
     int  settings_saved_corners = 0;
+    int  settings_saved_graph_style = 0;
 };
 
 extern AppState G;

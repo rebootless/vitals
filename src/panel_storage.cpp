@@ -113,4 +113,33 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
                      *children[ci]);
         }
     }
+
+    if (row + 1 < iy + ih) { draw_sep(n, row, ix, iw); row++; }
+
+    if (row + 2 < iy + ih) {
+        nc_set(n, theme().BLUE);
+        ncplane_putstr_yx(n, row, ix, "History:");
+        row++;
+
+        constexpr int label_w = 5;
+        int bx = ix + 1 + 1 + label_w + 1;
+        int sx = bx + 1;
+        int sw = iw - (sx - ix) - 1;
+
+        nc_set(n, theme().PEACH, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row, ix, "%s %-*s ", glyph_down(), label_w, "Write");
+        nc_set(n, theme().TEAL, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, row + 1, ix, "%s %-*s ", glyph_up(), label_w, "Read");
+
+        if (sw > 0) {
+            lbr(n, row,     bx);
+            lbr(n, row + 1, bx);
+            draw_spark_bidir(n, row, sx, sw,
+                             G.disk_wr_hist, theme().PEACH,
+                             G.disk_rd_hist, theme().TEAL);
+            rbr(n, row,     sx + sw);
+            rbr(n, row + 1, sx + sw);
+        }
+        row += 2;
+    }
 }

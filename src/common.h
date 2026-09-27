@@ -29,6 +29,9 @@
 using ull   = unsigned long long;
 using Clock = std::chrono::steady_clock;
 
+inline constexpr int HIST_CAP = 200;
+
 static const char* BLOCK[] = { " ","▏","▎","▍","▌","▋","▊","▉","█" };
 static const char* SPARK[] = { "▁","▂","▃","▄","▅","▆","▇","█" };
+static const char* SPARK_BRAILLE[] = { "⣀","⣀","⣤","⣤","⣶","⣶","⣿","⣿" };
 static const char* BAR_BG  = "•";

@@ -12,6 +12,10 @@ draw_box_tty(ncplane* n, int y, int x, int h, int w,
 void draw_bar_tty  (ncplane* n, int y, int x, int w, double fill, GradType gt);
 void draw_spark_tty(ncplane* n, int y, int x, int w, const std::deque<double>& hist);
 
+void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
+                          const std::deque<double>& top_hist, uint32_t top_color,
+                          const std::deque<double>& bot_hist, uint32_t bot_color);
+
 const char* glyph_down();  // "\xe2\x96\xbc" (▼) or "v"
 const char* glyph_up();    // "\xe2\x96\xb2" (▲) or "^"
 const char* glyph_dash();  // "\xe2\x80\x94" (—) or "-"
