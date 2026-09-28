@@ -17,5 +17,7 @@ struct GpuInfo {
     double power_w        = -1.0;
 };
 
+GpuVendor gpu_vendor_from_id(const std::string& vendor_id);
+
 // at most one entry: the lowest-numbered /sys/class/drm/cardN
 std::vector<GpuInfo> parse_gpus();

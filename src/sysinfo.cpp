@@ -40,6 +40,32 @@ double cpu_delta(const cpustat& prev, const cpustat& cur) {
     return 100.0 * (1.0 - static_cast<double>(di) / static_cast<double>(dt));
 }
 
+// htop 3.2.1+ "Used", not MemTotal - MemAvailable (checked against htop-dev/htop#1051)
+MemUsed mem_used(const meminfo& mi) {
+    const ull reclaimable = mi.Buffers + mi.Cached + mi.SReclaimable;
+    const ull used_kib = (mi.MemTotal > mi.MemFree + reclaimable)
+                        ? mi.MemTotal - mi.MemFree - reclaimable : 0;
+    const double pct = mi.MemTotal > 0
+                       ? 100.0 * static_cast<double>(used_kib) / mi.MemTotal : 0.0;
+    return { used_kib, pct };
+}
+
+double net_rate_bytes(ull prev_bytes, ull cur_bytes, double dt) {
+    if (dt <= 0.0 || cur_bytes < prev_bytes) return 0.0;
+    return static_cast<double>(cur_bytes - prev_bytes) / dt;
+}
+
+DiskRate disk_rate(ull prev_sectors_read,  ull cur_sectors_read,
+                   ull prev_sectors_written, ull cur_sectors_written, double dt) {
+    DiskRate r{};
+    if (dt <= 0.0) return r;
+    if (cur_sectors_read    >= prev_sectors_read)
+        r.read_bytes_per_sec  = static_cast<double>(cur_sectors_read    - prev_sectors_read)    * 512.0 / dt;
+    if (cur_sectors_written >= prev_sectors_written)
+        r.write_bytes_per_sec = static_cast<double>(cur_sectors_written - prev_sectors_written) * 512.0 / dt;
+    return r;
+}
+
 std::string get_local_ip() {
     struct ifaddrs* ifa = nullptr;
     if (getifaddrs(&ifa) != 0) return "N/A";

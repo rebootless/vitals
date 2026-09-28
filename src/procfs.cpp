@@ -15,12 +15,9 @@ static std::string trim(const std::string& s) {
     return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
 }
 
-cpustat parse_cpustat() {
-    std::ifstream f("/proc/stat");
-    if (!f) throw std::runtime_error("cannot open /proc/stat");
-
+cpustat parse_cpustat_from(std::istream& in) {
     std::string line;
-    while (std::getline(f, line)) {
+    while (std::getline(in, line)) {
         if (line.substr(0, 4) != "cpu ") continue;
         std::istringstream ss(line.substr(4));
         cpustat s{};
@@ -29,17 +26,20 @@ cpustat parse_cpustat() {
            >> s.guest  >> s.guest_nice;
         return s;
     }
-    throw std::runtime_error("aggregate cpu line not found in /proc/stat");
+    throw std::runtime_error("aggregate cpu line not found");
 }
 
-meminfo parse_meminfo() {
-    std::ifstream f("/proc/meminfo");
-    if (!f) throw std::runtime_error("cannot open /proc/meminfo");
+cpustat parse_cpustat() {
+    std::ifstream f("/proc/stat");
+    if (!f) throw std::runtime_error("cannot open /proc/stat");
+    return parse_cpustat_from(f);
+}
 
+meminfo parse_meminfo_from(std::istream& in) {
     meminfo m{};
     bool has_available = false;
     std::string line;
-    while (std::getline(f, line)) {
+    while (std::getline(in, line)) {
         std::istringstream ss(line);
         std::string key;
         unsigned long long value;
@@ -69,22 +69,28 @@ meminfo parse_meminfo() {
     return m;
 }
 
-uptime parse_uptime() {
-    std::ifstream f("/proc/uptime");
-    if (!f) throw std::runtime_error("cannot open /proc/uptime");
+meminfo parse_meminfo() {
+    std::ifstream f("/proc/meminfo");
+    if (!f) throw std::runtime_error("cannot open /proc/meminfo");
+    return parse_meminfo_from(f);
+}
 
+uptime parse_uptime_from(std::istream& in) {
     uptime u{};
-    f >> u.uptime_seconds >> u.idle_seconds;
+    in >> u.uptime_seconds >> u.idle_seconds;
     return u;
 }
 
-loadavg parse_loadavg() {
-    std::ifstream f("/proc/loadavg");
-    if (!f) throw std::runtime_error("cannot open /proc/loadavg");
+uptime parse_uptime() {
+    std::ifstream f("/proc/uptime");
+    if (!f) throw std::runtime_error("cannot open /proc/uptime");
+    return parse_uptime_from(f);
+}
 
+loadavg parse_loadavg_from(std::istream& in) {
     loadavg l{};
     std::string tasks;
-    f >> l.load1 >> l.load5 >> l.load15 >> tasks >> l.last_pid;
+    in >> l.load1 >> l.load5 >> l.load15 >> tasks >> l.last_pid;
 
     auto slash = tasks.find('/');
     if (slash != std::string::npos) {
@@ -92,6 +98,12 @@ loadavg parse_loadavg() {
         l.total_tasks   = static_cast<unsigned int>(std::stoul(tasks.substr(slash + 1)));
     }
     return l;
+}
+
+loadavg parse_loadavg() {
+    std::ifstream f("/proc/loadavg");
+    if (!f) throw std::runtime_error("cannot open /proc/loadavg");
+    return parse_loadavg_from(f);
 }
 
 cpuinfo parse_cpuinfo() {
@@ -120,16 +132,13 @@ cpuinfo parse_cpuinfo() {
     return c;
 }
 
-std::vector<netdev> parse_netdev() {
-    std::ifstream f("/proc/net/dev");
-    if (!f) throw std::runtime_error("cannot open /proc/net/dev");
-
+std::vector<netdev> parse_netdev_from(std::istream& in) {
     std::vector<netdev> result;
     std::string line;
-    std::getline(f, line);
-    std::getline(f, line);
+    std::getline(in, line);
+    std::getline(in, line);
 
-    while (std::getline(f, line)) {
+    while (std::getline(in, line)) {
         auto colon = line.find(':');
         if (colon == std::string::npos) continue;
 
@@ -145,6 +154,12 @@ std::vector<netdev> parse_netdev() {
         result.push_back(std::move(nd));
     }
     return result;
+}
+
+std::vector<netdev> parse_netdev() {
+    std::ifstream f("/proc/net/dev");
+    if (!f) throw std::runtime_error("cannot open /proc/net/dev");
+    return parse_netdev_from(f);
 }
 
 snmp parse_snmp() {
@@ -192,13 +207,10 @@ snmp parse_snmp() {
     return s;
 }
 
-std::vector<diskstats> parse_diskstats() {
-    std::ifstream f("/proc/diskstats");
-    if (!f) throw std::runtime_error("cannot open /proc/diskstats");
-
+std::vector<diskstats> parse_diskstats_from(std::istream& in) {
     std::vector<diskstats> result;
     std::string line;
-    while (std::getline(f, line)) {
+    while (std::getline(in, line)) {
         std::istringstream ss(line);
         unsigned int major, minor;
         diskstats d{};
@@ -209,6 +221,16 @@ std::vector<diskstats> parse_diskstats() {
         if (!d.device.empty()) result.push_back(std::move(d));
     }
     return result;
+}
+
+std::vector<diskstats> parse_diskstats() {
+    std::ifstream f("/proc/diskstats");
+    if (!f) throw std::runtime_error("cannot open /proc/diskstats");
+    return parse_diskstats_from(f);
+}
+
+double millideg_to_celsius(unsigned long long raw_millidegrees) {
+    return raw_millidegrees / 1000.0;
 }
 
 std::vector<thermal> parse_thermal() {
@@ -229,7 +251,7 @@ std::vector<thermal> parse_thermal() {
 
         unsigned long long raw = 0;
         f >> raw;
-        result.push_back({zone, raw / 1000.0});
+        result.push_back({zone, millideg_to_celsius(raw)});
     }
     closedir(dir);
 
@@ -325,11 +347,7 @@ filesystemstat parse_filesystemstat(const std::string& path) {
     return stat;
 }
 
-systemuname parse_systemuname() {
-    struct utsname u{};
-    if (::uname(&u) != 0)
-        throw std::runtime_error("uname() failed");
-
+systemuname systemuname_from(const struct utsname& u) {
     systemuname s{};
     s.kernel_name    = u.sysname;
     s.hostname       = u.nodename;
@@ -337,4 +355,11 @@ systemuname parse_systemuname() {
     s.kernel_version = u.version;
     s.architecture   = u.machine;
     return s;
+}
+
+systemuname parse_systemuname() {
+    struct utsname u{};
+    if (::uname(&u) != 0)
+        throw std::runtime_error("uname() failed");
+    return systemuname_from(u);
 }

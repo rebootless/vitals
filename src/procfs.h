@@ -1,7 +1,10 @@
 #pragma once
 
+#include <iosfwd>
 #include <string>
 #include <vector>
+
+struct utsname; // <sys/utsname.h> — forward-declared to keep this header light
 
 struct cpustat { // stat will conflict with POSIX API
     unsigned long long user;
@@ -151,3 +154,13 @@ std::vector<thermal>   parse_thermal();
 std::vector<cpufreq>   parse_cpufreq();
 filesystemstat         parse_filesystemstat(const std::string& path = "/");
 systemuname            parse_systemuname();
+
+cpustat                parse_cpustat_from(std::istream& in);
+meminfo                parse_meminfo_from(std::istream& in);
+std::vector<netdev>    parse_netdev_from(std::istream& in);
+std::vector<diskstats> parse_diskstats_from(std::istream& in);
+uptime                 parse_uptime_from(std::istream& in);
+loadavg                parse_loadavg_from(std::istream& in);
+systemuname            systemuname_from(const struct utsname& u);
+
+double millideg_to_celsius(unsigned long long raw_millidegrees);

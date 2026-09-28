@@ -8,26 +8,23 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     int row = iy;
     const int LBL = 8;
 
-    const ull reclaimable = mi.Buffers + mi.Cached + mi.SReclaimable;
-    const ull used_kb = (mi.MemTotal > mi.MemFree + reclaimable)
-                        ? mi.MemTotal - mi.MemFree - reclaimable : 0;
-    const double rampct = mi.MemTotal > 0
-                          ? 100.0 * static_cast<double>(used_kb) / mi.MemTotal : 0.0;
+    // See mem_used() (sysinfo.cpp) for why this isn't MemTotal - MemAvailable.
+    const MemUsed mu = mem_used(mi);
 
     if (row < iy + ih) {
-        uint32_t pc = pct_color(rampct);
+        uint32_t pc = pct_color(mu.pct);
         nc_set(n, theme().BLUE);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Memory:");
 
         lbr(n, row, ix + LBL);
         nc_set(n, pc, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", rampct);
+        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", mu.pct);
         rbr(n, row, ix + LBL + 5);
 
         int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
         if (bw > 2) {
             lbr(n, row, bx);
-            draw_bar_grad(n, row, bx + 1, bw, rampct / 100.0, GRAD_MEM);
+            draw_bar_grad(n, row, bx + 1, bw, mu.pct / 100.0, GRAD_MEM);
             rbr(n, row, bx + 1 + bw);
         }
         row++;
@@ -35,7 +32,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     if (row < iy + ih) {
         nc_set(n, theme().TEXT);
-        std::string used_str = fmt_mem_kib(used_kb) + " / " + fmt_mem_kib(mi.MemTotal);
+        std::string used_str = fmt_mem_kib(mu.used_kib) + " / " + fmt_mem_kib(mi.MemTotal);
         ncplane_printf_yx(n, row, ix + LBL, "%s",
                           str_trunc(used_str, iw - LBL).c_str());
         row++;
