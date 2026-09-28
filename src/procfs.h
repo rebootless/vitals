@@ -1,7 +1,10 @@
 #pragma once
 
+#include <iosfwd>
 #include <string>
 #include <vector>
+
+struct utsname; // <sys/utsname.h> — forward-declared to keep this header light
 
 // /proc/stat
 struct cpustat { // stat will conflict with POSIX API
@@ -163,3 +166,19 @@ std::vector<thermal>   parse_thermal();
 std::vector<cpufreq>   parse_cpufreq();
 filesystemstat         parse_filesystemstat(const std::string& path = "/");
 systemuname            parse_systemuname();
+
+// Same parsing logic as the functions above, taking arbitrary input instead
+// of the real /proc file — exposed so --self-test can feed known fixture
+// data through the exact code the panels use, rather than a re-implemented
+// copy of the format.
+cpustat                parse_cpustat_from(std::istream& in);
+meminfo                parse_meminfo_from(std::istream& in);
+std::vector<netdev>    parse_netdev_from(std::istream& in);
+std::vector<diskstats> parse_diskstats_from(std::istream& in);
+uptime                 parse_uptime_from(std::istream& in);
+loadavg                parse_loadavg_from(std::istream& in);
+systemuname            systemuname_from(const struct utsname& u);
+
+// Unit conversion used by parse_thermal() — millidegrees (raw sysfs value)
+// to degrees Celsius. Exposed for --self-test fixtures.
+double millideg_to_celsius(unsigned long long raw_millidegrees);

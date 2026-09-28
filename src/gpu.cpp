@@ -279,6 +279,13 @@ std::vector<GpuInfo> parse_nvidia_proprietary() {
 
 } // namespace
 
+GpuVendor gpu_vendor_from_id(const std::string& vendor_id) {
+    if (vendor_id == "0x1002") return GpuVendor::AMD;
+    if (vendor_id == "0x8086") return GpuVendor::Intel;
+    if (vendor_id == "0x10de") return GpuVendor::Nvidia;
+    return GpuVendor::Unknown;
+}
+
 std::vector<GpuInfo> parse_gpus() {
     std::vector<GpuInfo> result;
 
@@ -316,15 +323,16 @@ std::vector<GpuInfo> parse_gpus() {
              [](const Candidate& a, const Candidate& b) { return a.index < b.index; });
 
     for (const auto& c : candidates) {
-        if (c.vendor_id == "0x1002") {
+        const GpuVendor vendor = gpu_vendor_from_id(c.vendor_id);
+        if (vendor == GpuVendor::AMD) {
             result.push_back(parse_amd(c.device_dir, c.name));
             break;
 
-        } else if (c.vendor_id == "0x8086") {
+        } else if (vendor == GpuVendor::Intel) {
             result.push_back(parse_intel(c.device_dir, c.name));
             break;
 
-        } else if (c.vendor_id == "0x10de") {
+        } else if (vendor == GpuVendor::Nvidia) {
             // Same hardware, two possible drivers — dispatch on which one
             // is actually bound, since they need entirely different data
             // sources (nouveau: fdinfo; proprietary: nvidia-smi).

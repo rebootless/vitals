@@ -39,6 +39,8 @@ set(SOURCES
     src/panel_gpu.cpp
     src/panel_settings.cpp
     src/selftest.cpp
+    src/selftest_checks.cpp
+    src/selftest_fixtures.cpp
 )
 
 add_executable(vitals ${SOURCES})

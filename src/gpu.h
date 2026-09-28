@@ -19,6 +19,10 @@ struct GpuInfo {
     double power_w        = -1.0;
 };
 
+// Maps a /sys/class/drm/cardN/device/vendor PCI ID string (e.g. "0x1002")
+// to the vendor enum. Exposed for --self-test fixtures.
+GpuVendor gpu_vendor_from_id(const std::string& vendor_id);
+
 // Detects the system's (one) GPU:
 //  - AMD / Intel: pure sysfs (/sys/class/drm/card*/device), no external deps.
 //  - NVIDIA: sysfs exposes almost nothing useful under the proprietary driver,

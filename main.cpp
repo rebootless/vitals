@@ -379,10 +379,8 @@ int main(int argc, char** argv) {
                 double rx = 0.0, tx = 0.0;
                 for (const auto& p : G.prev_net) {
                     if (p.interface != nd.interface) continue;
-                    if (nd.rx_bytes >= p.rx_bytes)
-                        rx = static_cast<double>(nd.rx_bytes - p.rx_bytes) / G.dt;
-                    if (nd.tx_bytes >= p.tx_bytes)
-                        tx = static_cast<double>(nd.tx_bytes - p.tx_bytes) / G.dt;
+                    rx = net_rate_bytes(p.rx_bytes, nd.rx_bytes, G.dt);
+                    tx = net_rate_bytes(p.tx_bytes, nd.tx_bytes, G.dt);
                     break;
                 }
                 net_rx_rate[nd.interface] = rx;
@@ -406,10 +404,10 @@ int main(int argc, char** argv) {
                 double rd = 0.0, wr = 0.0;
                 for (const auto& p : G.prev_disk) {
                     if (p.device != ds.device) continue;
-                    if (ds.sectors_read >= p.sectors_read)
-                        rd = static_cast<double>(ds.sectors_read - p.sectors_read) * 512.0 / G.dt;
-                    if (ds.sectors_written >= p.sectors_written)
-                        wr = static_cast<double>(ds.sectors_written - p.sectors_written) * 512.0 / G.dt;
+                    DiskRate r = disk_rate(p.sectors_read,    ds.sectors_read,
+                                           p.sectors_written, ds.sectors_written, G.dt);
+                    rd = r.read_bytes_per_sec;
+                    wr = r.write_bytes_per_sec;
                     break;
                 }
                 disk_rd_rate[ds.device] = rd;
