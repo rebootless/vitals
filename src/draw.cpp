@@ -137,6 +137,8 @@ void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist)
     if (G.tty_active) { draw_spark_tty(n, y, x, w, hist); return; }
     if (w <= 0 || hist.empty()) return;
     const char* const* glyphs = (G.graph_style_idx == 1) ? SPARK_BRAILLE : SPARK;
+    // Bold only for braille (heavier dots); block glyphs stay regular.
+    const unsigned style = (G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
     int start = (static_cast<int>(hist.size()) > w)
                 ? static_cast<int>(hist.size()) - w : 0;
 
@@ -144,7 +146,7 @@ void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist)
         double v   = std::max(0.0, std::min(100.0, hist[i]));
         int    idx = static_cast<int>(v / 100.0 * 7.0 + 0.5);
         uint32_t color = grad_color(GRAD_HIST, v / 100.0);
-        nc_set(n, color);
+        nc_set(n, color, style);
         ncplane_putstr_yx(n, y, col, glyphs[std::max(0, std::min(7, idx))]);
     }
 }
@@ -168,6 +170,8 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
     double max_v = std::max({ visible_max(top_hist), visible_max(bot_hist), 1.0 });
 
     const char* const* glyphs = (G.graph_style_idx == 1) ? SPARK_BRAILLE : SPARK;
+    // Bold only for braille (heavier dots); block glyphs stay regular.
+    const unsigned style = (G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
 
     auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color) {
         int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
@@ -175,7 +179,7 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
         for (int i = st, col = x; i < static_cast<int>(h.size()); ++i, ++col) {
             double v   = std::max(0.0, std::min(max_v, h[i]));
             int    idx = static_cast<int>(v / max_v * 7.0 + 0.5);
-            nc_set(n, color, NCSTYLE_BOLD);
+            nc_set(n, color, style);
             ncplane_putstr_yx(n, row, col, glyphs[std::max(0, std::min(7, idx))]);
         }
         // Not-yet-filled tail (history shorter than the graph width, e.g.
