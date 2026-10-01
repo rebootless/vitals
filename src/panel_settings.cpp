@@ -6,12 +6,13 @@ static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme backgr
 static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
 static const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
 static const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
+static const char* MIRROR_NAMES[2] = { "Symbol Mirroring: False", "Symbol Mirroring: True" };
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    int right_rows = 2 + 2 + 3 + 2 + 2 + 2 + 2;
+    int right_rows = (2 + 2) + 1 + (2 + 3) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + 2);
     int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return;
@@ -123,11 +124,32 @@ void panel_settings(ncplane* n, int rows, int cols) {
                 ncplane_putstr_yx(n, r, right_x, label.c_str());
             }
         }
+
+        r++;
+
+        if (r < iy + ih) {
+            draw_group_header(r, 5, "Graph Symbol Mirroring");
+            if (r + 1 < iy + ih) {
+                nc_set(n, theme().OVERLAY0, NCSTYLE_NONE);
+                ncplane_putstr_yx(n, r + 1, right_x + 2, "(Experimental)");
+            }
+            r += 2;
+
+            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
+                bool selected = (i == G.symbol_mirror_idx);
+
+                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                nc_set(n, col, NCSTYLE_NONE);
+
+                std::string label = std::string(selected ? "> " : "  ") + MIRROR_NAMES[i];
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
     }
 
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        bool focused = (G.settings_focus == 5);
+        bool focused = (G.settings_focus == 6);
 
         nc_set(n, theme().BLUE);
         std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";

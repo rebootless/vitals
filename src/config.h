@@ -9,6 +9,7 @@ struct Config {
     int         refresh_ms  = 1000;
     std::string corners     = "square";
     std::string graph_style = "sparkline";
+    bool        symbol_mirroring = false;
 };
 
 Config load_config();

@@ -149,6 +149,7 @@ int main(int argc, char** argv) {
         G.refresh_ms = cfg.refresh_ms;
         G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
         G.graph_style_idx = (cfg.graph_style == "braille") ? 1 : 0;
+        G.symbol_mirror_idx = cfg.symbol_mirroring ? 1 : 0;
     }
 
     try { G.ci = parse_cpuinfo();     } catch (...) {}
@@ -199,6 +200,7 @@ int main(int argc, char** argv) {
                 G.settings_saved_refresh = G.refresh_ms;
                 G.settings_saved_corners = G.corners_idx;
                 G.settings_saved_graph_style = G.graph_style_idx;
+                G.settings_saved_symbol_mirror = G.symbol_mirror_idx;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
             }
@@ -214,10 +216,11 @@ int main(int argc, char** argv) {
                 G.refresh_ms    = G.settings_saved_refresh;
                 G.corners_idx   = G.settings_saved_corners;
                 G.graph_style_idx = G.settings_saved_graph_style;
+                G.symbol_mirror_idx = G.settings_saved_symbol_mirror;
                 G.settings_open = false;
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 6;
+                G.settings_focus = (G.settings_focus + 1) % 7;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
@@ -232,6 +235,8 @@ int main(int argc, char** argv) {
                     G.corners_idx = (G.corners_idx - 1 + 2) % 2;
                 } else if (G.settings_focus == 4) {
                     G.graph_style_idx = (G.graph_style_idx - 1 + 2) % 2;
+                } else if (G.settings_focus == 5) {
+                    G.symbol_mirror_idx = (G.symbol_mirror_idx - 1 + 2) % 2;
                 } else {
                     int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -250,6 +255,8 @@ int main(int argc, char** argv) {
                     G.corners_idx = (G.corners_idx + 1) % 2;
                 } else if (G.settings_focus == 4) {
                     G.graph_style_idx = (G.graph_style_idx + 1) % 2;
+                } else if (G.settings_focus == 5) {
+                    G.symbol_mirror_idx = (G.symbol_mirror_idx + 1) % 2;
                 } else {
                     int idx = std::max(0, refresh_step_index() - 1);
                     G.refresh_ms = REFRESH_STEPS[idx];
@@ -263,6 +270,7 @@ int main(int argc, char** argv) {
                 cfg.refresh_ms = G.refresh_ms;
                 cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
                 cfg.graph_style = (G.graph_style_idx == 1) ? "braille" : "sparkline";
+                cfg.symbol_mirroring = (G.symbol_mirror_idx == 1);
                 save_config(cfg);
                 G.settings_open = false;
             }

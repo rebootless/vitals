@@ -60,14 +60,17 @@ struct AppState {
 
     int graph_style_idx = 0;
 
+    int symbol_mirror_idx = 0;
+
     bool settings_open        = false;
-    int  settings_focus       = 0;
+    int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=refresh
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
     int  settings_saved_corners = 0;
     int  settings_saved_graph_style = 0;
+    int  settings_saved_symbol_mirror = 0;
 };
 
 extern AppState G;
