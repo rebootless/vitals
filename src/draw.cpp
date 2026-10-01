@@ -173,7 +173,12 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
     // Bold only for braille (heavier dots); block glyphs stay regular.
     const unsigned style = (G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
 
-    auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color) {
+    // Lower row uses the mirrored table when symbol mirroring is on.
+    const char* const* glyphs_bot = !G.symbol_mirror_idx ? glyphs
+        : (G.graph_style_idx == 1 ? SPARK_BRAILLE_MIRROR : SPARK_MIRROR);
+
+    auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color,
+                        const char* const* glyphs) {
         int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
         int drawn = static_cast<int>(h.size()) - st; // columns with real data (<= w)
         for (int i = st, col = x; i < static_cast<int>(h.size()); ++i, ++col) {
@@ -189,8 +194,8 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
         for (int col = x + drawn; col < x + w; ++col)
             ncplane_putstr_yx(n, row, col, BAR_BG);
     };
-    draw_row(top_hist, y,     top_color);
-    draw_row(bot_hist, y + 1, bot_color);
+    draw_row(top_hist, y,     top_color, glyphs);
+    draw_row(bot_hist, y + 1, bot_color, glyphs_bot);
 }
 
 // Title bar

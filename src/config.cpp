@@ -48,6 +48,7 @@ Config load_config() {
         else if (key == "terminal")   cfg.tty_mode    = val;
         else if (key == "corners")    cfg.corners     = val;
         else if (key == "graph_style") cfg.graph_style = val;
+        else if (key == "symbol_mirroring") cfg.symbol_mirroring = (val == "true");
         else if (key == "refresh_ms") {
             try {
                 int v = std::stoi(val);
@@ -77,4 +78,5 @@ void save_config(const Config& cfg) {
     f << "refresh_ms=" << cfg.refresh_ms << "\n";
     f << "corners=" << cfg.corners << "\n";
     f << "graph_style=" << cfg.graph_style << "\n";
+    f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";
 }

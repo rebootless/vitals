@@ -90,15 +90,22 @@ struct AppState {
     // of this value (draw_spark_tty has no braille path).
     int graph_style_idx = 0;
 
+    // Symbol mirroring (experimental) — 0 = off, 1 = on. When on, the lower
+    // row of draw_spark_bidir() (TX / Write) grows downward from the shared
+    // centre line using mirrored glyph tables. CPU sparkline is unaffected;
+    // no effect in TTY mode. Persisted to config.
+    int symbol_mirror_idx = 0;
+
     // Settings overlay state
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=refresh
+    int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=refresh
     int  settings_saved_theme = 0;   // snapshot on open, restored if the person cancels (Esc)
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;
     int  settings_saved_refresh = 1000;
     int  settings_saved_corners = 0;
     int  settings_saved_graph_style = 0;
+    int  settings_saved_symbol_mirror = 0;
 };
 
 // Defined in main.cpp, referenced throughout.

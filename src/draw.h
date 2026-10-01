@@ -42,7 +42,8 @@ void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist)
 // solid color (not gradient — direction matters more than intensity here).
 // Both rows share one auto-scaled max (the larger of the two histories'
 // visible-window peaks, floored at 1.0) so they're visually comparable.
-// Glyph table follows G.graph_style_idx, same as draw_spark.
+// Glyph table follows G.graph_style_idx, same as draw_spark. With
+// G.symbol_mirror_idx the lower row uses mirrored glyphs (grows downward).
 void draw_spark_bidir(ncplane* n, int y, int x, int w,
                       const std::deque<double>& top_hist, uint32_t top_color,
                       const std::deque<double>& bot_hist, uint32_t bot_color);

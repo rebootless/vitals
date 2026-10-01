@@ -9,6 +9,7 @@
 //   refresh_ms=1000              (100-60000)
 //   corners=square                (or "rounded")
 //   graph_style=sparkline         (or "braille")
+//   symbol_mirroring=false        (or "true")
 struct Config {
     std::string theme_name  = "Catppuccin Mocha";
     std::string bg_mode     = "transparent"; // "transparent" | "solid"
@@ -16,6 +17,7 @@ struct Config {
     int         refresh_ms  = 1000;          // 100-60000
     std::string corners     = "square";      // "square" | "rounded"
     std::string graph_style = "sparkline";   // "sparkline" | "braille"
+    bool        symbol_mirroring = false;    // experimental
 };
 
 // Reads the config file. Returns defaults (Catppuccin Mocha, transparent) if

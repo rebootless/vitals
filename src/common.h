@@ -38,4 +38,8 @@ inline constexpr int HIST_CAP = 200;
 static const char* BLOCK[] = { " ","▏","▎","▍","▌","▋","▊","▉","█" };
 static const char* SPARK[] = { "▁","▂","▃","▄","▅","▆","▇","█" };
 static const char* SPARK_BRAILLE[] = { "⣀","⣀","⣤","⣤","⣶","⣶","⣿","⣿" };
+// Mirrored (fill from the top of the cell down) — lower row of bidirectional graphs.
+// SPARK_MIRROR uses Unicode "Symbols for Legacy Computing" (U+1FB82..1FB86): font-dependent.
+static const char* SPARK_MIRROR[] = { "▔","🮂","🮃","▀","🮄","🮅","🮆","█" };
+static const char* SPARK_BRAILLE_MIRROR[] = { "⠉","⠉","⠛","⠛","⠿","⠿","⣿","⣿" };
 static const char* BAR_BG  = "•";
