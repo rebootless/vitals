@@ -124,7 +124,8 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 
 </details>
 
-> [!NOTE] Symbol Mirroring is experimental and may render incorrectly depending on your environment.
+> [!NOTE] 
+> Symbol Mirroring is experimental and may render incorrectly depending on your environment.
 > Mirrored glyphs require font and Unicode 13+ `wcwidth` support.
 > Terminal emulators may handle these glyphs differently.
 > The Linux TTY (`TERM=linux`) does not support them.
