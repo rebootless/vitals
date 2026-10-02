@@ -420,6 +420,14 @@ int main(int argc, char** argv) {
                 }
                 disk_rd_rate[ds.device] = rd;
                 disk_wr_rate[ds.device] = wr;
+                // History aggregate: whole disks only. Partitions are already
+                // counted in their parent; dm-/loop/sr/ram/zram are virtual
+                // (same filter as panel_storage).
+                const std::string& d = ds.device;
+                const bool virt = d.rfind("dm-", 0) == 0 || d.rfind("loop", 0) == 0 ||
+                                  d.rfind("sr", 0) == 0   || d.rfind("ram", 0) == 0  ||
+                                  d.rfind("zram", 0) == 0;
+                if (virt || !parent_of(d).empty()) continue;
                 disk_rd_now += rd;
                 disk_wr_now += wr;
             }
