@@ -170,6 +170,11 @@ Checks, without a terminal, that every data source vitals reads (CPU, memory, GP
 - CMake ≥ 3.21
 - Internet access (required to download notcurses during setup)
 
+## 📝 Notes
+
+Linux buffers disk writes in RAM, then flushes them in batches.
+So downloads may show steady Network traffic while Storage stays idle.
+
 ## 📄 License
 
 <p align="center">
