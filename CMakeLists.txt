@@ -38,6 +38,8 @@ set(SOURCES
     src/panel_thermal.cpp
     src/panel_gpu.cpp
     src/panel_settings.cpp
+    src/layout.cpp
+    src/render.cpp
     src/selftest.cpp
     src/selftest_checks.cpp
     src/selftest_fixtures.cpp

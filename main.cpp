@@ -1,4 +1,4 @@
-#include "panels.h"
+#include "render.h"
 #include "theme.h"
 #include "config.h"
 #include "selftest.h"
@@ -32,113 +32,6 @@ static int refresh_step_index() {
         if (diff < best_diff) { best = i; best_diff = diff; }
     }
     return best;
-}
-
-// Layout
-static void render(notcurses* nc, ncplane* n,
-                   const cpustat&                cur_cpu,
-                   double                        cpu_pct,
-                   const std::vector<netdev>&    cur_net,
-                   const std::vector<diskstats>& cur_disk,
-                   const std::vector<thermal>&   therm,
-                   const std::vector<cpufreq>&   freqs,
-                   const std::vector<double>&    core_pcts,
-                   const std::vector<HwmonChip>& hwmon,
-                   const std::vector<GpuInfo>&   gpus,
-                   const std::map<std::string, double>& net_rx_rate,
-                   const std::map<std::string, double>& net_tx_rate,
-                   const std::map<std::string, double>& disk_rd_rate,
-                   const std::map<std::string, double>& disk_wr_rate) {
-
-    nc_bg_apply(n);
-    ncplane_erase(n);
-
-    unsigned rows_u, cols_u;
-    ncplane_dim_yx(n, &rows_u, &cols_u);
-
-    int rows = static_cast<int>(rows_u);
-    int cols = static_cast<int>(cols_u);
-
-    draw_titlebar(n, cols);
-
-    int avail = rows - 1;
-    int top_h = avail * 3 / 5;
-    int bot_h = avail - top_h;
-
-    // GPU sits only under the CPU column, sized to its content (2 border
-    // rows + 2-3 rows — "Model:", a UTIL bar, and a VRAM bar if the driver
-    // reports it, same as panel_gpu.cpp) rather than a fixed proportion of
-    // top_h. If no GPU was found, CPU keeps the full column height and the
-    // panel isn't drawn at all. gpus holds at most one entry — see gpu.h.
-    //
-    // GPU's content budget is satisfied FIRST (up to what it actually
-    // needs), and CPU gets whatever remains down to a legible floor —
-    // the reverse priority silently starved GPU down to border-only (0
-    // content rows) on shorter terminals, which looked like "GPU doesn't
-    // render" even though data was present and correct.
-    auto split_cpu_gpu = [&](int col_h) -> std::pair<int, int> {
-        if (gpus.empty()) return { col_h, 0 };
-        int gpu_rows = (gpus.front().mem_total_mb > 0) ? 3 : 2;
-        int gpu_want = gpu_rows + 2; // + top/bottom border
-
-        const int CPU_MIN = 5; // border(2) + Model + Usage + History, the bare minimum to stay legible
-        int gpu_h = std::min(gpu_want, std::max(0, col_h - CPU_MIN));
-        int cpu_h = col_h - gpu_h;
-        return { cpu_h, gpu_h };
-    };
-
-    if (cols >= 130) {
-        int c1 = cols / 2;
-        int c2 = (cols - c1) / 2;
-        int c3 = cols - c1 - c2;
-
-        int b1 = cols / 2;
-        int b2 = cols - b1;
-
-        auto [cpu_h, gpu_h] = split_cpu_gpu(top_h);
-
-        panel_cpu    (n, 1,        0,     cpu_h, c1,       cur_cpu, cpu_pct, freqs, core_pcts);
-        if (gpu_h > 0)
-            panel_gpu(n, 1+cpu_h,  0,     gpu_h, c1,       gpus);
-        panel_memory (n, 1,        c1,    top_h, c2);
-        panel_thermal(n, 1,        c1+c2, top_h, c3,       therm, hwmon, gpus);
-        panel_network(n, 1+top_h,  0,     bot_h, b1,       cur_net,  net_rx_rate,  net_tx_rate);
-        panel_storage(n, 1+top_h,  b1,    bot_h, b2,       cur_disk, disk_rd_rate, disk_wr_rate);
-
-    } else if (cols >= 80) {
-        int half  = cols / 2;
-        int mid_h = avail * 2 / 5;
-        top_h     = avail * 2 / 5;
-        bot_h     = avail - top_h - mid_h;
-
-        auto [cpu_h, gpu_h] = split_cpu_gpu(top_h);
-
-        panel_cpu    (n, 1,             0,    cpu_h, half,      cur_cpu, cpu_pct, freqs, core_pcts);
-        if (gpu_h > 0)
-            panel_gpu(n, 1+cpu_h,       0,    gpu_h, half,      gpus);
-        panel_memory (n, 1,             half, top_h, cols-half);
-        panel_network(n, 1+top_h,       0,    mid_h, half,      cur_net,  net_rx_rate,  net_tx_rate);
-        panel_storage(n, 1+top_h,       half, mid_h, cols-half, cur_disk, disk_rd_rate, disk_wr_rate);
-        panel_thermal(n, 1+top_h+mid_h, 0,    bot_h, cols,      therm, hwmon, gpus);
-
-    } else {
-        // Narrow: stacked single-column, GPU right after CPU
-        int np = gpus.empty() ? 5 : 6;
-        int ph = avail / np, rem = avail % np;
-
-        int r = 0;
-        panel_cpu    (n, ph*r,   0, ph, cols, cur_cpu, cpu_pct, freqs, core_pcts); r++;
-        if (!gpus.empty()) { panel_gpu(n, ph*r, 0, ph, cols, gpus); r++; }
-        panel_memory (n, ph*r,   0, ph, cols); r++;
-        panel_network(n, ph*r,   0, ph, cols, cur_net,  net_rx_rate,  net_tx_rate); r++;
-        panel_storage(n, ph*r,   0, ph, cols, cur_disk, disk_rd_rate, disk_wr_rate); r++;
-        panel_thermal(n, ph*r,   0, ph+rem, cols, therm, hwmon, gpus);
-    }
-
-    if (G.settings_open)
-        panel_settings(n, rows, cols);
-
-    notcurses_render(nc);
 }
 
 // Main
