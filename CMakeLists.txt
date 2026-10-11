@@ -64,3 +64,14 @@ target_compile_options(vitals PRIVATE
 install(TARGETS vitals
     RUNTIME DESTINATION bin
 )
+
+add_custom_command(TARGET vitals POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/themes $<TARGET_FILE_DIR:vitals>/themes
+    COMMENT "Copying themes next to the binary"
+)
+
+install(DIRECTORY themes/
+    DESTINATION share/vitals/themes
+    FILES_MATCHING PATTERN "*.theme"
+)

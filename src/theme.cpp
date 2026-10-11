@@ -1,60 +1,181 @@
 #include "theme.h"
 #include "state.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <map>
+#include <sstream>
+
 namespace {
 
-const std::vector<Theme>& registry() {
-    static const std::vector<Theme> themes = {
-        { "Catppuccin Mocha",        0x1e1e2e, 0xcdd6f4, 0xa6adc8, 0x45475a, 0x585b70, 0x6c7086, 0x89b4fa, 0xa6e3a1, 0xfab387, 0xf38ba8, 0xcba6f7, 0xf9e2af, 0x94e2d5 },
-        { "Catppuccin Macchiato",    0x24273a, 0xcad3f5, 0xa5adcb, 0x494d64, 0x5b5f7a, 0x6e738d, 0x8aadf4, 0xa6da95, 0xf5a97f, 0xed8796, 0xc6a0f6, 0xeed49f, 0x8bd5ca },
-        { "Catppuccin Frappé",       0x303446, 0xc6d0f5, 0xa3b0d0, 0x51576d, 0x626880, 0x737994, 0x8caaee, 0xa5d6a1, 0xef9f76, 0xe78284, 0xc9a0f6, 0xe5c890, 0x81d8be },
-        { "Catppuccin Latte",        0xeff1f5, 0x4c4f69, 0x5c5f77, 0xdce0e8, 0xcdd6f4, 0xbcc3e0, 0x1e66f5, 0x40a02b, 0xfe640b, 0xe64553, 0x8839ef, 0xdf8e1d, 0x179299 },
+namespace fs = std::filesystem;
 
-        { "Nord",                    0x2e3440, 0xd8dee9, 0xaab0bf, 0x434c5e, 0x4c566a, 0x5e6779, 0x81a1c1, 0xa3be8c, 0xd08770, 0xbf616a, 0xb48ead, 0xebcb8b, 0x88c0d0 },
-        { "Dracula",                 0x282a36, 0xf8f8f2, 0xb0b3c6, 0x44475a, 0x565973, 0x6272a4, 0x8be9fd, 0x50fa7b, 0xffb86c, 0xff5555, 0xbd93f9, 0xf1fa8c, 0x8be9fd },
-        { "Gruvbox Dark",            0x282828, 0xebdbb2, 0xa89984, 0x504945, 0x665c54, 0x7c6f64, 0x83a598, 0xb8bb26, 0xfe8019, 0xfb4934, 0xd3869b, 0xfabd2f, 0x8ec07c },
-        { "Gruvbox Light",           0xfbf1c7, 0x282828, 0x665c54, 0xe0cfa8, 0xd5c4a1, 0xc9b89f, 0x458588, 0x98971a, 0xd65d0e, 0xcc241d, 0xb16286, 0xd79921, 0x689d6a },
-
-        { "Everforest Dark",         0x2d353b, 0xd3c6aa, 0x859289, 0x475258, 0x56635f, 0x6a746e, 0x7fbbb3, 0xa7c080, 0xe69875, 0xe67e80, 0xd699b6, 0xdbbc7f, 0x83c092 },
-        { "Everforest Light",        0xf3efeb, 0x5c6a5e, 0x7a8779, 0xe6e2d8, 0xd8d3c8, 0xc9c4b8, 0x3a94a5, 0x6b9f5e, 0xe68c4d, 0xe46876, 0xa46db8, 0xd9a23d, 0x4d9b8f },
-
-        { "Rosé Pine",               0x191724, 0xe0def4, 0x908caa, 0x26233a, 0x403d52, 0x524f67, 0x9ccfd8, 0x31748f, 0xebbcba, 0xeb6f92, 0xc4a7e7, 0xf6c177, 0x9ccfd8 },
-        { "Rosé Pine Moon",          0x232136, 0xe0def4, 0x908caa, 0x2a273f, 0x393552, 0x4f4b6a, 0x9ccfd8, 0x3e8fb0, 0xebbcba, 0xeb6f92, 0xc4a7e7, 0xf6c177, 0x9ccfd8 },
-        { "Rosé Pine Dawn",          0xfaf4ed, 0x575279, 0x6e6a86, 0xe0d8d0, 0xd9d0c8, 0xc9c0b8, 0x56949f, 0x286983, 0xd78270, 0xb4637a, 0x907aa9, 0xa2735c, 0x56949f },
-
-        { "Tokyo Night",             0x1a1b26, 0xc0caf5, 0x9aa5ce, 0x2f3549, 0x414868, 0x565f89, 0x7aa2f7, 0x9ece6a, 0xff9e64, 0xf7768e, 0xbb9af7, 0xe0af68, 0x73daca },
-        { "Tokyo Storm",             0x24283b, 0xc0caf5, 0x9aa5ce, 0x3b4261, 0x565f89, 0x6c7399, 0x7aa2f7, 0x9ece6a, 0xff9e64, 0xf7768e, 0xbb9af7, 0xe0af68, 0x73daca },
-        { "Tokyo Moon",              0x1d202f, 0xc0caf5, 0x9aa5ce, 0x2f3549, 0x414868, 0x565f89, 0x7aa2f7, 0x9ece6a, 0xff9e64, 0xf7768e, 0xbb9af7, 0xe0af68, 0x73daca },
-        { "Tokyo Day",               0xe1e2e7, 0x2a2f3a, 0x545a6f, 0xd5d6db, 0xc8c9ce, 0xb9bac0, 0x34548a, 0x3e8f4a, 0xe07a5f, 0xe05f5f, 0x8c5cf2, 0xb38f2d, 0x3e9a9b },
-
-        { "Kanagawa Wave",           0x1f1f28, 0xdcd7ba, 0x727169, 0x2a2a37, 0x363646, 0x54546d, 0x7e9cd8, 0x98bb6c, 0xffa066, 0xe46876, 0x957fb8, 0xe6c384, 0x7fb4ca },
-        { "Kanagawa Dragon",         0x181616, 0xc8c093, 0xa6a69c, 0x282727, 0x393836, 0x4c4b49, 0x6a9fb5, 0x8a9a5b, 0xe89d5e, 0xc4746e, 0xa292a3, 0xc4b28a, 0x6d9c8f },
-        { "Kanagawa Lotus",          0xf2e9de, 0x545464, 0x43434f, 0xe5d9c0, 0xd9cdb8, 0xc8c093, 0x4d699b, 0x6f8243, 0xb07d4f, 0xc8403d, 0x7a5ea3, 0xa37e4e, 0x4d7b7b },
-
-        { "Solarized Dark",          0x002b36, 0x839496, 0x586e75, 0x073642, 0x586e75, 0x657b83, 0x268bd2, 0x859900, 0xcb4b16, 0xdc322f, 0xd33682, 0xb58900, 0x2aa198 },
-        { "Solarized Light",         0xfdf6e3, 0x657b83, 0x839496, 0xeee8d5, 0x93a1a1, 0x839496, 0x268bd2, 0x859900, 0xcb4b16, 0xdc322f, 0xd33682, 0xb58900, 0x2aa198 },
-
-        { "One Dark",                0x282c34, 0xabb2bf, 0x5c6370, 0x3e4451, 0x4b5263, 0x5c6370, 0x61afef, 0x98c379, 0xd19a66, 0xe06c75, 0xc678dd, 0xe5c07b, 0x56b6c2 },
-        { "One Light",               0xfafafa, 0x383a42, 0x696c77, 0xe5e5e6, 0xdcdfe4, 0xc2c2c3, 0x4284f5, 0x4ca24f, 0xe09d3c, 0xe45649, 0xa76cff, 0xe5a02d, 0x2aa1b3 },
-
-        { "Ayu Dark",                0x0f1419, 0xe6e1cf, 0xb8c4d0, 0x1f2430, 0x2a2f3a, 0x3d4752, 0x36a3d9, 0xb8cc52, 0xffb454, 0xff3333, 0xa37acc, 0xe6b673, 0x95e6cb },
-        { "Ayu Mirage",              0x1f2430, 0xcbccc6, 0x9ca0a4, 0x2a2f3a, 0x3d4752, 0x5c6773, 0x36a3d9, 0xb8cc52, 0xffb454, 0xff3333, 0xa37acc, 0xe6b673, 0x95e6cb },
-        { "Ayu Light",               0xfafafa, 0x5c6773, 0x828b98, 0xe6e6e6, 0xd9d9d9, 0xc2c2c2, 0x3e9cd2, 0x8cc65f, 0xf4a261, 0xf07171, 0xa37acc, 0xe6b673, 0x4dbf99 },
-
-        { "Horizon Dark",            0x16161c, 0xd5d0c8, 0xa8a6b0, 0x2a2a36, 0x3a3a4a, 0x4b4b5e, 0x7bb3ff, 0x9be39f, 0xffb68f, 0xff6b6b, 0xd68eff, 0xffe68f, 0x7ed6ff },
-        { "Horizon Light",           0xfaf4ed, 0x4d4d4d, 0x6b6b6b, 0xe8e3d8, 0xd8d3c8, 0xc8c3b8, 0x4d7cd6, 0x5e9b5e, 0xe07a5f, 0xd14d4d, 0x9e64c7, 0xc18a3e, 0x2d9e9e },
-
-        { "Monokai",                 0x272822, 0xf8f8f2, 0x75715e, 0x3e3d32, 0x49483e, 0x57564f, 0x66d9ef, 0xa6e22e, 0xfd971f, 0xf92672, 0xae81ff, 0xe6db74, 0x66d9ef },
-
-        { "Tomorrow Night",          0x1d1f21, 0xc5c8c6, 0x969896, 0x373b41, 0x4a4d52, 0x5e6268, 0x81a2be, 0xb5bd68, 0xe78c45, 0xcc6666, 0xb294bb, 0xf0c674, 0x8abeb7 },
-        { "Tomorrow Night Blue",     0x002451, 0xffffff, 0xb0b0b0, 0x003f8e, 0x0050b3, 0x0066ff, 0x5c9eff, 0x7dcfff, 0xffa500, 0xff5c5c, 0xd38cff, 0xffd700, 0x7dcfff },
-        { "Tomorrow Night Bright",   0x1d1f21, 0xe0e0e0, 0xa0a0a0, 0x2c2e34, 0x3a3d45, 0x4f535b, 0x7ca8ff, 0xb9ca4a, 0xe8a45e, 0xe05f5f, 0xc678dd, 0xf0c674, 0x8abeb7 },
-        { "Tomorrow Night Eighties", 0x2d2d2d, 0xd3d0c8, 0x999999, 0x393939, 0x515151, 0x666666, 0x66ccff, 0x99cc99, 0xffcc66, 0xf2777a, 0xcc99cc, 0xffcc66, 0x66cccc },
-        { "Tomorrow Day",            0xffffff, 0x4d4d4c, 0x8e908c, 0xe0e0e0, 0xd0d0d0, 0xb0b0b0, 0x4271ae, 0x718c00, 0xeab700, 0xc82829, 0x8959a8, 0xe9b23d, 0x3e999f },
-
-        { "Oxocarbon Dark",          0x161616, 0xf2f2f2, 0xb4b4b4, 0x262626, 0x393939, 0x525252, 0x78a9ff, 0x42be65, 0xffb86c, 0xff7eb6, 0xbe95ff, 0xf1c21b, 0x3ddbd9 },
-        { "Oxocarbon Light",         0xf4f4f4, 0x161616, 0x525252, 0xe0e0e0, 0xd0d0d0, 0xb0b0b0, 0x0072c3, 0x198038, 0xfa6800, 0xda1e28, 0x8a3ffc, 0xb28600, 0x009d9a },
+const Theme& builtin_theme() {
+    static const Theme t = {
+        "Default",
+        0x000000,
+        0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff,
+        0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff,
     };
+    return t;
+}
+
+struct Role {
+    const char*    key;
+    uint32_t Theme::* field;
+};
+
+const Role ROLES[] = {
+    { "BG",        &Theme::BG        },
+    { "FG",        &Theme::FG        },
+    { "FG_DIM",    &Theme::FG_DIM    },
+    { "BAR_EMPTY", &Theme::BAR_EMPTY },
+    { "BORDER",    &Theme::BORDER    },
+    { "MUTED",     &Theme::MUTED     },
+    { "LABEL",     &Theme::LABEL     },
+    { "LOW",       &Theme::LOW       },
+    { "DATA_A",    &Theme::DATA_A    },
+    { "HIGH",      &Theme::HIGH      },
+    { "TITLE",     &Theme::TITLE     },
+    { "MID",       &Theme::MID       },
+    { "DATA_B",    &Theme::DATA_B    },
+};
+
+std::string trim(const std::string& s) {
+    size_t start = s.find_first_not_of(" \t\r\n");
+    size_t end   = s.find_last_not_of(" \t\r\n");
+    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+}
+
+std::string lower(std::string s) {
+    for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
+bool parse_hex(const std::string& h, uint32_t& out) {
+    if (h.empty()) return false;
+    for (char c : h)
+        if (!std::isxdigit(static_cast<unsigned char>(c))) return false;
+    out = static_cast<uint32_t>(std::stoul(h, nullptr, 16));
+    return true;
+}
+
+// Accepts "#RRGGBB", "#RR" (grey, same as btop) or "R G B" with 0-255 each.
+bool parse_color(const std::string& text, uint32_t& out) {
+    std::string s = trim(text);
+    if (s.empty()) return false;
+
+    if (s[0] == '#') {
+        std::string h = s.substr(1);
+        uint32_t v = 0;
+        if (h.size() == 6 && parse_hex(h, v)) { out = v; return true; }
+        if (h.size() == 2 && parse_hex(h, v)) { out = (v << 16) | (v << 8) | v; return true; }
+        return false;
+    }
+
+    std::istringstream is(s);
+    int r, g, b;
+    std::string extra;
+    if (!(is >> r >> g >> b) || (is >> extra)) return false;
+    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) return false;
+    out = (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b);
+    return true;
+}
+
+bool load_theme_file(const fs::path& path, Theme& out) {
+    std::ifstream f(path);
+    if (!f) return false;
+
+    Theme t = builtin_theme();
+    t.name = path.stem().string();
+
+    std::string line;
+    while (std::getline(f, line)) {
+        line = trim(line);
+        if (line.rfind("theme[", 0) != 0) continue;
+
+        size_t close = line.find(']');
+        if (close == std::string::npos) continue;
+        size_t eq = line.find('=', close);
+        if (eq == std::string::npos) continue;
+
+        std::string key = trim(line.substr(6, close - 6));
+        std::string val = trim(line.substr(eq + 1));
+        if (!val.empty() && val[0] == '"') {
+            size_t q = val.find('"', 1);
+            val = (q == std::string::npos) ? val.substr(1) : val.substr(1, q - 1);
+        }
+
+        if (key == "NAME") {
+            if (!trim(val).empty()) t.name = trim(val);
+            continue;
+        }
+        for (const Role& r : ROLES) {
+            if (key != r.key) continue;
+            uint32_t c = 0;
+            if (parse_color(val, c)) t.*(r.field) = c;
+            break;
+        }
+    }
+
+    out = std::move(t);
+    return true;
+}
+
+// lowest priority first: a same-named theme in a later directory wins
+std::vector<fs::path> theme_dirs() {
+    std::vector<fs::path> dirs;
+    dirs.emplace_back("/usr/share/vitals/themes");
+    dirs.emplace_back("/usr/local/share/vitals/themes");
+
+    std::error_code ec;
+    fs::path exe = fs::read_symlink("/proc/self/exe", ec);
+    if (!ec) {
+        dirs.push_back(exe.parent_path().parent_path() / "share/vitals/themes");
+        dirs.push_back(exe.parent_path() / "themes");
+    }
+
+    const char* home = std::getenv("HOME");
+    if (home && *home) dirs.push_back(fs::path(home) / ".config/vitals/themes");
+    return dirs;
+}
+
+const std::vector<Theme>& registry() {
+    static const std::vector<Theme> themes = [] {
+        std::map<std::string, Theme> by_file;
+
+        for (const fs::path& dir : theme_dirs()) {
+            std::error_code ec;
+            fs::directory_iterator it(dir, ec), end;
+            if (ec) continue;
+            for (; it != end; it.increment(ec)) {
+                if (ec) break;
+                const fs::path& p = it->path();
+                if (p.extension() != ".theme") continue;
+                std::error_code fec;
+                if (!fs::is_regular_file(p, fec)) continue;
+
+                Theme t;
+                if (load_theme_file(p, t)) by_file[lower(p.stem().string())] = std::move(t);
+            }
+        }
+
+        std::vector<Theme> files;
+        files.reserve(by_file.size());
+        for (auto& kv : by_file) files.push_back(std::move(kv.second));
+        std::sort(files.begin(), files.end(), [](const Theme& a, const Theme& b) {
+            return lower(a.name) < lower(b.name);
+        });
+
+        std::vector<Theme> all;
+        all.reserve(files.size() + 1);
+        all.push_back(builtin_theme());
+        for (Theme& t : files) all.push_back(std::move(t));
+        return all;
+    }();
     return themes;
 }
 
