@@ -31,7 +31,7 @@ draw_box(ncplane* n, int y, int x, int h, int w,
     if (G.tty_active) return draw_box_tty(n, y, x, h, w, title, bl_label);
     if (h < 2 || w < 2) return {y, x, 0, 0};
 
-    nc_set(n, theme().SURFACE2);
+    nc_set(n, theme().BORDER);
 
     const bool rounded = (G.corners_idx == 1);
     const char* tl = rounded ? "╭" : "┌";
@@ -40,34 +40,34 @@ draw_box(ncplane* n, int y, int x, int h, int w,
     const char* br = rounded ? "╯" : "┘";
 
     ncplane_putstr_yx(n, y, x, tl);
-    hline(n, y, x + 1, w - 2, "─", theme().SURFACE2);
+    hline(n, y, x + 1, w - 2, "─", theme().BORDER);
     ncplane_putstr_yx(n, y, x + w - 1, tr);
 
     for (int i = 1; i < h - 1; ++i) {
-        nc_set(n, theme().SURFACE2);
+        nc_set(n, theme().BORDER);
         ncplane_putstr_yx(n, y + i, x, "│");
         ncplane_putstr_yx(n, y + i, x + w - 1, "│");
 
-        nc_set(n, theme().BASE);
+        nc_set(n, theme().BG);
         for (int j = x + 1; j < x + w - 1; ++j)
             ncplane_putstr_yx(n, y + i, j, " ");
     }
 
-    nc_set(n, theme().SURFACE2);
+    nc_set(n, theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x, bl);
-    hline(n, y + h - 1, x + 1, w - 2, "─", theme().SURFACE2);
+    hline(n, y + h - 1, x + 1, w - 2, "─", theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x + w - 1, br);
 
     if (!title.empty() && w > 4) {
         std::string t = " " + str_trunc(title, w - 4) + " ";
-        nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+        nc_set(n, theme().TITLE, NCSTYLE_BOLD);
         ncplane_putstr_yx(n, y, x + 2, t.c_str());
     }
 
     if (!bl_label.empty() && w > 4) {
         std::string t = " " + str_trunc(bl_label, w - 4) + " ";
-        hline(n, y + h - 1, x + 1, static_cast<int>(t.size()) + 1, "─", theme().SURFACE2);
-        nc_set(n, theme().BLUE);
+        hline(n, y + h - 1, x + 1, static_cast<int>(t.size()) + 1, "─", theme().BORDER);
+        nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, y + h - 1, x + 2, t.c_str());
     }
 
@@ -75,16 +75,16 @@ draw_box(ncplane* n, int y, int x, int h, int w,
 }
 
 void draw_sep(ncplane* n, int y, int x, int w) {
-    hline(n, y, x, w, "-", theme().OVERLAY0);
+    hline(n, y, x, w, "-", theme().MUTED);
 }
 
 void lbr(ncplane* n, int y, int x) {
-    nc_set(n, theme().OVERLAY0);
+    nc_set(n, theme().MUTED);
     ncplane_putstr_yx(n, y, x, "[");
 }
 
 void rbr(ncplane* n, int y, int x) {
-    nc_set(n, theme().OVERLAY0);
+    nc_set(n, theme().MUTED);
     ncplane_putstr_yx(n, y, x, "]");
 }
 
@@ -109,7 +109,7 @@ void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
             nc_set(n, col, NCSTYLE_BOLD);
             ncplane_putstr_yx(n, y, x + i, BLOCK[frac]);
         } else {
-            nc_set(n, theme().SURFACE1);
+            nc_set(n, theme().BAR_EMPTY);
             ncplane_putstr_yx(n, y, x + i, BAR_BG);
         }
     }
@@ -167,7 +167,7 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
             nc_set(n, color, style);
             ncplane_putstr_yx(n, row, col, glyphs[std::max(0, std::min(7, idx))]);
         }
-        nc_set(n, theme().SURFACE1);
+        nc_set(n, theme().BAR_EMPTY);
         for (int col = x + drawn; col < x + w; ++col)
             ncplane_putstr_yx(n, row, col, BAR_BG);
     };
@@ -184,19 +184,19 @@ void draw_titlebar(ncplane* n, int cols) {
     const char* banner = G.tty_active
         ? " Vitals - Resource Monitor"
         : " Vitals \xe2\x80\x94 Resource Monitor";
-    nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+    nc_set(n, theme().TITLE, NCSTYLE_BOLD);
     ncplane_putstr_yx(n, 0, col, banner);
     col += static_cast<int>(strlen(banner));
 
     auto kv = [&](const char* key, const std::string& val,
-                  uint32_t val_color = theme().TEXT) {
+                  uint32_t val_color = theme().FG) {
         int need = 4 + static_cast<int>(strlen(key) + val.size());
         if (col + need >= cols) return;
 
-        nc_set(n, theme().OVERLAY0);
+        nc_set(n, theme().MUTED);
         ncplane_putstr_yx(n, 0, col, " ["); col += 2;
 
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, 0, col, key);
         col += static_cast<int>(strlen(key));
 
@@ -204,17 +204,17 @@ void draw_titlebar(ncplane* n, int cols) {
         ncplane_putstr_yx(n, 0, col, val.c_str());
         col += static_cast<int>(val.size());
 
-        nc_set(n, theme().OVERLAY0);
+        nc_set(n, theme().MUTED);
         ncplane_putstr_yx(n, 0, col, "]"); col++;
     };
 
     char lbuf[32];
     snprintf(lbuf, sizeof(lbuf), "%.2f %.2f %.2f", la.load1, la.load5, la.load15);
 
-    kv("hostname: ", G.un.hostname,                theme().TEAL);
-    kv("IP: ",       G.local_ip,                   theme().TEAL);
+    kv("hostname: ", G.un.hostname,                theme().DATA_B);
+    kv("IP: ",       G.local_ip,                   theme().DATA_B);
     kv("kernel: ",   G.un.kernel_release);
     kv("AVG load: ", lbuf);
-    kv("uptime: ",   fmt_uptime(up.uptime_seconds), theme().GREEN);
+    kv("uptime: ",   fmt_uptime(up.uptime_seconds), theme().LOW);
     kv("time: ",     fmt_time());
 }

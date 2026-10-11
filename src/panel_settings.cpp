@@ -32,14 +32,14 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
     auto draw_group_header = [&](int r, int group_idx, const char* title) {
         bool focused = (G.settings_focus == group_idx);
-        nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+        nc_set(n, theme().LABEL, NCSTYLE_BOLD);
         std::string hdr = std::string(focused ? "> " : "  ") + title;
         ncplane_putstr_yx(n, r, right_x, hdr.c_str());
     };
 
     {
         bool focused = (G.settings_focus == 0);
-        nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+        nc_set(n, theme().LABEL, NCSTYLE_BOLD);
         std::string hdr = std::string(focused ? "> " : "  ") + "Theme";
         ncplane_putstr_yx(n, iy, ix, hdr.c_str());
     }
@@ -50,7 +50,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
         bool selected = (static_cast<int>(i) == G.theme_idx);
 
-        uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+        uint32_t col = selected ? theme().LOW : theme().FG_DIM;
         nc_set(n, col, NCSTYLE_NONE);
 
         std::string label = (selected ? "> " : "  ") +
@@ -67,7 +67,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
         for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
             bool selected = (i == G.bg_idx);
 
-            uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+            uint32_t col = selected ? theme().LOW : theme().FG_DIM;
             nc_set(n, col, NCSTYLE_NONE);
 
             std::string label = std::string(selected ? "> " : "  ") + BG_MODE_NAMES[i];
@@ -83,7 +83,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             for (int i = 0; i < 3 && r < iy + ih; ++i, ++r) {
                 bool selected = (static_cast<int>(G.tty_force) == i);
 
-                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
                 nc_set(n, col, NCSTYLE_NONE);
 
                 std::string label = std::string(selected ? "> " : "  ") + TTY_MODE_NAMES[i];
@@ -100,7 +100,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
                 bool selected = (i == G.corners_idx);
 
-                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
                 nc_set(n, col, NCSTYLE_NONE);
 
                 std::string label = std::string(selected ? "> " : "  ") + CORNER_MODE_NAMES[i];
@@ -117,7 +117,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
                 bool selected = (i == G.graph_style_idx);
 
-                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
                 nc_set(n, col, NCSTYLE_NONE);
 
                 std::string label = std::string(selected ? "> " : "  ") + GRAPH_STYLE_NAMES[i];
@@ -130,7 +130,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
         if (r < iy + ih) {
             draw_group_header(r, 5, "Graph Symbol Mirroring");
             if (r + 1 < iy + ih) {
-                nc_set(n, theme().OVERLAY0, NCSTYLE_NONE);
+                nc_set(n, theme().MUTED, NCSTYLE_NONE);
                 ncplane_putstr_yx(n, r + 1, right_x + 2, "(Experimental)");
             }
             r += 2;
@@ -138,7 +138,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
                 bool selected = (i == G.symbol_mirror_idx);
 
-                uint32_t col = selected ? theme().GREEN : theme().SUBTEXT0;
+                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
                 nc_set(n, col, NCSTYLE_NONE);
 
                 std::string label = std::string(selected ? "> " : "  ") + MIRROR_NAMES[i];
@@ -151,11 +151,11 @@ void panel_settings(ncplane* n, int rows, int cols) {
     if (frow >= iy) {
         bool focused = (G.settings_focus == 6);
 
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";
         ncplane_putstr_yx(n, frow, ix, lead.c_str());
 
-        nc_set(n, focused ? theme().GREEN : theme().TEXT, NCSTYLE_NONE);
+        nc_set(n, focused ? theme().LOW : theme().FG, NCSTYLE_NONE);
         std::string val = std::to_string(G.refresh_ms) + "ms";
         ncplane_putstr_yx(n, frow, ix + static_cast<int>(lead.size()), val.c_str());
     }

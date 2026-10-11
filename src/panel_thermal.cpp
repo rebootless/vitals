@@ -63,15 +63,15 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         double use_crit = row_crit >= 0 ? row_crit : crit_limit;
 
         double shown = std::min(99.0, std::max(0.0, temp));
-        uint32_t tc  = (temp >= use_crit) ? theme().RED
-                     : (temp >= use_hi)   ? theme().YELLOW
-                                            : theme().GREEN;
+        uint32_t tc  = (temp >= use_crit) ? theme().HIGH
+                     : (temp >= use_hi)   ? theme().MID
+                                            : theme().LOW;
 
         char lbl[64];
         snprintf(lbl, sizeof(lbl), "%s:",
                  str_trunc(label, LBL_W - 1).c_str());
         (void)featured;
-        nc_set(n, theme().BLUE, NCSTYLE_NONE);
+        nc_set(n, theme().LABEL, NCSTYLE_NONE);
         ncplane_putstr_yx(n, r, ix, lbl);
 
         int tx = ix + LBL_W + 1;
@@ -158,7 +158,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     for (auto& item : zone_items) push_group(groups, item.label, {item});
 
     if (groups.empty()) {
-        nc_set(n, theme().SURFACE2);
+        nc_set(n, theme().BORDER);
         ncplane_putstr_yx(n, row, ix, "No thermal data found");
         return;
     }
@@ -178,14 +178,14 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                 if (cpu_header_temp >= 0)
                     draw_temp_row(row, "CPU", cpu_header_temp, false, -1.0, -1.0);
                 else {
-                    nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                    nc_set(n, theme().TITLE, NCSTYLE_BOLD);
                     ncplane_putstr_yx(n, row, ix, g.name.c_str());
                 }
             } else if (g.name == "Storage") {
-                nc_set(n, theme().BLUE, NCSTYLE_BOLD);
+                nc_set(n, theme().LABEL, NCSTYLE_BOLD);
                 ncplane_putstr_yx(n, row, ix, g.name.c_str());
             } else {
-                nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+                nc_set(n, theme().TITLE, NCSTYLE_BOLD);
                 ncplane_putstr_yx(n, row, ix, g.name.c_str());
             }
             row++;
@@ -215,13 +215,13 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
              std::min(99.0, std::max(0.0, crit_limit)), deg_suffix());
 
     int cx = ix;
-    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
-    nc_set(n, theme().BLUE);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
-    nc_set(n, theme().PEACH, NCSTYLE_BOLD);
+    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
+    nc_set(n, theme().LABEL);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
+    nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
                               ncplane_putstr_yx(n, frow, cx, hibuf); cx += 7;
-    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
-    nc_set(n, theme().BLUE);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
-    nc_set(n, theme().RED, NCSTYLE_BOLD);
+    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
+    nc_set(n, theme().LABEL);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
+    nc_set(n, theme().HIGH, NCSTYLE_BOLD);
                               ncplane_putstr_yx(n, frow, cx, cbuf);  cx += 7;
-    nc_set(n, theme().OVERLAY0); ncplane_putstr_yx(n, frow, cx, ")");
+    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, ")");
 }

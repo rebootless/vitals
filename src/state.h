@@ -49,7 +49,7 @@ struct AppState {
     std::vector<GpuInfo>   gpus;
 
     int  theme_idx = 0;
-    int  bg_idx    = 0;
+    int  bg_idx    = 0;   // 0 = transparent (terminal default), 1 = theme's own BG color
 
     TtyForce tty_force  = TtyForce::Auto;
     bool     tty_active = false;

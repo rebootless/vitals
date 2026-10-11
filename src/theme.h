@@ -7,20 +7,20 @@
 struct Theme {
     std::string name;
 
-    uint32_t BASE;
+    uint32_t BG;
 
-    uint32_t TEXT;
-    uint32_t SUBTEXT0;
-    uint32_t SURFACE1;
-    uint32_t SURFACE2;
-    uint32_t OVERLAY0;
-    uint32_t BLUE;
-    uint32_t GREEN;
-    uint32_t PEACH;
-    uint32_t RED;
-    uint32_t MAUVE;     // titles / CPU freq
-    uint32_t YELLOW;
-    uint32_t TEAL;
+    uint32_t FG;
+    uint32_t FG_DIM;
+    uint32_t BAR_EMPTY;
+    uint32_t BORDER;
+    uint32_t MUTED;
+    uint32_t LABEL;
+    uint32_t LOW;
+    uint32_t DATA_A;     // RX / write / warm (temperature mid)
+    uint32_t HIGH;
+    uint32_t TITLE;      // titles / CPU freq
+    uint32_t MID;
+    uint32_t DATA_B;     // TX / read / cached
 };
 
 const std::vector<Theme>& all_themes();

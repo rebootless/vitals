@@ -10,7 +10,7 @@ inline void nc_bg_apply(ncplane* n) {
     uint64_t channels = 0;
 
     if (!G.tty_active && G.bg_idx == 1) {
-        uint32_t rgb = theme().BASE;
+        uint32_t rgb = theme().BG;
 
         ncchannels_set_fg_default(&channels);
 
@@ -62,25 +62,25 @@ inline uint32_t grad_color(GradType gt, double pos) {
     switch (gt) {
         case GRAD_CPU:
         case GRAD_HIST:
-            if (pos < 0.5) return lerp_rgb(t.GREEN,  t.YELLOW, pos * 2.0);
-            else           return lerp_rgb(t.YELLOW, t.RED,    (pos - 0.5) * 2.0);
+            if (pos < 0.5) return lerp_rgb(t.LOW,  t.MID, pos * 2.0);
+            else           return lerp_rgb(t.MID, t.HIGH,    (pos - 0.5) * 2.0);
 
         case GRAD_MEM:
-            return lerp_rgb(t.BLUE, t.MAUVE, pos);
+            return lerp_rgb(t.LABEL, t.TITLE, pos);
 
         case GRAD_TEMP:
-            if (pos < 0.5) return lerp_rgb(t.YELLOW, t.PEACH, pos * 2.0);
-            else           return lerp_rgb(t.PEACH,  t.RED,   (pos - 0.5) * 2.0);
+            if (pos < 0.5) return lerp_rgb(t.MID, t.DATA_A, pos * 2.0);
+            else           return lerp_rgb(t.DATA_A,  t.HIGH,   (pos - 0.5) * 2.0);
 
         case GRAD_STORAGE:
-            return lerp_rgb(t.TEAL, t.BLUE, pos);
+            return lerp_rgb(t.DATA_B, t.LABEL, pos);
     }
-    return t.GREEN;
+    return t.LOW;
 }
 
 inline uint32_t pct_color(double pct) {
     const Theme& t = theme();
-    if (pct >= 85.0) return t.RED;
-    if (pct >= 60.0) return t.YELLOW;
-    return t.GREEN;
+    if (pct >= 85.0) return t.HIGH;
+    if (pct >= 60.0) return t.MID;
+    return t.LOW;
 }

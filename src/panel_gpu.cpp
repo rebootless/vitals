@@ -7,7 +7,7 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
     if (ih <= 0 || iw <= 0) return;
 
     if (gpus.empty()) {
-        nc_set(n, theme().SURFACE2);
+        nc_set(n, theme().BORDER);
         ncplane_putstr_yx(n, iy, ix, str_trunc("No GPU found", iw).c_str());
         return;
     }
@@ -19,7 +19,7 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
 
     auto stat_bar = [&](int row, const char* label, double val,
                         uint32_t val_color, GradType gt) {
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, label);
 
         int bx = ix + LBL;
@@ -28,7 +28,7 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
             nc_set(n, val_color, NCSTYLE_BOLD);
             ncplane_printf_yx(n, row, bx + 1, "%3.0f%%", val);
         } else {
-            nc_set(n, theme().SURFACE2);
+            nc_set(n, theme().BORDER);
             ncplane_printf_yx(n, row, bx + 1, "%4s", "n/a");
         }
         rbr(n, row, bx + BRACKET_W - 1);
@@ -41,9 +41,9 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
 
     int row = iy;
 
-    nc_set(n, theme().BLUE);
+    nc_set(n, theme().LABEL);
     ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
-    nc_set(n, theme().TEXT);
+    nc_set(n, theme().FG);
     ncplane_putstr_yx(n, row, ix + LBL,
                       str_trunc(g.name, iw - LBL).c_str());
     row++;
@@ -55,6 +55,6 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
 
     if (g.mem_total_mb > 0 && row < iy + ih) {
         double mpct = 100.0 * g.mem_used_mb / g.mem_total_mb;
-        stat_bar(row, "VRAM:", mpct, theme().MAUVE, GRAD_MEM);
+        stat_bar(row, "VRAM:", mpct, theme().TITLE, GRAD_MEM);
     }
 }

@@ -19,36 +19,36 @@ draw_box_tty(ncplane* n, int y, int x, int h, int w,
             const std::string& title, const std::string& bl_label) {
     if (h < 2 || w < 2) return {y, x, 0, 0};
 
-    nc_set(n, theme().SURFACE2);
+    nc_set(n, theme().BORDER);
     ncplane_putstr_yx(n, y, x, "+");
-    hline_tty(n, y, x + 1, w - 2, '-', theme().SURFACE2);
+    hline_tty(n, y, x + 1, w - 2, '-', theme().BORDER);
     ncplane_putstr_yx(n, y, x + w - 1, "+");
 
     for (int i = 1; i < h - 1; ++i) {
-        nc_set(n, theme().SURFACE2);
+        nc_set(n, theme().BORDER);
         ncplane_putstr_yx(n, y + i, x, "|");
         ncplane_putstr_yx(n, y + i, x + w - 1, "|");
 
-        nc_set(n, theme().BASE);
+        nc_set(n, theme().BG);
         for (int j = x + 1; j < x + w - 1; ++j)
             ncplane_putstr_yx(n, y + i, j, " ");
     }
 
-    nc_set(n, theme().SURFACE2);
+    nc_set(n, theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x, "+");
-    hline_tty(n, y + h - 1, x + 1, w - 2, '-', theme().SURFACE2);
+    hline_tty(n, y + h - 1, x + 1, w - 2, '-', theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x + w - 1, "+");
 
     if (!title.empty() && w > 4) {
         std::string t = " " + str_trunc(title, w - 4) + " ";
-        nc_set(n, theme().MAUVE, NCSTYLE_BOLD);
+        nc_set(n, theme().TITLE, NCSTYLE_BOLD);
         ncplane_putstr_yx(n, y, x + 2, t.c_str());
     }
 
     if (!bl_label.empty() && w > 4) {
         std::string t = " " + str_trunc(bl_label, w - 4) + " ";
-        hline_tty(n, y + h - 1, x + 1, static_cast<int>(t.size()) + 1, '-', theme().SURFACE2);
-        nc_set(n, theme().BLUE);
+        hline_tty(n, y + h - 1, x + 1, static_cast<int>(t.size()) + 1, '-', theme().BORDER);
+        nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, y + h - 1, x + 2, t.c_str());
     }
 
@@ -68,7 +68,7 @@ void draw_bar_tty(ncplane* n, int y, int x, int w, double fill, GradType gt) {
         ncplane_putstr_yx(n, y, x, filled.c_str());
     }
     if (full < w) {
-        nc_set(n, theme().SURFACE1);
+        nc_set(n, theme().BAR_EMPTY);
         std::string empty(static_cast<size_t>(w - full), '.');
         ncplane_putstr_yx(n, y, x + full, empty.c_str());
     }
@@ -122,7 +122,7 @@ void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
             char glyph[2] = { RAMP[idx], '\0' };
             ncplane_putstr_yx(n, row, col, glyph);
         }
-        nc_set(n, theme().SURFACE1);
+        nc_set(n, theme().BAR_EMPTY);
         for (int col = x + drawn; col < x + w; ++col)
             ncplane_putstr_yx(n, row, col, ".");
     };

@@ -13,7 +13,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     if (row < iy + ih) {
         uint32_t pc = pct_color(mu.pct);
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Memory:");
 
         lbr(n, row, ix + LBL);
@@ -31,7 +31,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     }
 
     if (row < iy + ih) {
-        nc_set(n, theme().TEXT);
+        nc_set(n, theme().FG);
         std::string used_str = fmt_mem_kib(mu.used_kib) + " / " + fmt_mem_kib(mi.MemTotal);
         ncplane_printf_yx(n, row, ix + LBL, "%s",
                           str_trunc(used_str, iw - LBL).c_str());
@@ -41,7 +41,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     if (row < iy + ih) {
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Swap:");
 
         const bool   has_swap = mi.SwapTotal > 0;
@@ -49,7 +49,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
                                 ? mi.SwapTotal - mi.SwapFree : 0;
         const double spct     = has_swap
                                 ? 100.0 * static_cast<double>(swp_used) / mi.SwapTotal : 0.0;
-        uint32_t sc = has_swap ? pct_color(spct) : theme().SURFACE2;
+        uint32_t sc = has_swap ? pct_color(spct) : theme().BORDER;
 
         lbr(n, row, ix + LBL);
         nc_set(n, sc, NCSTYLE_BOLD);
@@ -66,7 +66,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     }
 
     if (row < iy + ih) {
-        nc_set(n, theme().TEXT);
+        nc_set(n, theme().FG);
         if (mi.SwapTotal > 0) {
             const ull swp_used = (mi.SwapTotal > mi.SwapFree)
                                  ? mi.SwapTotal - mi.SwapFree : 0;
@@ -83,11 +83,11 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     struct MemRow { const char* label; ull value; uint32_t color; };
     const std::vector<MemRow> rows = {
-        {"Cached",  mi.Cached,  theme().TEAL},
-        {"Buffers", mi.Buffers, theme().TEAL},
-        {"Slab",    mi.Slab,    theme().TEXT},
-        {"Shared",  mi.Shmem,   theme().TEXT},
-        {"Dirty",   mi.Dirty,   theme().YELLOW},
+        {"Cached",  mi.Cached,  theme().DATA_B},
+        {"Buffers", mi.Buffers, theme().DATA_B},
+        {"Slab",    mi.Slab,    theme().FG},
+        {"Shared",  mi.Shmem,   theme().FG},
+        {"Dirty",   mi.Dirty,   theme().MID},
     };
 
     std::vector<std::string> rendered;
@@ -98,16 +98,16 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     for (size_t i = 0; i < rows.size() && row < iy + ih; ++i) {
         const auto& r = rows[i];
-        nc_set(n, theme().BLUE);
+        nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, r.label);
 
-        nc_set(n, theme().OVERLAY0);
+        nc_set(n, theme().MUTED);
         ncplane_putstr_yx(n, row, ix + LBL, "(");
 
         nc_set(n, r.color);
         ncplane_printf_yx(n, row, ix + LBL + 1, "%*s", VAL_W, rendered[i].c_str());
 
-        nc_set(n, theme().OVERLAY0);
+        nc_set(n, theme().MUTED);
         ncplane_putstr_yx(n, row, ix + LBL + 1 + VAL_W, ")");
         row++;
     }
