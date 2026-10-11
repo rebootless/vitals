@@ -155,13 +155,17 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 | `Enter` | Save changes and close |
 | `Esc` *(in settings)* | Discard changes and close |
 
-## 🧪 Self-test
+## 🧩 Self-test
 
 ```bash
 vitals --self-test
 ```
 
-Checks, without a terminal, that every data source vitals reads (CPU, memory, GPU, storage, network, thermal sensors, system info) is available and returns sane values. It prints one line per component — `OK`, `SKIP` (optional hardware that isn't present, e.g. no GPU) or `FAIL` — and exits with `0` unless something failed, so it can be used in CI.
+Checks, that every data source vitals reads (CPU, memory, GPU, storage, network, thermal sensors, system info) is available and returns sane values.
+
+> [!NOTE]
+> Linux buffers disk writes in RAM, then flushes them in batches.  
+> So downloads may show steady Network traffic while Storage stays idle.
 
 ## 📋 Requirements
 
@@ -169,11 +173,6 @@ Checks, without a terminal, that every data source vitals reads (CPU, memory, GP
 - GCC or Clang with C++20 support
 - CMake ≥ 3.21
 - Internet access (required to download notcurses during setup)
-
-## 📝 Notes
-
-Linux buffers disk writes in RAM, then flushes them in batches.
-So downloads may show steady Network traffic while Storage stays idle.
 
 ## 📄 License
 
