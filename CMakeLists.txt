@@ -55,6 +55,11 @@ target_link_libraries(vitals PRIVATE
     notcurses
 )
 
+# GCC < 9 keeps std::filesystem in libstdc++fs
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.1)
+    target_link_libraries(vitals PRIVATE stdc++fs)
+endif()
+
 target_compile_options(vitals PRIVATE
     -Wall
     -Wextra
