@@ -9,23 +9,23 @@
 [![CMake](https://img.shields.io/badge/CMake-064F8C?logo=cmake)](https://cmake.org/)
 [![Notcurses](https://img.shields.io/badge/Notcurses-555?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAAP1BMVEUAAAD///////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwlEnmAAAAEHRSTlMABvstUY9uss4AAAAAAAAAa/L5DwAAAJNJREFUeNptUVsOwzAIizEm3P/EI800rQl8tbH8wIzxG4x2AIgtCFh0wGLoBjAQOecF1L+bWTYy09bUB96E/W68lNwfSORlH5tj+c4McBGUcVK2TaDZj1FqfsT6BnBrdi+Oakk0rQBZWl0rdKVOj9WKHNRNiGRF88Nk1Q7WBXleEYhSqswXMFwMsktF6SE11/0v8ANdPQImejX+FwAAAABJRU5ErkJggg==)](https://github.com/dankamongmen/notcurses)
 
-</div>
-
 ## Build Status
 
 [![Debian 12](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2012%20%28Bookworm%29&label=Debian%2012)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
-[![Debian 13](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2013%20%28Trixie%29&label=Debian%2013)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Debian 13](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2013%20%28Trixie%29&label=Debian%2013)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Ubuntu 22.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2022.04%20%28Jammy%29&label=Ubuntu%2022.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Ubuntu 24.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2024.04%20%28Noble%29&label=Ubuntu%2024.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
-[![Ubuntu 26.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2026.04%20%28Resolute%29&label=Ubuntu%2026.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Ubuntu 26.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2026.04%20%28Resolute%29&label=Ubuntu%2026.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Fedora 43](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2043&label=Fedora%2043)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
-[![Fedora 44](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2044&label=Fedora%2044)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![Fedora 44](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2044&label=Fedora%2044)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 8](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%208%20%28RHEL%208%29&label=AlmaLinux%208)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 9](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%209%20%28RHEL%209%29&label=AlmaLinux%209)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
-[![AlmaLinux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%2010%20%28RHEL%2010%29&label=AlmaLinux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![AlmaLinux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%2010%20%28RHEL%2010%29&label=AlmaLinux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![openSUSE Tumbleweed](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Tumbleweed&label=openSUSE%20Tumbleweed)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
-[![openSUSE Leap 16.0](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Leap%2016.0&label=openSUSE%20Leap%2016.0)](https://github.com/rebootless/vitals/actions/workflows/build.yml)\
+[![openSUSE Leap 16.0](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Leap%2016.0&label=openSUSE%20Leap%2016.0)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Arch Linux](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Arch%20Linux&label=Arch%20Linux)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+
+</div>
 
 <p align="center">
   <img src="screenshots/2026-08-06_06-39.png" width="100%" alt="Overview">
