@@ -55,7 +55,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     }
 
     auto draw_temp_row = [&](int r, const std::string& label,
-                             double temp, bool featured,
+                             double temp, bool,
                              double row_hi, double row_crit) {
         if (r >= iy + ih - 1) return;
 
@@ -70,7 +70,6 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         char lbl[64];
         snprintf(lbl, sizeof(lbl), "%s:",
                  str_trunc(label, LBL_W - 1).c_str());
-        (void)featured;
         nc_set(n, theme().LABEL, NCSTYLE_NONE);
         ncplane_putstr_yx(n, r, ix, lbl);
 

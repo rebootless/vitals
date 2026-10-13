@@ -1,12 +1,12 @@
 #include "panels.h"
 
 void panel_cpu(ncplane* n, int y, int x, int h, int w,
-               const cpustat&              cur,
+               const cpustat&,             
                double                      pct,
                const std::vector<cpufreq>& freqs,
                const std::vector<double>&  core_pcts) {
 
-    (void)cur;
+    // raw cpustat is unused: pct and core_pcts are pre-computed
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "CPU");
     if (ih <= 0 || iw <= 0) return;
 
