@@ -31,10 +31,10 @@ using Clock = std::chrono::steady_clock;
 
 inline constexpr int HIST_CAP = 200;
 
-static const char* BLOCK[] = { " ","▏","▎","▍","▌","▋","▊","▉","█" };
-static const char* SPARK[] = { "▁","▂","▃","▄","▅","▆","▇","█" };
-static const char* SPARK_BRAILLE[] = { "⣀","⣀","⣤","⣤","⣶","⣶","⣿","⣿" };
+inline constexpr const char* BLOCK[] = { " ","▏","▎","▍","▌","▋","▊","▉","█" };
+inline constexpr const char* SPARK[] = { "▁","▂","▃","▄","▅","▆","▇","█" };
+inline constexpr const char* SPARK_BRAILLE[] = { "⣀","⣀","⣤","⣤","⣶","⣶","⣿","⣿" };
 // SPARK_MIRROR uses U+1FB82..1FB86 (Symbols for Legacy Computing): font-dependent
-static const char* SPARK_MIRROR[] = { "▔","🮂","🮃","▀","🮄","🮅","🮆","█" };
-static const char* SPARK_BRAILLE_MIRROR[] = { "⠉","⠉","⠛","⠛","⠿","⠿","⣿","⣿" };
-static const char* BAR_BG  = "•";
+inline constexpr const char* SPARK_MIRROR[] = { "▔","🮂","🮃","▀","🮄","🮅","🮆","█" };
+inline constexpr const char* SPARK_BRAILLE_MIRROR[] = { "⠉","⠉","⠛","⠛","⠿","⠿","⣿","⣿" };
+inline constexpr const char* BAR_BG = "•";
