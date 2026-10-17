@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     container:
@@ -50,7 +50,7 @@ jobs:
         fi
 
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install dependencies
       run: bash deps.sh
