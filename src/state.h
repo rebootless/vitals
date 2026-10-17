@@ -62,6 +62,7 @@ struct AppState {
 
     int symbol_mirror_idx = 0;
 
+    bool frozen               = false;
     bool settings_open        = false;
     int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=refresh
     int  settings_saved_theme = 0;

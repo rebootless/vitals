@@ -5,7 +5,7 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
                    const std::map<std::string, double>& rx_rates,
                    const std::map<std::string, double>& tx_rates) {
 
-    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Network", "q:Quit Esc:Settings");
+    auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Network", "q:Quit f:Freeze esc:Settings");
     if (ih <= 0 || iw <= 0) return;
 
     int row = iy;

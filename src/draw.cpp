@@ -186,7 +186,9 @@ void draw_titlebar(ncplane* n, int cols) {
         : " Vitals \xe2\x80\x94 Resource Monitor";
     nc_set(n, theme().TITLE, NCSTYLE_BOLD);
     ncplane_putstr_yx(n, 0, col, banner);
-    col += static_cast<int>(strlen(banner));
+    for (const char* p = banner; *p; ++p)
+        if ((static_cast<unsigned char>(*p) & 0xC0) != 0x80) ++col;
+    col += 2;
 
     auto kv = [&](const char* key, const std::string& val,
                   uint32_t val_color = theme().FG) {
@@ -217,4 +219,5 @@ void draw_titlebar(ncplane* n, int cols) {
     kv("AVG load: ", lbuf);
     kv("uptime: ",   fmt_uptime(up.uptime_seconds), theme().LOW);
     kv("time: ",     fmt_time());
+    if (G.frozen) kv("", "FROZEN", theme().HIGH);
 }

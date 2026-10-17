@@ -97,6 +97,11 @@ int main(int argc, char** argv) {
         if (!G.settings_open) {
             if (ch == 'q' || ch == 'Q') break;
 
+            if (ch == 'f' || ch == 'F') {
+                G.frozen = !G.frozen;
+                if (!G.frozen) last_tick = Clock::now() - std::chrono::hours(1);
+            }
+
             // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
             if (ch == NCKEY_ESC || ch == 27) {
                 G.settings_saved_theme   = G.theme_idx;
@@ -182,7 +187,7 @@ int main(int argc, char** argv) {
         }
 
         const auto t_now = Clock::now();
-        bool due_for_tick = !G.settings_open &&
+        bool due_for_tick = !G.settings_open && !G.frozen &&
             (t_now - last_tick >= std::chrono::milliseconds(G.refresh_ms));
 
         if (due_for_tick) {

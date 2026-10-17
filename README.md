@@ -149,6 +149,7 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 | Key | Action |
 | :--- | :--- |
 | `q` | Quit |
+| `f` | Freeze |
 | `Esc` | Open the settings menu |
 | `Tab` | Select the next option |
 | `↑` / `↓` | Change the selected value |
