@@ -71,8 +71,8 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     auto disk_row = [&](const std::string& prefix, const diskstats& ds) {
         if (row >= iy + ih) return;
         auto [rd, wr] = rate(ds);
-        std::string name = prefix + str_trunc(ds.device,
-                                              13 - static_cast<int>(prefix.size()));
+        const int prefix_cols = prefix.empty() ? 0 : 2;
+        std::string name = prefix + str_trunc(ds.device, 13 - prefix_cols);
         nc_set(n, theme().FG);
         ncplane_printf_yx(n, row, C1, "%-13s", name.c_str());
         if (C2 < ix + iw) {
