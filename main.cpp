@@ -4,6 +4,7 @@
 #include "selftest.h"
 
 #include <clocale>
+#include <cstdio>
 #include <cstdlib>
 #include <thread>
 #include <chrono>
@@ -28,8 +29,27 @@ static int refresh_step_index() {
 }
 
 int main(int argc, char** argv) {
-    for (int i = 1; i < argc; ++i)
-        if (std::string(argv[i]) == "--self-test") return run_self_test();
+    bool self_test = false;
+    for (int i = 1; i < argc; ++i) {
+        const std::string a = argv[i];
+        if (a == "-h" || a == "--help") {
+            printf("Usage: vitals [OPTION]\n\n"
+                   "  -h, --help       show this help and exit\n"
+                   "  -v, --version    show version and exit\n"
+                   "      --self-test  check data sources and exit (0 = no FAIL)\n\n"
+                   "Keys: q quit, f freeze, Esc settings\n"
+                   "Config: ~/.config/vitals/config\n");
+            return 0;
+        }
+        if (a == "-v" || a == "--version") {
+            printf("vitals %s\n", VITALS_VERSION);
+            return 0;
+        }
+        if (a == "--self-test") { self_test = true; continue; }
+        fprintf(stderr, "vitals: unknown option '%s'\nTry 'vitals --help'.\n", a.c_str());
+        return 2;
+    }
+    if (self_test) return run_self_test();
 
     setlocale(LC_ALL, "");
 

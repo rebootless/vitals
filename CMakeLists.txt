@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals LANGUAGES CXX)
+project(vitals VERSION 0.8.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,6 +50,8 @@ target_include_directories(vitals PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/notcurses/include
 )
+
+target_compile_definitions(vitals PRIVATE VITALS_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(vitals PRIVATE
     notcurses
