@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 0.8.4 LANGUAGES CXX)
+project(vitals VERSION 0.8.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +27,7 @@ set(SOURCES
     src/format.cpp
     src/theme.cpp
     src/config.cpp
+    src/paths.cpp
     src/tty.cpp
     src/gpu.cpp
     src/panel_cpu.cpp

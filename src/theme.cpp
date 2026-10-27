@@ -1,5 +1,6 @@
 #include "theme.h"
 #include "state.h"
+#include "paths.h"
 
 #include <algorithm>
 #include <cctype>
@@ -123,24 +124,6 @@ bool load_theme_file(const fs::path& path, Theme& out) {
 
     out = std::move(t);
     return true;
-}
-
-// lowest priority first: a same-named theme in a later directory wins
-std::vector<fs::path> theme_dirs() {
-    std::vector<fs::path> dirs;
-    dirs.emplace_back("/usr/share/vitals/themes");
-    dirs.emplace_back("/usr/local/share/vitals/themes");
-
-    std::error_code ec;
-    fs::path exe = fs::read_symlink("/proc/self/exe", ec);
-    if (!ec) {
-        dirs.push_back(exe.parent_path().parent_path() / "share/vitals/themes");
-        dirs.push_back(exe.parent_path() / "themes");
-    }
-
-    const char* home = std::getenv("HOME");
-    if (home && *home) dirs.push_back(fs::path(home) / ".config/vitals/themes");
-    return dirs;
 }
 
 const std::vector<Theme>& registry() {

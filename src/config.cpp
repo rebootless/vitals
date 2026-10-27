@@ -1,4 +1,5 @@
 #include "config.h"
+#include "paths.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -7,17 +8,6 @@
 #include <sys/stat.h>
 
 namespace {
-
-std::string config_dir() {
-    const char* home = std::getenv("HOME");
-    if (!home || !*home) return "";
-    return std::string(home) + "/.config/vitals";
-}
-
-std::string config_path() {
-    std::string dir = config_dir();
-    return dir.empty() ? "" : dir + "/config";
-}
 
 std::string trim(const std::string& s) {
     size_t start = s.find_first_not_of(" \t\r\n");
