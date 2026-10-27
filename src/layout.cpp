@@ -60,12 +60,12 @@ Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus) {
         int ph = avail / np, rem = avail % np;
 
         int r = 0;
-        L.cpu = { ph*r, 0, ph, cols }; r++;
-        if (!gpus.empty()) { L.gpu = { ph*r, 0, ph, cols }; r++; }
-        L.memory  = { ph*r, 0, ph, cols }; r++;
-        L.network = { ph*r, 0, ph, cols }; r++;
-        L.storage = { ph*r, 0, ph, cols }; r++;
-        L.thermal = { ph*r, 0, ph+rem, cols };
+        L.cpu = { 1 + ph*r, 0, ph, cols }; r++;
+        if (!gpus.empty()) { L.gpu = { 1 + ph*r, 0, ph, cols }; r++; }
+        L.memory  = { 1 + ph*r, 0, ph, cols }; r++;
+        L.network = { 1 + ph*r, 0, ph, cols }; r++;
+        L.storage = { 1 + ph*r, 0, ph, cols }; r++;
+        L.thermal = { 1 + ph*r, 0, ph+rem, cols };
     }
 
     return L;
