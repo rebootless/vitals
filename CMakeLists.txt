@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 0.8.0 LANGUAGES CXX)
+project(vitals VERSION 0.8.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

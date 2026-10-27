@@ -16,8 +16,10 @@ DiskRate disk_rate(ull prev_sectors_read,  ull cur_sectors_read,
                    ull prev_sectors_written, ull cur_sectors_written, double dt);
 
 std::string get_local_ip();
-// loopback and virtual/container plumbing (ifb*, veth*, docker*, br-*, virbr*, vnet*); VPN links stay visible
+// loopback, VLANs and virtual plumbing (bridges, bonds, tap/veth/ifb, docker, libvirt, Proxmox fw*); VPN links stay visible
 bool is_hidden_iface(const std::string& name);
+// dm-/loop/sr/ram/zram/md/nbd/zd: their I/O is already counted on the underlying devices
+bool is_virtual_disk(const std::string& dev);
 
 std::string           thermal_zone_type  (int zone);
 std::pair<double,double> thermal_trip_limits(int zone);

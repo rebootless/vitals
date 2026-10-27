@@ -89,10 +89,19 @@ std::string get_local_ip() {
 }
 
 bool is_hidden_iface(const std::string& name) {
-    static const char* const prefixes[] = {"ifb", "veth", "docker", "br-", "virbr", "vnet"};
+    static const char* const prefixes[] = {"ifb", "veth", "docker", "br", "virbr", "vmbr", "vnet",
+                                           "bond", "tap", "fwbr", "fwln", "fwpr"};
     if (name == "lo") return true;
+    if (name.find('.') != std::string::npos) return true; // VLAN: counted in its parent
     for (const char* p : prefixes)
         if (name.rfind(p, 0) == 0) return true;
+    return false;
+}
+
+bool is_virtual_disk(const std::string& dev) {
+    static const char* const prefixes[] = {"dm-", "loop", "sr", "ram", "zram", "md", "nbd", "zd"};
+    for (const char* p : prefixes)
+        if (dev.rfind(p, 0) == 0) return true;
     return false;
 }
 

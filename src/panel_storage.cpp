@@ -52,15 +52,6 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         row++;
     }
 
-    auto skip = [](const std::string& d) {
-        if (d.size() >= 3 && d.substr(0, 3) == "dm-")   return true;
-        if (d.size() >= 4 && d.substr(0, 4) == "loop")  return true;
-        if (d.size() >= 2 && d.substr(0, 2) == "sr")    return true;
-        if (d.size() >= 3 && d.substr(0, 3) == "ram")   return true;
-        if (d.size() >= 4 && d.substr(0, 4) == "zram")  return true;
-        return false;
-    };
-
     auto rate = [&](const diskstats& ds) -> std::pair<double, double> {
         double rd = 0, wr = 0;
         if (auto it = rd_rates.find(ds.device); it != rd_rates.end()) rd = it->second;
@@ -92,7 +83,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
 
     std::vector<const diskstats*> roots;
     for (const auto& ds : cur_disk) {
-        if (skip(ds.device)) continue;
+        if (is_virtual_disk(ds.device)) continue;
         if (parent_of(ds.device).empty()) roots.push_back(&ds);
     }
 
@@ -102,7 +93,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
 
         std::vector<const diskstats*> children;
         for (const auto& ds : cur_disk) {
-            if (skip(ds.device)) continue;
+            if (is_virtual_disk(ds.device)) continue;
             if (parent_of(ds.device) == root->device) children.push_back(&ds);
         }
         for (size_t ci = 0; ci < children.size(); ++ci) {
