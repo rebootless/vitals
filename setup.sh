@@ -8,7 +8,8 @@ NOTCURSES_VERSION="v3.0.17"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ $EUID -eq 0 ]]; then
+# CI containers run as root; (VITALS_ALLOW_ROOT=1)
+if [[ $EUID -eq 0 && -z "${VITALS_ALLOW_ROOT:-}" ]]; then
     echo "Do not run this script as root."
     exit 1
 fi

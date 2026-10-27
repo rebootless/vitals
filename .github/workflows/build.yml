@@ -39,7 +39,6 @@ jobs:
         shell: bash
 
     steps:
-    # minimal images lack git; deps.sh needs the repo first
     - name: Install git
       run: |
         set -eux
@@ -52,22 +51,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
 
-    - name: Install dependencies
-      run: bash deps.sh
-
-    - name: Clone notcurses
-      run: |
-        set -eux
-        NOTCURSES_VERSION="$(sed -n 's/^NOTCURSES_VERSION="\(.*\)"$/\1/p' setup.sh)"
-        git clone --depth 1 --branch "$NOTCURSES_VERSION" \
-            https://github.com/dankamongmen/notcurses.git
-        git -C notcurses submodule update --init --recursive
-
-    - name: Configure vitals
-      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+    - name: Set up (deps + notcurses)
+      env:
+        VITALS_ALLOW_ROOT: "1"
+      run: bash setup.sh
 
     - name: Build vitals
-      run: cmake --build build --parallel "$(nproc)"
+      run: bash build.sh
 
     - name: Verify binary
       run: |
