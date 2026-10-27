@@ -34,13 +34,18 @@ double cpu_delta(const cpustat& prev, const cpustat& cur) {
     };
     auto idle = [](const cpustat& s) -> ull { return s.idle + s.iowait; };
 
-    ull dt = total(cur) - total(prev);
-    ull di = idle(cur)  - idle(prev);
+    // iowait can go backwards
+    const ull t0 = total(prev), t1 = total(cur);
+    const ull i0 = idle(prev),  i1 = idle(cur);
+    const ull dt = t1 > t0 ? t1 - t0 : 0;
+    ull di = i1 > i0 ? i1 - i0 : 0;
     if (!dt) return 0.0;
+    if (di > dt) di = dt;
     return 100.0 * (1.0 - static_cast<double>(di) / static_cast<double>(dt));
 }
 
-// htop 3.2.1+ "Used", not MemTotal - MemAvailable (checked against htop-dev/htop#1051)
+// Match htop 3.2.1+ "Used" memory calculation.
+// (https://github.com/htop-dev/htop/issues/1051)
 MemUsed mem_used(const meminfo& mi) {
     const ull reclaimable = mi.Buffers + mi.Cached + mi.SReclaimable;
     const ull used_kib = (mi.MemTotal > mi.MemFree + reclaimable)
