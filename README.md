@@ -47,17 +47,16 @@ bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/insta
 
 The installer automatically:
 
-* Installs the required build dependencies
-* Clones the notcurses source (release pinned by `NOTCURSES_VERSION` in `setup.sh`)
-* Builds the project
-* Installs `vitals` to `/usr/local/bin`
-* Installs the required libraries under `/usr/local` and registers them with the dynamic linker
+- Installs the required build dependencies
+- Clones the Notcurses source at the release pinned by `NOTCURSES_VERSION` in `setup.sh`
+- Builds Vitals
+- Installs Vitals and its bundled themes under `/usr/local`
 
 Safe to run multiple times.
 
 ### Quick Uninstall
 
-Remove `vitals` and the notcurses files installed alongside it with a single command:
+Remove Vitals and its bundled themes with a single command:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/uninstall.sh)
@@ -65,12 +64,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/rebootless/vitals/main/unins
 
 The uninstaller:
 
-* Reads the manifest left by `install.sh` and removes every file it installed (binary, notcurses libraries/headers/pkgconfig files)
-* Prunes any directories left empty
-* Removes the `/etc/ld.so.conf.d` entry added for the notcurses libraries and refreshes the linker cache
-* Asks before deleting your saved config at `~/.config/vitals`
-
-If `vitals` was installed a different way (no manifest present), it falls back to a best-effort removal of the vitals binary and matching notcurses libraries.
+- Removes the Vitals binary from `/usr/local/bin`
+- Removes the bundled themes from `/usr/local/share/vitals/themes`
+- Removes `/usr/local/share/vitals` if it is empty
+- Asks before deleting your saved configuration and themes at `~/.config/vitals` (or `$XDG_CONFIG_HOME/vitals` when configured)
 
 <details>
 <summary align="center"><b>Build from Source</b> <i>(click to expand)</i></summary>
@@ -80,7 +77,7 @@ Clone the repository:
 ```bash
 git clone https://github.com/rebootless/vitals.git
 cd vitals
-````
+```
 
 Prepare the build environment:
 
@@ -92,16 +89,14 @@ chmod +x setup.sh
 Build:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
+chmod +x build.sh
+./build.sh
 ```
 
 Install:
 
 ```bash
 sudo cmake --install build
-dirname "$(grep -m1 'libnotcurses\.so' build/install_manifest.txt)" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf
-sudo ldconfig
 ```
 
 </details>
@@ -113,18 +108,16 @@ sudo ldconfig
 git clone https://github.com/rebootless/vitals.git
 cd vitals
 
-chmod +x setup.sh
+chmod +x setup.sh build.sh
 ./setup.sh
+./build.sh
 
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-
-LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
+./build/vitals
 ```
 
 </details>
 
-> [!NOTE] 
+> [!NOTE]
 > Symbol Mirroring is experimental and may render incorrectly depending on your environment.
 > Mirrored glyphs require font and Unicode 13+ `wcwidth` support.
 > Terminal emulators may handle these glyphs differently.
@@ -136,7 +129,7 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 | ---- | ---- | ---- |
 | **CPU** | `/proc/stat`, `/sys/devices/system/cpu/cpu*/cpufreq/` | CPU usage, per-core activity, frequency, history |
 | **GPU** | `/sys/class/drm`, `/sys/class/hwmon`, `nvidia-smi` | GPU utilization, VRAM, temperature, power |
-| **Memory**  | `/proc/meminfo` | RAM and swap usage |
+| **Memory** | `/proc/meminfo` | RAM and swap usage |
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput |
 | **Storage** | `/proc/diskstats`, `statvfs()` | Filesystem usage and disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard temperatures |
@@ -162,36 +155,39 @@ LD_LIBRARY_PATH="$(pwd)/build/notcurses" ./build/vitals
 vitals --self-test
 ```
 
-Checks, that every data source vitals reads (CPU, memory, GPU, storage, network, thermal sensors, system info) is available and returns sane values.
+Checks that every data source Vitals reads (CPU, memory, GPU, storage, network, thermal sensors, and system info) is available and returns sane values.
 
 > [!NOTE]
-> Linux buffers disk writes in RAM, then flushes them in batches.  
+> Linux buffers disk writes in RAM, then flushes them in batches.
 > So downloads may show steady Network traffic while Storage stays idle.
 
-## 🧹 Clean Up Old Installations
+## 🧹 Clean Up Legacy Installations
 
-Remove files left by older versions:
+Remove files left by older pre-release versions:
 
 ```bash
 sudo rm -f /usr/local/bin/vitals
+
 for d in /usr/local/lib /usr/local/lib64; do
-    sudo rm -f  "$d"/libnotcurses*.so* "$d"/libnotcurses*.a
-    sudo rm -rf "$d"/cmake/Notcurses* "$d"/pkgconfig/notcurses*.pc
+    sudo rm -f "$d"/libnotcurses*.so* "$d"/libnotcurses*.a
+    sudo rm -rf "$d"/cmake/Notcurses*
+    sudo rm -f "$d"/pkgconfig/notcurses*.pc
 done
+
 sudo rm -rf /usr/local/include/notcurses /usr/local/include/ncpp
 sudo rm -f /etc/ld.so.conf.d/usr_local_lib.conf
 sudo ldconfig
 ```
 
 > [!CAUTION]
-> That deletes **every** notcurses install in `/usr/local`, including ones you built yourself.
+> This removes all matching Notcurses files from `/usr/local`, including installations used by other software. Run these commands only if you intend to remove those files.
 
 ## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)
 - GCC or Clang with C++20 support
 - CMake ≥ 3.21
-- Internet access (required to download notcurses during setup)
+- Internet access (required to download Notcurses during setup)
 
 ## 📄 License
 
