@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
                    "  -h, --help       show this help and exit\n"
                    "  -v, --version    show version and exit\n"
                    "      --self-test  check data sources and exit (0 = no FAIL)\n\n"
-                   "Keys: q quit, f freeze, Esc settings\n\n");
+                   "Keys: q:Quit, f:Freeze, esc:Settings\n\n");
             const std::string cfg = config_dir();
             if (cfg.empty()) printf("Settings and your themes: unavailable (HOME is not set)\n");
-            else printf("Settings:       %s/config\nYour themes:    %s/themes\n", cfg.c_str(), cfg.c_str());
+            else printf("Settings:       %s/config\nUser themes:    %s/themes\n", cfg.c_str(), cfg.c_str());
             printf("Bundled themes: %s\n", system_theme_dir().c_str());
             return 0;
         }

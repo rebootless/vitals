@@ -7,6 +7,11 @@ REPO_URL="https://github.com/rebootless/vitals.git"
 INSTALL_BIN="/usr/local/bin/vitals"
 BUILD_DIR="$(mktemp -d /tmp/vitals-build.XXXXXX)"
 
+# only for summary - not used actually
+SETTINGS_DIR="${HOME}/.config/vitals/config"
+USER_THEMES_DIR="${HOME}/.config/vitals/themes"
+BUNDLED_THEMES_DIR="/usr/local/share/vitals/themes"
+
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
 if [[ $EUID -eq 0 ]]; then
@@ -58,9 +63,13 @@ sudo cmake --install build
 
 echo ""
 echo "  Binary: $INSTALL_BIN"
-echo "  Themes: /usr/local/share/vitals/themes"
 echo "  Commit: $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+
+echo "  Settings:       $SETTINGS_DIR"
+echo "  User themes:    $USER_THEMES_DIR"
+echo "  Bundled Themes: $BUNDLED_THEMES_DIR"
 
 echo ""
 echo "Run:"
 echo "  vitals"
+echo "  vitals --help"
