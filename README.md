@@ -3,7 +3,7 @@
 
 <div align="center">
 
-[![Bash](https://img.shields.io/badge/Bash-5.0%2B-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![Bash](https://img.shields.io/badge/Bash-4.0%2B-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
@@ -195,7 +195,7 @@ sudo ldconfig
 ## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)
-- Bash 5.0+
+- Bash 4.0+
 - GCC or Clang with C++20 support
 - CMake ≥ 3.21
 - Internet access (required to download Notcurses during setup)

@@ -1,15 +1,22 @@
 #include "gpu.h"
 
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <chrono>
-#include <cstdio>
+#include <cerrno>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <fstream>
 #include <map>
 #include <sstream>
 #include <unistd.h>
+#include <vector>
+
+extern char** environ;
 
 namespace {
 
@@ -207,44 +214,132 @@ GpuInfo parse_nouveau(const std::string& device_dir, const std::string& card) {
     return g;
 }
 
-// nvidia-smi parse; some old cards (e.g. Kepler) report [N/A] utilization in NVML itself
-std::vector<GpuInfo> parse_nvidia_proprietary() {
-    std::vector<GpuInfo> result;
+// "nvidia-smi -l 1" runs once and is read without blocking: spawning it every tick costs a full NVML init,
+// and a hung driver would freeze the UI. Some old cards (e.g. Kepler) report [N/A] utilization in NVML itself.
 
-    FILE* pipe = popen(
-        "nvidia-smi -i 0 --query-gpu=name,utilization.gpu,memory.used,memory.total,"
-        "temperature.gpu,power.draw --format=csv,noheader,nounits 2>/dev/null",
-        "r");
-    if (!pipe) return result;
+bool parse_smi_line(const std::string& line, GpuInfo& g) {
+    std::istringstream ls(line);
+    std::string field;
+    std::vector<std::string> fields;
+    while (std::getline(ls, field, ',')) fields.push_back(trim(field));
+    if (fields.size() < 6) return false;
 
-    std::array<char, 512> buf{};
-    std::string output;
-    while (fgets(buf.data(), static_cast<int>(buf.size()), pipe))
-        output += buf.data();
-    pclose(pipe);
+    g = GpuInfo{};
+    g.vendor = GpuVendor::Nvidia;
+    g.name   = fields[0];
+    try { g.util_pct     = std::stod(fields[1]); } catch (...) {}
+    try { g.mem_used_mb  = std::stod(fields[2]); } catch (...) {}
+    try { g.mem_total_mb = std::stod(fields[3]); } catch (...) {}
+    try { g.temp_c       = std::stod(fields[4]); } catch (...) {}
+    try { g.power_w      = std::stod(fields[5]); } catch (...) {}
+    return true;
+}
 
-    std::istringstream stream(output);
-    std::string line;
-    while (std::getline(stream, line)) {
-        if (trim(line).empty()) continue;
+class NvidiaSmi {
+    using Tp = std::chrono::steady_clock::time_point;
+    static constexpr std::chrono::seconds STALE{5};  // no new line for this long: values become n/a
+    static constexpr std::chrono::seconds RETRY{5};  // pause before respawning
+    static constexpr int FIRST_SAMPLE_MS = 2000;     // the only blocking wait, once
 
-        std::istringstream ls(line);
-        std::string field;
-        std::vector<std::string> fields;
-        while (std::getline(ls, field, ',')) fields.push_back(trim(field));
-        if (fields.size() < 6) continue;
+public:
+    ~NvidiaSmi() { kill_child(); }
 
-        GpuInfo g;
-        g.vendor = GpuVendor::Nvidia;
-        g.name   = fields[0];
-        try { g.util_pct     = std::stod(fields[1]); } catch (...) {}
-        try { g.mem_used_mb  = std::stod(fields[2]); } catch (...) {}
-        try { g.mem_total_mb = std::stod(fields[3]); } catch (...) {}
-        try { g.temp_c       = std::stod(fields[4]); } catch (...) {}
-        try { g.power_w      = std::stod(fields[5]); } catch (...) {}
-        result.push_back(g);
+    std::vector<GpuInfo> latest() {
+        reap();
+        Tp now = std::chrono::steady_clock::now();
+        if (pid_ < 0 && now >= next_start_) start(now);
+
+        if (pid_ >= 0 && !have_ && !waited_) {
+            waited_ = true;
+            pollfd p{fd_, POLLIN, 0};
+            ::poll(&p, 1, FIRST_SAMPLE_MS);
+            now = std::chrono::steady_clock::now();
+        }
+        if (pid_ >= 0) drain(now);
+
+        if (!have_) return {};
+        GpuInfo g = last_;
+        if (now - last_line_ > STALE)
+            g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = -1.0;
+        return {g};
     }
-    return result;
+
+private:
+    pid_t              pid_ = -1;
+    int                fd_  = -1;
+    std::string        buf_;
+    std::vector<pid_t> dying_;
+    GpuInfo            last_;
+    bool               have_ = false, waited_ = false;
+    Tp                 started_{}, last_line_{}, next_start_{};
+
+    void start(Tp now) {
+        int fds[2];
+        if (pipe2(fds, O_CLOEXEC) != 0) { next_start_ = now + RETRY; return; }
+        fcntl(fds[0], F_SETFL, O_NONBLOCK);
+
+        posix_spawn_file_actions_t fa;
+        posix_spawn_file_actions_init(&fa);
+        posix_spawn_file_actions_addopen(&fa, 0, "/dev/null", O_RDONLY, 0);
+        posix_spawn_file_actions_adddup2(&fa, fds[1], 1);
+        posix_spawn_file_actions_addopen(&fa, 2, "/dev/null", O_WRONLY, 0);
+
+        const char* const args[] = {
+            "nvidia-smi", "-i", "0",
+            "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw",
+            "--format=csv,noheader,nounits", "-l", "1", nullptr};
+        pid_t pid = -1;
+        const int rc = posix_spawnp(&pid, "nvidia-smi", &fa, nullptr,
+                                    const_cast<char* const*>(args), environ);
+        posix_spawn_file_actions_destroy(&fa);
+        ::close(fds[1]); // once we exit, the child's next write gets SIGPIPE
+        if (rc != 0) { ::close(fds[0]); next_start_ = now + RETRY; return; }
+
+        pid_ = pid; fd_ = fds[0]; started_ = now; buf_.clear();
+    }
+
+    void drain(Tp now) {
+        char tmp[512];
+        for (;;) {
+            const ssize_t n = ::read(fd_, tmp, sizeof(tmp));
+            if (n > 0) { buf_.append(tmp, static_cast<size_t>(n)); continue; }
+            if (n < 0 && errno == EINTR) continue;
+            if (n == 0) { kill_child(); next_start_ = now + RETRY; }
+            break; // EOF, or EAGAIN: nothing more for now
+        }
+
+        size_t nl;
+        while ((nl = buf_.find('\n')) != std::string::npos) {
+            GpuInfo g;
+            if (parse_smi_line(buf_.substr(0, nl), g)) { last_ = g; have_ = true; last_line_ = now; }
+            buf_.erase(0, nl + 1);
+        }
+        if (buf_.size() > 4096) buf_.clear();
+
+        // alive but silent (hung driver): restart it
+        if (pid_ >= 0 && now - std::max(last_line_, started_) > 2 * STALE) {
+            kill_child();
+            next_start_ = now;
+        }
+    }
+
+    // SIGKILL can't take effect on a process stuck in the driver, so never wait for it here
+    void kill_child() {
+        if (pid_ >= 0) { ::kill(pid_, SIGKILL); dying_.push_back(pid_); pid_ = -1; }
+        if (fd_ >= 0)  { ::close(fd_); fd_ = -1; }
+        buf_.clear();
+    }
+
+    void reap() {
+        dying_.erase(std::remove_if(dying_.begin(), dying_.end(),
+                                    [](pid_t p) { return ::waitpid(p, nullptr, WNOHANG) != 0; }),
+                     dying_.end());
+    }
+};
+
+std::vector<GpuInfo> parse_nvidia_proprietary() {
+    static NvidiaSmi smi;
+    return smi.latest();
 }
 
 }
