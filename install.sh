@@ -43,11 +43,7 @@ bash "$BUILD_DIR/vitals/setup.sh"
 
 cd "$BUILD_DIR/vitals"
 
-cmake -B build -S . \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DUSE_PANDOC=OFF
-
-cmake --build build --parallel "$(nproc)"
+bash build.sh
 
 if [[ ! -f build/vitals ]]; then
     echo "Build failed — binary not found."
@@ -57,31 +53,12 @@ fi
 echo ""
 echo "Build successful."
 
-# cmake --install strips the build-tree RPATH
+# the binary and themes only: notcurses is linked statically
 sudo cmake --install build
-
-# register the notcurses lib dir (lib or lib64); musl has no ldconfig
-LDCONF_WRITTEN=0
-if command -v ldconfig &>/dev/null && [[ -d /etc/ld.so.conf.d ]]; then
-    LIBDIR="$(dirname "$(grep -m1 'libnotcurses\.so' build/install_manifest.txt)")"
-    echo "$LIBDIR" | sudo tee /etc/ld.so.conf.d/usr_local_lib.conf > /dev/null
-    sudo ldconfig
-    LDCONF_WRITTEN=1
-fi
-
-# manifest lets uninstall.sh remove exactly what was installed
-MANIFEST_DIR="/usr/local/share/vitals"
-sudo mkdir -p "$MANIFEST_DIR"
-sudo cp "build/install_manifest.txt" "$MANIFEST_DIR/install_manifest.txt"
-if [[ $LDCONF_WRITTEN -eq 1 ]]; then
-    echo "/etc/ld.so.conf.d/usr_local_lib.conf" | sudo tee -a "$MANIFEST_DIR/install_manifest.txt" > /dev/null
-fi
-
-echo ""
-echo "Binary installed to $INSTALL_BIN"
 
 echo ""
 echo "  Binary: $INSTALL_BIN"
+echo "  Themes: /usr/local/share/vitals/themes"
 echo "  Commit: $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 
 echo ""

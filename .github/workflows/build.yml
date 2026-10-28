@@ -68,6 +68,10 @@ jobs:
           echo "::error::unresolved shared libraries"
           exit 1
         fi
+        if ldd build/vitals | grep -q notcurses; then
+          echo "::error::notcurses must be linked statically"
+          exit 1
+        fi
 
     - name: Self-test
       run: timeout 60 build/vitals --self-test

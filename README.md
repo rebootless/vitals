@@ -168,6 +168,20 @@ Checks, that every data source vitals reads (CPU, memory, GPU, storage, network,
 > Linux buffers disk writes in RAM, then flushes them in batches.  
 > So downloads may show steady Network traffic while Storage stays idle.
 
+## 🧹 Clean Up Old Installations
+
+Remove files left by older versions of `install.sh`:
+
+```bash
+sudo xargs -a /usr/local/share/vitals/install_manifest.txt rm -f --
+sudo rm -f /usr/local/share/vitals/install_manifest.txt
+
+sudo find /usr/local/include/notcurses /usr/local/include/ncpp /usr/local/lib*/cmake/Notcurses* \
+    -depth -type d -empty -delete
+
+sudo ldconfig
+```
+
 ## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
-#include <sys/stat.h>
+#include <filesystem>
 
 namespace {
 
@@ -53,9 +53,9 @@ void save_config(const Config& cfg) {
     std::string dir = config_dir();
     if (dir.empty()) return;
 
-    std::string home_config = dir.substr(0, dir.find_last_of('/'));
-    ::mkdir(home_config.c_str(), 0755);
-    ::mkdir(dir.c_str(), 0755);
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) return;
 
     std::string path = dir + "/config";
     std::ofstream f(path, std::ios::trunc);
