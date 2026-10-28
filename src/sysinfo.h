@@ -24,6 +24,9 @@ bool is_hidden_iface(const std::string& name);
 // dm-/loop/sr/ram/zram/md/nbd/zd: their I/O is already counted on the underlying devices
 bool is_virtual_disk(const std::string& dev);
 
+// {high, crit} from the sensor's own max/crit; {-1, -1} when it reports none
+std::pair<double,double> hwmon_limits(const HwmonSensor& s);
+
 std::string           thermal_zone_type  (int zone);
 std::pair<double,double> thermal_trip_limits(int zone);
 

@@ -42,8 +42,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     for (const auto& chip : hwmon) {
         for (const auto& s : chip.sensors) {
             if (s.has_crit && s.temp_crit > 0) {
-                crit_limit = s.temp_crit;
-                hi_limit   = s.has_max ? s.temp_max : crit_limit - 20.0;
+                std::tie(hi_limit, crit_limit) = hwmon_limits(s);
                 found = true; break;
             }
         }
@@ -126,7 +125,8 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                 cpu_has_package = true;
                 continue;
             }
-            bucket->push_back({lbl, s.temp_celsius, s.is_package, -1.0, -1.0});
+            const auto [row_hi, row_crit] = hwmon_limits(s);
+            bucket->push_back({lbl, s.temp_celsius, s.is_package, row_hi, row_crit});
         }
     }
 
@@ -138,8 +138,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
     std::vector<ThermItem> zone_items;
     if (hwmon.empty()) {
-        for (const auto& z : zones)
-            zone_items.push_back({thermal_zone_type(z.zone), z.temperature_celsius, false, -1.0, -1.0});
+        for (const auto& z : zones) {
+            const auto [zone_hi, zone_crit] = thermal_trip_limits(z.zone);
+            zone_items.push_back({thermal_zone_type(z.zone), z.temperature_celsius, false, zone_hi, zone_crit});
+        }
     }
 
     std::vector<ThermItem> gpu_items;

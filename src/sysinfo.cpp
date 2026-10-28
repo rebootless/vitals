@@ -158,6 +158,15 @@ std::pair<double,double> thermal_trip_limits(int zone) {
     return {hi, crit};
 }
 
+std::pair<double,double> hwmon_limits(const HwmonSensor& s) {
+    if (s.has_crit && s.temp_crit > 0) {
+        const bool max_ok = s.has_max && s.temp_max > 0 && s.temp_max < s.temp_crit;
+        return {max_ok ? s.temp_max : s.temp_crit - 20.0, s.temp_crit};
+    }
+    if (s.has_max && s.temp_max > 0) return {s.temp_max, s.temp_max + 20.0};
+    return {-1.0, -1.0};
+}
+
 // amdgpu/nouveau/nvidia are excluded: parse_gpus() already reports their temperature
 static bool classify_hwmon_chip(const std::string& name,
                                 HwmonCategory& cat, std::string& display) {
