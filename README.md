@@ -170,17 +170,21 @@ Checks, that every data source vitals reads (CPU, memory, GPU, storage, network,
 
 ## 🧹 Clean Up Old Installations
 
-Remove files left by older versions of `install.sh`:
+Remove files left by older versions:
 
 ```bash
-sudo xargs -a /usr/local/share/vitals/install_manifest.txt rm -f --
-sudo rm -f /usr/local/share/vitals/install_manifest.txt
-
-sudo find /usr/local/include/notcurses /usr/local/include/ncpp /usr/local/lib*/cmake/Notcurses* \
-    -depth -type d -empty -delete
-
+sudo rm -f /usr/local/bin/vitals
+for d in /usr/local/lib /usr/local/lib64; do
+    sudo rm -f  "$d"/libnotcurses*.so* "$d"/libnotcurses*.a
+    sudo rm -rf "$d"/cmake/Notcurses* "$d"/pkgconfig/notcurses*.pc
+done
+sudo rm -rf /usr/local/include/notcurses /usr/local/include/ncpp
+sudo rm -f /etc/ld.so.conf.d/usr_local_lib.conf
 sudo ldconfig
 ```
+
+> [!CAUTION]
+> That deletes **every** notcurses install in `/usr/local`, including ones you built yourself.
 
 ## 📋 Requirements
 
