@@ -3,13 +3,23 @@
 
 <div align="center">
 
+[![Bash](https://img.shields.io/badge/Bash-5.0%2B-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey?logo=linux&logoColor=white)](https://kernel.org)
 [![CMake](https://img.shields.io/badge/CMake-064F8C?logo=cmake)](https://cmake.org/)
 [![Notcurses](https://img.shields.io/badge/Notcurses-555?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAAP1BMVEUAAAD///////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwlEnmAAAAEHRSTlMABvstUY9uss4AAAAAAAAAa/L5DwAAAJNJREFUeNptUVsOwzAIizEm3P/EI800rQl8tbH8wIzxG4x2AIgtCFh0wGLoBjAQOecF1L+bWTYy09bUB96E/W68lNwfSORlH5tj+c4McBGUcVK2TaDZj1FqfsT6BnBrdi+Oakk0rQBZWl0rdKVOj9WKHNRNiGRF88Nk1Q7WBXleEYhSqswXMFwMsktF6SE11/0v8ANdPQImejX+FwAAAABJRU5ErkJggg==)](https://github.com/dankamongmen/notcurses)
 
-## Build Status
+### Supported Distros
+
+[![Debian](https://img.shields.io/badge/Debian-12%20%7C%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com)
+[![Fedora](https://img.shields.io/badge/Fedora-43%20%7C%2044-51A2DA?logo=fedora&logoColor=white)](https://fedoraproject.org)
+[![AlmaLinux](https://img.shields.io/badge/AlmaLinux-8%20%7C%209%20%7C%2010-0095D5?logo=almalinux&logoColor=white)](https://almalinux.org)
+[![openSUSE](https://img.shields.io/badge/openSUSE-Tumbleweed%20%7C%20Leap%2016.0-73BA25?logo=opensuse&logoColor=white)](https://www.opensuse.org)
+[![Arch Linux](https://img.shields.io/badge/Arch%20Linux-Rolling-1793D1?logo=archlinux&logoColor=white)](https://archlinux.org)
+
+### Build Status
 
 [![Debian 12](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2012%20%28Bookworm%29&label=Debian%2012)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Debian 13](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2013%20%28Trixie%29&label=Debian%2013)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
@@ -161,7 +171,7 @@ Checks that every data source Vitals reads (CPU, memory, GPU, storage, network, 
 > Linux buffers disk writes in RAM, then flushes them in batches.
 > So downloads may show steady Network traffic while Storage stays idle.
 
-## 🧹 Clean Up Legacy Installations
+## ♻️ Clean Up Legacy Installations
 
 Remove files left by older pre-release versions:
 
@@ -185,6 +195,7 @@ sudo ldconfig
 ## 📋 Requirements
 
 - Linux (kernel ≥ 4.x)
+- Bash 5.0+
 - GCC or Clang with C++20 support
 - CMake ≥ 3.21
 - Internet access (required to download Notcurses during setup)
