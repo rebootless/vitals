@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <chrono>
 #include <cerrno>
 #include <fcntl.h>
@@ -12,6 +13,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <unistd.h>
 #include <vector>
@@ -131,6 +133,7 @@ double read_engine_busy_percent(const std::string& pci_addr) {
 
     unsigned long long total_busy = 0;
     bool found = false;
+    std::set<std::string> seen_clients;
 
     DIR* proc = opendir("/proc");
     if (!proc) return -1.0;
@@ -141,7 +144,8 @@ double read_engine_busy_percent(const std::string& pci_addr) {
         if (pidname.empty() || !std::isdigit(static_cast<unsigned char>(pidname[0])))
             continue;
 
-        std::string fdinfo_dir = "/proc/" + pidname + "/fdinfo";
+        const std::string base = "/proc/" + pidname;
+        const std::string fdinfo_dir = base + "/fdinfo";
         DIR* fdd = opendir(fdinfo_dir.c_str());
         if (!fdd) continue;
 
@@ -150,16 +154,25 @@ double read_engine_busy_percent(const std::string& pci_addr) {
             std::string fname = fe->d_name;
             if (fname == "." || fname == "..") continue;
 
+            // only DRM file descriptors: a readlink is far cheaper than reading every fdinfo
+            char target[64];
+            ssize_t n = readlink((base + "/fd/" + fname).c_str(), target, sizeof(target) - 1);
+            if (n <= 0) continue;
+            target[n] = '\0';
+            if (std::strncmp(target, "/dev/dri/", 9) != 0) continue;
+
             std::ifstream f(fdinfo_dir + "/" + fname);
             if (!f) continue;
 
-            std::string line, pdev;
+            std::string line, pdev, client;
             unsigned long long busy = 0;
             bool has_engine = false;
 
             while (std::getline(f, line)) {
                 if (line.rfind("drm-pdev:", 0) == 0) {
                     pdev = trim(line.substr(9));
+                } else if (line.rfind("drm-client-id:", 0) == 0) {
+                    client = trim(line.substr(14));
                 } else if (line.rfind("drm-engine-gr:", 0) == 0) {
                     std::istringstream ls(line.substr(14));
                     unsigned long long v = 0;
@@ -169,10 +182,12 @@ double read_engine_busy_percent(const std::string& pci_addr) {
                 }
             }
 
-            if (has_engine && pdev == pci_addr) {
-                total_busy += busy;
-                found = true;
-            }
+            if (!has_engine || pdev != pci_addr) continue;
+            // dup()/fork() share one DRM client across several fds and processes: count it once
+            if (!client.empty() && !seen_clients.insert(client).second) continue;
+
+            total_busy += busy;
+            found = true;
         }
         closedir(fdd);
     }
