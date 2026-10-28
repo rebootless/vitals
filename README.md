@@ -10,7 +10,7 @@
 [![CMake](https://img.shields.io/badge/CMake-064F8C?logo=cmake)](https://cmake.org/)
 [![Notcurses](https://img.shields.io/badge/Notcurses-555?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAAP1BMVEUAAAD///////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwlEnmAAAAEHRSTlMABvstUY9uss4AAAAAAAAAa/L5DwAAAJNJREFUeNptUVsOwzAIizEm3P/EI800rQl8tbH8wIzxG4x2AIgtCFh0wGLoBjAQOecF1L+bWTYy09bUB96E/W68lNwfSORlH5tj+c4McBGUcVK2TaDZj1FqfsT6BnBrdi+Oakk0rQBZWl0rdKVOj9WKHNRNiGRF88Nk1Q7WBXleEYhSqswXMFwMsktF6SE11/0v8ANdPQImejX+FwAAAABJRU5ErkJggg==)](https://github.com/dankamongmen/notcurses)
 
-### Supported Distros
+### Supported Distros:
 
 [![Debian](https://img.shields.io/badge/Debian-12%20%7C%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com)
@@ -19,7 +19,7 @@
 [![openSUSE](https://img.shields.io/badge/openSUSE-Tumbleweed%20%7C%20Leap%2016.0-73BA25?logo=opensuse&logoColor=white)](https://www.opensuse.org)
 [![Arch Linux](https://img.shields.io/badge/Arch%20Linux-Rolling-1793D1?logo=archlinux&logoColor=white)](https://archlinux.org)
 
-### Build Status
+### Build Status:
 
 [![Debian 12](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2012%20%28Bookworm%29&label=Debian%2012)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Debian 13](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Debian%2013%20%28Trixie%29&label=Debian%2013)](https://github.com/rebootless/vitals/actions/workflows/build.yml)

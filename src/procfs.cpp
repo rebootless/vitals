@@ -4,10 +4,12 @@
 #include <dirent.h>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
+#include <unistd.h>
 
 static std::string trim(const std::string& s) {
     size_t start = s.find_first_not_of(" \t\r\n");
@@ -106,29 +108,73 @@ loadavg parse_loadavg() {
     return parse_loadavg_from(f);
 }
 
-cpuinfo parse_cpuinfo() {
-    std::ifstream f("/proc/cpuinfo");
-    if (!f) throw std::runtime_error("cannot open /proc/cpuinfo");
-
+cpuinfo parse_cpuinfo_from(std::istream& in) {
     cpuinfo c{};
-    bool got_model    = false;
-    bool got_cores    = false;
-    bool got_siblings = false;
+    std::string model, board, hardware;
 
     std::string line;
-    while (std::getline(f, line)) {
+    while (std::getline(in, line)) {
         auto colon = line.find(':');
         if (colon == std::string::npos) continue;
 
         std::string key = trim(line.substr(0, colon));
         std::string val = trim(line.substr(colon + 1));
 
-        if      (!got_model    && key == "model name") { c.model_name  = val;            got_model    = true; }
-        else if (!got_cores    && key == "cpu cores")  { c.cpu_cores   = std::stoi(val); got_cores    = true; }
-        else if (!got_siblings && key == "siblings")   { c.cpu_siblings = std::stoi(val); got_siblings = true; }
-
-        if (got_model && got_cores && got_siblings) break;
+        if      (key == "processor")                 ++c.cpu_siblings;
+        else if (key == "model name" && model.empty())       model    = val; // x86, ARM32
+        else if (key == "Model"      && board.empty())       board    = val; // Raspberry Pi and other ARM boards
+        else if (key == "Hardware"   && hardware.empty())    hardware = val;
     }
+
+    c.model_name = !model.empty() ? model : !board.empty() ? board : hardware;
+    return c;
+}
+
+// distinct (package, core) pairs: cpuinfo's "cpu cores" is per socket, and ARM has no such field
+static int count_physical_cores() {
+    DIR* dir = opendir("/sys/devices/system/cpu");
+    if (!dir) return 0;
+
+    auto read_int = [](const std::string& path) -> long {
+        std::ifstream f(path);
+        long v = -1;
+        if (!(f >> v)) return -1;
+        return v;
+    };
+
+    std::set<std::pair<long, long>> cores;
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        const std::string name = entry->d_name;
+        if (name.size() <= 3 || name.compare(0, 3, "cpu") != 0) continue;
+        if (!std::isdigit(static_cast<unsigned char>(name[3]))) continue;
+
+        const std::string topo = std::string("/sys/devices/system/cpu/") + name + "/topology/";
+        const long core = read_int(topo + "core_id");
+        if (core < 0) continue;
+        cores.insert({std::max(0L, read_int(topo + "physical_package_id")), core});
+    }
+    closedir(dir);
+    return static_cast<int>(cores.size());
+}
+
+static std::string read_device_tree_model() {
+    std::ifstream f("/proc/device-tree/model");
+    std::string s;
+    std::getline(f, s, '\0');
+    return trim(s);
+}
+
+cpuinfo parse_cpuinfo() {
+    std::ifstream f("/proc/cpuinfo");
+    if (!f) throw std::runtime_error("cannot open /proc/cpuinfo");
+
+    cpuinfo c = parse_cpuinfo_from(f);
+    if (c.model_name.empty()) c.model_name = read_device_tree_model();
+    if (c.cpu_siblings == 0) c.cpu_siblings = static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN)); // non-x86 layouts
+
+    const int cores = count_physical_cores();
+    c.cpu_cores = (cores > 0 && cores <= c.cpu_siblings) ? cores : c.cpu_siblings;
     return c;
 }
 

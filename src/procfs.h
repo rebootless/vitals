@@ -60,8 +60,8 @@ struct loadavg {
 struct cpuinfo {
     std::string model_name;
 
-    int cpu_cores;
-    int cpu_siblings;
+    int cpu_cores;    // physical cores across all sockets
+    int cpu_siblings; // logical CPUs (threads)
 };
 
 struct netdev {
@@ -155,6 +155,7 @@ std::vector<cpufreq>   parse_cpufreq();
 filesystemstat         parse_filesystemstat(const std::string& path = "/");
 systemuname            parse_systemuname();
 
+cpuinfo                parse_cpuinfo_from(std::istream& in); // model and thread count only
 cpustat                parse_cpustat_from(std::istream& in);
 meminfo                parse_meminfo_from(std::istream& in);
 std::vector<netdev>    parse_netdev_from(std::istream& in);
