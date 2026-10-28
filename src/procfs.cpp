@@ -31,6 +31,7 @@ cpustat parse_cpustat_from(std::istream& in) {
     throw std::runtime_error("aggregate cpu line not found");
 }
 
+// /proc/stat: aggregate "cpu" line
 cpustat parse_cpustat() {
     std::ifstream f("/proc/stat");
     if (!f) throw std::runtime_error("cannot open /proc/stat");
@@ -71,6 +72,7 @@ meminfo parse_meminfo_from(std::istream& in) {
     return m;
 }
 
+// /proc/meminfo
 meminfo parse_meminfo() {
     std::ifstream f("/proc/meminfo");
     if (!f) throw std::runtime_error("cannot open /proc/meminfo");
@@ -83,6 +85,7 @@ uptime parse_uptime_from(std::istream& in) {
     return u;
 }
 
+// /proc/uptime
 uptime parse_uptime() {
     std::ifstream f("/proc/uptime");
     if (!f) throw std::runtime_error("cannot open /proc/uptime");
@@ -102,6 +105,7 @@ loadavg parse_loadavg_from(std::istream& in) {
     return l;
 }
 
+// /proc/loadavg
 loadavg parse_loadavg() {
     std::ifstream f("/proc/loadavg");
     if (!f) throw std::runtime_error("cannot open /proc/loadavg");
@@ -165,6 +169,7 @@ static std::string read_device_tree_model() {
     return trim(s);
 }
 
+// /proc/cpuinfo (model, threads), /sys/devices/system/cpu/cpu*/topology (cores), /proc/device-tree/model (ARM fallback)
 cpuinfo parse_cpuinfo() {
     std::ifstream f("/proc/cpuinfo");
     if (!f) throw std::runtime_error("cannot open /proc/cpuinfo");
@@ -202,12 +207,14 @@ std::vector<netdev> parse_netdev_from(std::istream& in) {
     return result;
 }
 
+// /proc/net/dev
 std::vector<netdev> parse_netdev() {
     std::ifstream f("/proc/net/dev");
     if (!f) throw std::runtime_error("cannot open /proc/net/dev");
     return parse_netdev_from(f);
 }
 
+// /proc/net/snmp (Ip/Tcp/Udp counters)
 snmp parse_snmp() {
     std::ifstream f("/proc/net/snmp");
     if (!f) throw std::runtime_error("cannot open /proc/net/snmp");
@@ -269,6 +276,7 @@ std::vector<diskstats> parse_diskstats_from(std::istream& in) {
     return result;
 }
 
+// /proc/diskstats
 std::vector<diskstats> parse_diskstats() {
     std::ifstream f("/proc/diskstats");
     if (!f) throw std::runtime_error("cannot open /proc/diskstats");
@@ -279,6 +287,7 @@ double millideg_to_celsius(unsigned long long raw_millidegrees) {
     return raw_millidegrees / 1000.0;
 }
 
+// /sys/class/thermal/thermal_zone*/temp
 std::vector<thermal> parse_thermal() {
     const char* base = "/sys/class/thermal";
     std::vector<thermal> result;
@@ -306,6 +315,7 @@ std::vector<thermal> parse_thermal() {
     return result;
 }
 
+// "cpu MHz" lines of /proc/cpuinfo, used when cpufreq sysfs is missing
 static std::vector<cpufreq> parse_cpufreq_from_cpuinfo() {
     std::vector<cpufreq> result;
     std::ifstream f("/proc/cpuinfo");
@@ -336,6 +346,7 @@ static std::vector<cpufreq> parse_cpufreq_from_cpuinfo() {
     return result;
 }
 
+// /sys/devices/system/cpu/cpu*/cpufreq
 std::vector<cpufreq> parse_cpufreq() {
     const char* base = "/sys/devices/system/cpu";
     std::vector<cpufreq> result;
@@ -378,6 +389,7 @@ std::vector<cpufreq> parse_cpufreq() {
     return result;
 }
 
+// statvfs()
 filesystemstat parse_filesystemstat(const std::string& path) {
     struct statvfs sv{};
     if (::statvfs(path.c_str(), &sv) != 0)
@@ -403,6 +415,7 @@ systemuname systemuname_from(const struct utsname& u) {
     return s;
 }
 
+// uname()
 systemuname parse_systemuname() {
     struct utsname u{};
     if (::uname(&u) != 0)

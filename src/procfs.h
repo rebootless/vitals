@@ -6,7 +6,7 @@
 
 struct utsname; // <sys/utsname.h> — forward-declared to keep this header light
 
-struct cpustat { // stat will conflict with POSIX API
+struct cpustat { // /proc/stat; named so to avoid clashing with POSIX stat
     unsigned long long user;
     unsigned long long nice;
     unsigned long long system;
@@ -19,7 +19,7 @@ struct cpustat { // stat will conflict with POSIX API
     unsigned long long guest_nice;
 };
 
-struct meminfo {
+struct meminfo { // /proc/meminfo, values in kiB
     unsigned long long MemTotal;
     unsigned long long MemFree;
     unsigned long long MemAvailable;
@@ -41,12 +41,12 @@ struct meminfo {
     unsigned long long SReclaimable; // only used as a MemAvailable fallback input
 };
 
-struct uptime {
+struct uptime { // /proc/uptime
     double uptime_seconds;
     double idle_seconds;
 };
 
-struct loadavg {
+struct loadavg { // /proc/loadavg
     double load1;
     double load5;
     double load15;
@@ -57,14 +57,14 @@ struct loadavg {
     unsigned int last_pid;
 };
 
-struct cpuinfo {
+struct cpuinfo { // /proc/cpuinfo, /sys/devices/system/cpu/cpu*/topology
     std::string model_name;
 
     int cpu_cores;    // physical cores across all sockets
     int cpu_siblings; // logical CPUs (threads)
 };
 
-struct netdev {
+struct netdev { // /proc/net/dev, one entry per interface
     std::string interface;
 
     std::vector<netdev> v_netdev;
@@ -80,7 +80,7 @@ struct netdev {
     unsigned long long tx_dropped;
 };
 
-struct snmp {
+struct snmp { // /proc/net/snmp
     unsigned long long tcp_in_segments;
     unsigned long long tcp_out_segments;
 
@@ -91,7 +91,7 @@ struct snmp {
     unsigned long long ip_out_requests;
 };
 
-struct diskstats {
+struct diskstats { // /proc/diskstats, one entry per block device
     std::string device;
 
     std::vector<diskstats> v_diskstats;
@@ -110,12 +110,12 @@ struct diskstats {
     unsigned long long io_time_ms;
 };
 
-struct thermal {
+struct thermal { // /sys/class/thermal/thermal_zone*/temp
     int    zone;
     double temperature_celsius;
 };
 
-struct cpufreq {
+struct cpufreq { // /sys/devices/system/cpu/cpu*/cpufreq
     int    cpu;
     double current_khz;
 
@@ -123,7 +123,7 @@ struct cpufreq {
     double max_khz;
 };
 
-struct filesystemstat { // statvfs will conflict with POSIX API
+struct filesystemstat { // statvfs(); named so to avoid clashing with POSIX statvfs
     unsigned long long total_bytes;
     unsigned long long used_bytes;
     unsigned long long free_bytes;
@@ -132,7 +132,7 @@ struct filesystemstat { // statvfs will conflict with POSIX API
     unsigned long long free_inodes;
 };
 
-struct systemuname { // uname will conflict with POSIX API
+struct systemuname { // uname(); named so to avoid clashing with POSIX uname
     std::string hostname;
 
     std::string kernel_name;
