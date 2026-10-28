@@ -1,6 +1,7 @@
 #include "sysinfo.h"
 
 #include <fstream>
+#include <net/if.h>
 #include <sstream>
 #include <cstring>
 #include <algorithm>
@@ -71,21 +72,45 @@ DiskRate disk_rate(ull prev_sectors_read,  ull cur_sectors_read,
     return r;
 }
 
+std::string default_route_iface(std::istream& in) {
+    std::string line, best;
+    unsigned long best_metric = 0;
+    std::getline(in, line); // header
+    while (std::getline(in, line)) {
+        std::istringstream ss(line);
+        std::string iface, dest, gw, mask;
+        unsigned flags = 0;
+        unsigned long refcnt = 0, use = 0, metric = 0;
+        ss >> iface >> dest >> gw >> std::hex >> flags >> std::dec >> refcnt >> use >> metric >> mask;
+        if (!ss || dest != "00000000" || mask != "00000000" || !(flags & 0x1)) continue; // RTF_UP
+        if (best.empty() || metric < best_metric) { best = iface; best_metric = metric; }
+    }
+    return best;
+}
+
+// the interface with the default route wins even if it is a bridge (Proxmox keeps the host IP on vmbr0)
 std::string get_local_ip() {
     struct ifaddrs* ifa = nullptr;
     if (getifaddrs(&ifa) != 0) return "N/A";
-    std::string result = "N/A";
+
+    std::string via;
+    { std::ifstream f("/proc/net/route"); if (f) via = default_route_iface(f); }
+
+    std::string preferred, fallback;
     for (struct ifaddrs* p = ifa; p; p = p->ifa_next) {
         if (!p->ifa_addr || p->ifa_addr->sa_family != AF_INET) continue;
-        if (p->ifa_name == std::string("lo")) continue;
+        if (!(p->ifa_flags & IFF_UP) || (p->ifa_flags & IFF_LOOPBACK)) continue;
         char buf[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &reinterpret_cast<struct sockaddr_in*>(p->ifa_addr)->sin_addr,
                   buf, sizeof(buf));
-        result = buf;
-        break;
+        const std::string name = p->ifa_name;
+        if (name == via) { preferred = buf; break; }
+        if (fallback.empty() && !is_hidden_iface(name)) fallback = buf;
     }
     freeifaddrs(ifa);
-    return result;
+
+    if (!preferred.empty()) return preferred;
+    return fallback.empty() ? "N/A" : fallback;
 }
 
 bool is_hidden_iface(const std::string& name) {

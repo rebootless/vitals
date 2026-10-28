@@ -83,7 +83,6 @@ int main(int argc, char** argv) {
 
     try { G.ci = parse_cpuinfo();     } catch (...) {}
     try { G.un = parse_systemuname(); } catch (...) {}
-    G.local_ip = get_local_ip();
 
     try { G.prev_cpu  = parse_cpustat();   } catch (...) {}
     try { G.prev_core = parse_percpu();    } catch (...) {}
@@ -234,6 +233,7 @@ int main(int argc, char** argv) {
             try { freqs    = parse_cpufreq();   } catch (...) {}
             try { hwmon    = parse_hwmon();     } catch (...) {}
             try { G.gpus   = parse_gpus();      } catch (...) {}
+            G.local_ip = get_local_ip();
 
             const double pct = cpu_delta(G.prev_cpu, cur_cpu);
             G.cpu_hist.push_back(pct);

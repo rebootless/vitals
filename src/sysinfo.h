@@ -15,7 +15,10 @@ struct DiskRate { double read_bytes_per_sec; double write_bytes_per_sec; };
 DiskRate disk_rate(ull prev_sectors_read,  ull cur_sectors_read,
                    ull prev_sectors_written, ull cur_sectors_written, double dt);
 
+// IPv4 of the default-route interface, else of the first up, non-virtual one; "N/A" if none
 std::string get_local_ip();
+// interface of the lowest-metric default route in /proc/net/route format, "" if none
+std::string default_route_iface(std::istream& in);
 // loopback, VLANs and virtual plumbing (bridges, bonds, tap/veth/ifb, docker, libvirt, Proxmox fw*); VPN links stay visible
 bool is_hidden_iface(const std::string& name);
 // dm-/loop/sr/ram/zram/md/nbd/zd: their I/O is already counted on the underlying devices
