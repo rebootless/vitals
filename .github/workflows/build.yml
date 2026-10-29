@@ -1,5 +1,6 @@
 name: Build
 
+# Trigger CI on pushes to supported branches and pull requests
 on:
   push:
     branches:
@@ -45,81 +46,21 @@ jobs:
     - name: Install git
       run: |
         set -eux
-        # tar and gzip are needed by actions/cache
-        if   command -v apt-get >/dev/null; then apt-get update -q && apt-get install -y --no-install-recommends ca-certificates git tar gzip
-        elif command -v dnf     >/dev/null; then dnf install -y git tar gzip
-        elif command -v zypper  >/dev/null; then zypper --non-interactive install --no-recommends git tar gzip
-        elif command -v pacman  >/dev/null; then pacman -Syu --noconfirm --needed git tar gzip
+        if   command -v apt-get >/dev/null; then apt-get update -q && apt-get install -y --no-install-recommends ca-certificates git
+        elif command -v dnf     >/dev/null; then dnf install -y git
+        elif command -v zypper  >/dev/null; then zypper --non-interactive install --no-recommends git
+        elif command -v pacman  >/dev/null; then pacman -Syu --noconfirm --needed git
         fi
 
+    # Checkout the current revision for CI scripts and verification
     - name: Checkout repository
       uses: actions/checkout@v5
 
-    # notcurses source and its build tree; the key rolls over weekly so compiler and library updates in the images are picked up
-    - name: Cache key
-      id: cache_key
-      run: echo "week=$(date +%G-%V)" >> "$GITHUB_OUTPUT"
-
-    - name: Cache notcurses build
-      uses: actions/cache@v4
-      with:
-        path: |
-          notcurses
-          build
-        key: nc-${{ matrix.image }}-${{ steps.cache_key.outputs.week }}-${{ hashFiles('setup.sh', 'deps.sh', 'CMakeLists.txt') }}
-
-    - name: Set up (deps + notcurses)
+    # Install vitals using the public installation procedure
+    # install.sh independently clones the repository
+    - name: Install
       env:
         VITALS_ALLOW_ROOT: "1"
-      run: bash setup.sh
-
-    - name: Build vitals
-      env:
-        VITALS_KEEP_BUILD: "1"
-      run: bash build.sh
-
-    - name: Verify binary
-      run: |
-        set -eux
-        test -x build/vitals
-        ldd build/vitals
-        if ldd build/vitals | grep -q "not found"; then
-          echo "::error::unresolved shared libraries"
-          exit 1
-        fi
-        if ldd build/vitals | grep -q notcurses; then
-          echo "::error::notcurses must be linked statically"
-          exit 1
-        fi
-
-    - name: Self-test
-      run: timeout 60 build/vitals --self-test
-
-    - name: Install layout
-      run: |
-        set -eux
-        cmake --install build
-        test -x /usr/local/bin/vitals
-        test -d /usr/local/share/vitals/themes
-        /usr/local/bin/vitals --version
-        # only the binary and themes: notcurses is linked statically
-        if compgen -G "/usr/local/lib*/libnotcurses*" >/dev/null || [ -e /usr/local/include/notcurses ]; then
-          echo "::error::notcurses files were installed"
-          exit 1
-        fi
-
-  install-script:
-    name: install.sh and uninstall.sh
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
-
-    - name: Install from this checkout
-      env:
-        VITALS_REPO_URL: file://${{ github.workspace }}
       run: bash install.sh
 
     - name: Verify install
@@ -127,10 +68,26 @@ jobs:
         set -eux
         test -x /usr/local/bin/vitals
         test -d /usr/local/share/vitals/themes
+        ldd /usr/local/bin/vitals
+        if ldd /usr/local/bin/vitals | grep -q "not found"; then
+          echo "::error::unresolved shared libraries"
+          exit 1
+        fi
+        if ldd /usr/local/bin/vitals | grep -q notcurses; then
+          echo "::error::notcurses must be linked statically"
+          exit 1
+        fi
+        # only the binary and themes are installed
+        if compgen -G "/usr/local/lib*/libnotcurses*" >/dev/null || [ -e /usr/local/include/notcurses ]; then
+          echo "::error::notcurses files were installed"
+          exit 1
+        fi
         vitals --version
         timeout 60 vitals --self-test
 
     - name: Uninstall
+      env:
+        VITALS_ALLOW_ROOT: "1"
       run: |
         set -eux
         mkdir -p "$HOME/.config/vitals"

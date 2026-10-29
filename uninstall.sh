@@ -10,12 +10,14 @@ CONFIG_ROOT="$HOME/.config"
 if [[ "${XDG_CONFIG_HOME:-}" == /* ]]; then CONFIG_ROOT="$XDG_CONFIG_HOME"; fi
 CONFIG_DIR="$CONFIG_ROOT/vitals"
 
-if [[ $EUID -eq 0 ]]; then
+# CI containers run as root without sudo (VITALS_ALLOW_ROOT=1)
+SUDO="sudo"
+if [[ $EUID -eq 0 && -n "${VITALS_ALLOW_ROOT:-}" ]]; then
+    SUDO=""
+elif [[ $EUID -eq 0 ]]; then
     echo "Do not run this script as root."
     exit 1
-fi
-
-if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
+elif ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
     echo "sudo access is required. Aborting."
     exit 1
 fi
@@ -35,9 +37,9 @@ case "${CHOICE,,}" in
     *)     echo "Aborted."; exit 0 ;;
 esac
 
-sudo rm -f "$INSTALL_BIN"
-sudo rm -rf "$DATA_DIR/themes"
-sudo rmdir --ignore-fail-on-non-empty "$DATA_DIR" 2>/dev/null || true
+$SUDO rm -f "$INSTALL_BIN"
+$SUDO rm -rf "$DATA_DIR/themes"
+$SUDO rmdir --ignore-fail-on-non-empty "$DATA_DIR" 2>/dev/null || true
 echo "Removed."
 
 echo ""

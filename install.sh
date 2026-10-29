@@ -16,12 +16,14 @@ BUNDLED_THEMES_DIR="/usr/local/share/vitals/themes"
 
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
-if [[ $EUID -eq 0 ]]; then
+# CI containers run as root without sudo (VITALS_ALLOW_ROOT=1)
+SUDO="sudo"
+if [[ $EUID -eq 0 && -n "${VITALS_ALLOW_ROOT:-}" ]]; then
+    SUDO=""
+elif [[ $EUID -eq 0 ]]; then
     echo "Do not run this script as root."
     exit 1
-fi
-
-if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
+elif ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
     echo "sudo access is required. Aborting."
     exit 1
 fi
@@ -61,7 +63,7 @@ echo ""
 echo "Build successful."
 
 # the binary and themes only: notcurses is linked statically
-sudo cmake --install build
+$SUDO cmake --install build
 
 echo ""
 echo "  Binary: $INSTALL_BIN"
