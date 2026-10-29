@@ -7,6 +7,7 @@
 #include <clocale>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <thread>
 #include <chrono>
 #include <utility>
@@ -103,14 +104,32 @@ int main(int argc, char** argv) {
     std::map<std::string, double> last_net_rx, last_net_tx;
     std::map<std::string, double> last_disk_rd, last_disk_wr;
 
-    // input is polled every INPUT_POLL_MS, independent of the refresh tick (up to 60s)
-    const auto INPUT_POLL = std::chrono::milliseconds(30);
-
     auto last_tick = Clock::now() - std::chrono::hours(1);
 
     for (;;) {
         ncinput ni{};
-        uint32_t ch = notcurses_get_nblock(nc, &ni);
+
+        // sleep until input or the next tick; frozen and settings only wake on input
+        uint32_t ch;
+        std::chrono::nanoseconds left{0};
+        if (!G.settings_open && !G.frozen)
+            left = std::chrono::milliseconds(G.refresh_ms) - (Clock::now() - last_tick);
+
+        if (G.settings_open || G.frozen) {
+            ch = notcurses_get(nc, nullptr, &ni);
+        } else if (left.count() <= 0) {
+            ch = notcurses_get_nblock(nc, &ni);
+        } else {
+            timespec deadline{};
+            clock_gettime(CLOCK_MONOTONIC, &deadline);
+            const long long ns = deadline.tv_nsec + left.count();
+            deadline.tv_sec  += static_cast<time_t>(ns / 1000000000LL);
+            deadline.tv_nsec  = static_cast<long>(ns % 1000000000LL);
+            ch = notcurses_get(nc, &deadline, &ni);
+        }
+
+        // stdin closed or input failed: nothing more can arrive
+        if (ch == NCKEY_EOF || ch == static_cast<uint32_t>(-1)) break;
 
         // Kitty protocol sends RELEASE events too; ignore them or Esc-up re-closes Settings
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
@@ -336,8 +355,6 @@ int main(int argc, char** argv) {
                   last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus,
                   last_net_rx, last_net_tx, last_disk_rd, last_disk_wr);
         }
-
-        std::this_thread::sleep_for(INPUT_POLL);
     }
 
     notcurses_stop(nc);
