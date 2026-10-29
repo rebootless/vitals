@@ -1,10 +1,12 @@
 #include "gpu.h"
+#include "log.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <chrono>
 #include <cerrno>
+#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
@@ -229,15 +231,17 @@ GpuInfo parse_nouveau(const std::string& device_dir, const std::string& card) {
     return g;
 }
 
-// "nvidia-smi -l 1" runs once and is read without blocking: spawning it every tick costs a full NVML init,
-// and a hung driver would freeze the UI. Some old cards (e.g. Kepler) report [N/A] utilization in NVML itself.
-
+// "nvidia-smi -l 1" runs once and is read without blocking: spawning it every tick costs a full NVML init, and a hung driver would freeze the UI. Some old cards (e.g. Kepler) report [N/A] utilization in NVML itself.
 bool parse_smi_line(const std::string& line, GpuInfo& g) {
     std::istringstream ls(line);
     std::string field;
     std::vector<std::string> fields;
     while (std::getline(ls, field, ',')) fields.push_back(trim(field));
-    if (fields.size() < 6) return false;
+    if (fields.size() < 6) {
+        static int reported = 0;
+        if (reported++ < 5) LOG_WARN("gpu", "nvidia-smi: unparsable line: %s", line.c_str());
+        return false;
+    }
 
     g = GpuInfo{};
     g.vendor = GpuVendor::Nvidia;
@@ -267,15 +271,21 @@ public:
         if (pid_ >= 0 && !have_ && !waited_) {
             waited_ = true;
             pollfd p{fd_, POLLIN, 0};
-            ::poll(&p, 1, FIRST_SAMPLE_MS);
+            if (::poll(&p, 1, FIRST_SAMPLE_MS) == 0)
+                LOG_WARN("gpu", "nvidia-smi: no output within %d ms, continuing without it", FIRST_SAMPLE_MS);
             now = std::chrono::steady_clock::now();
         }
         if (pid_ >= 0) drain(now);
 
         if (!have_) return {};
         GpuInfo g = last_;
-        if (now - last_line_ > STALE)
-            g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = -1.0;
+        const bool stale = now - last_line_ > STALE;
+        if (stale != stale_) {
+            stale_ = stale;
+            if (stale) LOG_WARN("gpu", "nvidia-smi: no new data for %lld s, values shown as n/a", static_cast<long long>(STALE.count()));
+            else       LOG_INFO("gpu", "nvidia-smi: data is fresh again");
+        }
+        if (stale) g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = -1.0;
         return {g};
     }
 
@@ -285,12 +295,17 @@ private:
     std::string        buf_;
     std::vector<pid_t> dying_;
     GpuInfo            last_;
-    bool               have_ = false, waited_ = false;
+    bool               have_ = false, waited_ = false, stale_ = false;
+    int                last_spawn_rc_ = 0;
     Tp                 started_{}, last_line_{}, next_start_{};
 
     void start(Tp now) {
         int fds[2];
-        if (pipe2(fds, O_CLOEXEC) != 0) { next_start_ = now + RETRY; return; }
+        if (pipe2(fds, O_CLOEXEC) != 0) {
+            LOG_ERROR("gpu", "nvidia-smi: pipe2 failed: %s", std::strerror(errno));
+            next_start_ = now + RETRY;
+            return;
+        }
         fcntl(fds[0], F_SETFL, O_NONBLOCK);
 
         posix_spawn_file_actions_t fa;
@@ -308,9 +323,19 @@ private:
                                     const_cast<char* const*>(args), environ);
         posix_spawn_file_actions_destroy(&fa);
         ::close(fds[1]); // once we exit, the child's next write gets SIGPIPE
-        if (rc != 0) { ::close(fds[0]); next_start_ = now + RETRY; return; }
+        if (rc != 0) {
+            if (rc != last_spawn_rc_) // a missing binary would repeat every RETRY
+                LOG_WARN("gpu", "nvidia-smi: cannot start: %s (retrying every %lld s)", std::strerror(rc),
+                         static_cast<long long>(RETRY.count()));
+            last_spawn_rc_ = rc;
+            ::close(fds[0]);
+            next_start_ = now + RETRY;
+            return;
+        }
 
+        last_spawn_rc_ = 0;
         pid_ = pid; fd_ = fds[0]; started_ = now; buf_.clear();
+        LOG_INFO("gpu", "nvidia-smi started, pid %d", static_cast<int>(pid));
     }
 
     void drain(Tp now) {
@@ -319,20 +344,28 @@ private:
             const ssize_t n = ::read(fd_, tmp, sizeof(tmp));
             if (n > 0) { buf_.append(tmp, static_cast<size_t>(n)); continue; }
             if (n < 0 && errno == EINTR) continue;
-            if (n == 0) { kill_child(); next_start_ = now + RETRY; }
+            if (n == 0) {
+                LOG_WARN("gpu", "nvidia-smi exited (pipe closed), restart in %lld s", static_cast<long long>(RETRY.count()));
+                kill_child();
+                next_start_ = now + RETRY;
+            }
             break; // EOF, or EAGAIN: nothing more for now
         }
 
         size_t nl;
         while ((nl = buf_.find('\n')) != std::string::npos) {
             GpuInfo g;
-            if (parse_smi_line(buf_.substr(0, nl), g)) { last_ = g; have_ = true; last_line_ = now; }
+            if (parse_smi_line(buf_.substr(0, nl), g)) {
+                if (!have_) LOG_INFO("gpu", "nvidia-smi: first sample: %s", buf_.substr(0, nl).c_str());
+                last_ = g; have_ = true; last_line_ = now;
+            }
             buf_.erase(0, nl + 1);
         }
         if (buf_.size() > 4096) buf_.clear();
 
         // alive but silent (hung driver): restart it
         if (pid_ >= 0 && now - std::max(last_line_, started_) > 2 * STALE) {
+            LOG_WARN("gpu", "nvidia-smi: silent for %lld s, restarting it", static_cast<long long>((2 * STALE).count()));
             kill_child();
             next_start_ = now;
         }
@@ -340,14 +373,23 @@ private:
 
     // SIGKILL can't take effect on a process stuck in the driver, so never wait for it here
     void kill_child() {
-        if (pid_ >= 0) { ::kill(pid_, SIGKILL); dying_.push_back(pid_); pid_ = -1; }
+        if (pid_ >= 0) {
+            LOG_INFO("gpu", "nvidia-smi: killing pid %d", static_cast<int>(pid_));
+            ::kill(pid_, SIGKILL);
+            dying_.push_back(pid_);
+            pid_ = -1;
+        }
         if (fd_ >= 0)  { ::close(fd_); fd_ = -1; }
         buf_.clear();
     }
 
     void reap() {
         dying_.erase(std::remove_if(dying_.begin(), dying_.end(),
-                                    [](pid_t p) { return ::waitpid(p, nullptr, WNOHANG) != 0; }),
+                                    [](pid_t p) {
+                                        const bool gone = ::waitpid(p, nullptr, WNOHANG) != 0;
+                                        if (gone) LOG_DEBUG("gpu", "nvidia-smi: reaped pid %d", static_cast<int>(p));
+                                        return gone;
+                                    }),
                      dying_.end());
     }
 };
@@ -422,6 +464,16 @@ std::vector<GpuInfo> parse_gpus() {
     if (result.empty() && (sysfs_enum_failed || candidates.empty())) {
         auto nv = parse_nvidia_proprietary();
         if (!nv.empty()) result.push_back(std::move(nv.front()));
+    }
+
+    // logged when it changes, not on every tick
+    std::string summary = sysfs_enum_failed ? "/sys/class/drm unreadable; " : "";
+    for (const auto& c : candidates) summary += c.name + " vendor=" + (c.vendor_id.empty() ? "?" : c.vendor_id) + "; ";
+    summary += result.empty() ? "no GPU used" : "using " + result.front().name;
+    static std::string last_summary;
+    if (summary != last_summary) {
+        LOG_INFO("gpu", "detection: %s", summary.c_str());
+        last_summary = summary;
     }
 
     return result;

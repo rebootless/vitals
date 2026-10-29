@@ -9,7 +9,8 @@ INSTALL_BIN="/usr/local/bin/vitals"
 BUILD_DIR="$(mktemp -d /tmp/vitals-build.XXXXXX)"
 
 # only for summary - not used actually
-SETTINGS_DIR="${HOME}/.config/vitals/config"
+SETTINGS_FILE="${HOME}/.config/vitals/config.conf"
+LOG_FILE="${HOME}/.config/vitals/MM-DD-YYYY.log"
 USER_THEMES_DIR="${HOME}/.config/vitals/themes"
 BUNDLED_THEMES_DIR="/usr/local/share/vitals/themes"
 
@@ -66,7 +67,8 @@ echo ""
 echo "  Binary: $INSTALL_BIN"
 echo "  Commit: $(git -C "$BUILD_DIR/vitals" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 
-echo "  Settings:       $SETTINGS_DIR"
+echo "  Settings:       $SETTINGS_FILE"
+echo "  Log:            $LOG_FILE"
 echo "  User themes:    $USER_THEMES_DIR"
 echo "  Bundled Themes: $BUNDLED_THEMES_DIR"
 

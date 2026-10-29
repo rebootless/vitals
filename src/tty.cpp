@@ -1,4 +1,5 @@
 #include "tty.h"
+#include "log.h"
 
 #include <algorithm>
 #include <cctype>
@@ -32,12 +33,15 @@ bool detect_linux_console() {
 }
 
 bool resolve_tty_active(TtyForce force) {
+    bool active = false;
     switch (force) {
-        case TtyForce::ForceOn:  return true;
-        case TtyForce::ForceOff: return false;
+        case TtyForce::ForceOn:  active = true;  break;
+        case TtyForce::ForceOff: active = false; break;
         case TtyForce::Auto:
-        default:                 return detect_linux_console();
+        default:                 active = detect_linux_console(); break;
     }
+    LOG_DEBUG("tty", "mode %s -> %s", tty_force_to_string(force).c_str(), active ? "text-only console" : "graphics");
+    return active;
 }
 
 TtyForce tty_force_from_string(const std::string& s) {

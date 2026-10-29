@@ -16,7 +16,7 @@ std::string config_dir() {
 
 std::string config_path() {
     std::string dir = config_dir();
-    return dir.empty() ? "" : dir + "/config";
+    return dir.empty() ? "" : dir + "/config.conf";
 }
 
 std::string system_theme_dir() {

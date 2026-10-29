@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 0.9.9 LANGUAGES CXX)
+project(vitals VERSION 1.0.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -48,6 +48,8 @@ set(SOURCES
     src/selftest.cpp
     src/selftest_checks.cpp
     src/selftest_fixtures.cpp
+    src/log.cpp
+    src/diag.cpp
 )
 
 add_executable(vitals ${SOURCES})

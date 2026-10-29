@@ -3,6 +3,8 @@
 #include "config.h"
 #include "selftest.h"
 #include "paths.h"
+#include "log.h"
+#include "diag.h"
 
 #include <clocale>
 #include <cstdio>
@@ -13,6 +15,21 @@
 #include <utility>
 
 AppState G;
+
+// runs one data source; failures go to the log (once per outage) instead of being swallowed
+template <class F>
+static bool sample(const char* name, F&& fn) {
+    try {
+        fn();
+        log_source(name, true);
+        return true;
+    } catch (const std::exception& e) {
+        log_source(name, false, e.what());
+    } catch (...) {
+        log_source(name, false);
+    }
+    return false;
+}
 
 static const int REFRESH_STEPS[] = {
     100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000,
@@ -38,12 +55,16 @@ int main(int argc, char** argv) {
             printf("Usage: vitals [OPTION]\n\n"
                    "  -h, --help       show this help and exit\n"
                    "  -v, --version    show version and exit\n"
-                   "      --self-test  check data sources and exit (0 = no FAIL)\n\n"
-                   "Keys: q:Quit, f:Freeze, esc:Settings\n\n");
+                   "      --self-test  check data sources and exit (0 = no FAIL)\n\n");
             const std::string cfg = config_dir();
-            if (cfg.empty()) printf("Settings and your themes: unavailable (HOME is not set)\n");
-            else printf("Settings:       %s/config\nUser themes:    %s/themes\n", cfg.c_str(), cfg.c_str());
-            printf("Bundled themes: %s\n", system_theme_dir().c_str());
+            if (cfg.empty()) {
+                printf("Settings, log and your themes: unavailable (HOME is not set)\n");
+            } else {
+                printf("Settings:       %s\n", config_path().c_str());
+                printf("Log:            %s/MM-DD-YYYY.log\n", cfg.c_str());
+                printf("User themes:    %s/themes\n", cfg.c_str());
+            }
+            printf("Bundled Themes: %s\n", system_theme_dir().c_str());
             return 0;
         }
         if (a == "-v" || a == "--version") {
@@ -58,13 +79,19 @@ int main(int argc, char** argv) {
 
     setlocale(LC_ALL, "");
 
+    log_open();
+    log_startup(argc, argv);
+
     notcurses_options opts{};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
     notcurses* nc = notcurses_init(&opts, nullptr);
     if (!nc) {
+        LOG_ERROR("terminal", "notcurses_init failed");
         fprintf(stderr, "notcurses_init failed\n");
+        log_close();
         return 1;
     }
+    log_terminal(nc);
 
     ncplane* n = notcurses_stdplane(nc);
     ncplane_set_bg_default(n);
@@ -82,14 +109,16 @@ int main(int argc, char** argv) {
         G.symbol_mirror_idx = cfg.symbol_mirroring ? 1 : 0;
     }
 
-    try { G.ci = parse_cpuinfo();     } catch (...) {}
-    try { G.un = parse_systemuname(); } catch (...) {}
+    sample("cpuinfo", [] { G.ci = parse_cpuinfo();     });
+    sample("uname",   [] { G.un = parse_systemuname(); });
+
+    log_data_sources();
 
     auto take_baseline = [] {
-        try { G.prev_cpu  = parse_cpustat();   } catch (...) {}
-        try { G.prev_core = parse_percpu();    } catch (...) {}
-        try { G.prev_net  = parse_netdev();    } catch (...) {}
-        try { G.prev_disk = parse_diskstats(); } catch (...) {}
+        sample("cpustat",   [] { G.prev_cpu  = parse_cpustat();   });
+        sample("percpu",    [] { G.prev_core = parse_percpu();    });
+        sample("netdev",    [] { G.prev_net  = parse_netdev();    });
+        sample("diskstats", [] { G.prev_disk = parse_diskstats(); });
         G.t_prev = Clock::now();
     };
     take_baseline();
@@ -109,6 +138,10 @@ int main(int argc, char** argv) {
 
     auto last_tick = Clock::now() - std::chrono::hours(1);
     bool was_paused = false;
+    const char* exit_reason = "unknown";
+    unsigned long long tick_count = 0;
+    const auto started_at = Clock::now();
+    LOG_INFO("main", "entering main loop, refresh %d ms", G.refresh_ms);
 
     for (;;) {
         ncinput ni{};
@@ -133,18 +166,24 @@ int main(int argc, char** argv) {
         }
 
         // stdin closed or input failed: nothing more can arrive
-        if (ch == NCKEY_EOF || ch == static_cast<uint32_t>(-1)) break;
+        if (ch == NCKEY_EOF || ch == static_cast<uint32_t>(-1)) {
+            exit_reason = (ch == NCKEY_EOF) ? "stdin closed" : "input error";
+            LOG_ERROR("input", "%s", exit_reason);
+            break;
+        }
 
         // Kitty protocol sends RELEASE events too; ignore them or Esc-up re-closes Settings
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
+        if (ch != 0) LOG_DEBUG("input", "key %u", static_cast<unsigned>(ch));
 
         bool settings_was_open = G.settings_open;
 
         if (!G.settings_open) {
-            if (ch == 'q' || ch == 'Q') break;
+            if (ch == 'q' || ch == 'Q') { exit_reason = "quit key"; break; }
 
             if (ch == 'f' || ch == 'F') {
                 G.frozen = !G.frozen;
+                LOG_INFO("ui", "freeze %s", G.frozen ? "on" : "off");
             }
 
             // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
@@ -158,6 +197,7 @@ int main(int argc, char** argv) {
                 G.settings_saved_symbol_mirror = G.symbol_mirror_idx;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
+                LOG_INFO("ui", "settings opened");
             }
         } else {
             const int n_themes = static_cast<int>(all_themes().size());
@@ -173,6 +213,7 @@ int main(int argc, char** argv) {
                 G.graph_style_idx = G.settings_saved_graph_style;
                 G.symbol_mirror_idx = G.settings_saved_symbol_mirror;
                 G.settings_open = false;
+                LOG_INFO("ui", "settings discarded");
 
             } else if (ch == '\t') {
                 G.settings_focus = (G.settings_focus + 1) % 7;
@@ -228,6 +269,9 @@ int main(int argc, char** argv) {
                 cfg.symbol_mirroring = (G.symbol_mirror_idx == 1);
                 save_config(cfg);
                 G.settings_open = false;
+                LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
+                         cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
+                         cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
             }
         }
 
@@ -235,7 +279,8 @@ int main(int argc, char** argv) {
         const bool paused = G.settings_open || G.frozen;
         if (was_paused && !paused) {
             take_baseline();
-            try { G.gpus = parse_gpus(); } catch (...) {}
+            sample("gpu", [] { G.gpus = parse_gpus(); });
+            LOG_DEBUG("tick", "resumed after a pause, baseline refreshed");
             const auto wait = std::min(G.refresh_ms, 1000);
             last_tick = G.t_prev - std::chrono::milliseconds(G.refresh_ms - wait);
         }
@@ -246,6 +291,8 @@ int main(int argc, char** argv) {
             (t_now - last_tick >= std::chrono::milliseconds(G.refresh_ms));
 
         if (due_for_tick) {
+            const auto tick_start = Clock::now();
+            ++tick_count;
             G.dt = std::chrono::duration<double>(t_now - G.t_prev).count();
             if (G.dt < 0.001) G.dt = 1.0;
 
@@ -257,20 +304,23 @@ int main(int argc, char** argv) {
             std::vector<cpufreq>   freqs;
             std::vector<HwmonChip> hwmon;
 
-            try { cur_cpu  = parse_cpustat();   } catch (...) { cur_cpu = G.prev_cpu; }
-            try { cur_core = parse_percpu();    } catch (...) {}
-            try { cur_net  = parse_netdev();    } catch (...) {}
-            try { cur_disk = parse_diskstats(); } catch (...) {}
-            try { therm    = parse_thermal();   } catch (...) {}
-            try { freqs    = parse_cpufreq();   } catch (...) {}
-            try { hwmon    = parse_hwmon();     } catch (...) {}
-            try { G.gpus   = parse_gpus();      } catch (...) {}
-            try { G.mem      = parse_meminfo();            } catch (...) {}
-            try { G.net_snmp = parse_snmp();               } catch (...) {}
-            try { G.up       = parse_uptime();             } catch (...) {}
-            try { G.load     = parse_loadavg();            } catch (...) {}
-            try { G.root_fs  = parse_filesystemstat("/");  } catch (...) { G.root_fs = {}; }
-            G.local_ip = get_local_ip();
+            if (!sample("cpustat", [&] { cur_cpu = parse_cpustat(); })) cur_cpu = G.prev_cpu;
+            sample("percpu",    [&] { cur_core = parse_percpu();    });
+            sample("netdev",    [&] { cur_net  = parse_netdev();    });
+            sample("diskstats", [&] { cur_disk = parse_diskstats(); });
+            sample("thermal",   [&] { therm    = parse_thermal();   });
+            sample("cpufreq",   [&] { freqs    = parse_cpufreq();   });
+            sample("hwmon",     [&] { hwmon    = parse_hwmon();     });
+            sample("gpu",       [&] { G.gpus   = parse_gpus();      });
+            sample("meminfo",   [&] { G.mem      = parse_meminfo();   });
+            sample("snmp",      [&] { G.net_snmp = parse_snmp();      });
+            sample("uptime",    [&] { G.up       = parse_uptime();    });
+            sample("loadavg",   [&] { G.load     = parse_loadavg();   });
+            if (!sample("statvfs", [&] { G.root_fs = parse_filesystemstat("/"); })) G.root_fs = {};
+
+            const std::string ip = get_local_ip();
+            if (ip != G.local_ip) LOG_INFO("network", "local address: %s -> %s", G.local_ip.c_str(), ip.c_str());
+            G.local_ip = ip;
 
             const double pct = cpu_delta(G.prev_cpu, cur_cpu);
             G.cpu_hist.push_back(pct);
@@ -367,15 +417,34 @@ int main(int argc, char** argv) {
             G.t_prev    = t_now;
 
             last_tick = t_now;
+
+            const double took_ms =
+                std::chrono::duration<double, std::milli>(Clock::now() - tick_start).count();
+            LOG_DEBUG("tick", "#%llu dt=%.3f took=%.1f ms cpu=%.1f%% mem=%.1f%% net rx=%.0f tx=%.0f B/s "
+                              "disk rd=%.0f wr=%.0f B/s zones=%zu hwmon=%zu gpus=%zu",
+                      tick_count, G.dt, took_ms, pct, mem_used(G.mem).pct, rx_now, tx_now,
+                      disk_rd_now, disk_wr_now, last_therm.size(), last_hwmon.size(), G.gpus.size());
+            if (took_ms > 250.0 || took_ms > G.refresh_ms / 2.0)
+                LOG_WARN("tick", "slow tick #%llu: %.1f ms (refresh %d ms)", tick_count, took_ms, G.refresh_ms);
         }
 
         if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
             render(nc, n, last_cpu, last_pct, last_net, last_disk,
                   last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus,
                   last_net_rx, last_net_tx, last_disk_rd, last_disk_wr);
+
+            if (ch == NCKEY_RESIZE) {
+                unsigned rows = 0, cols = 0;
+                notcurses_stddim_yx(nc, &rows, &cols);
+                LOG_INFO("terminal", "resized to %ux%u", cols, rows);
+            }
         }
     }
 
+    LOG_INFO("main", "exiting: %s, %llu ticks in %.0f s", exit_reason, tick_count,
+             std::chrono::duration<double>(Clock::now() - started_at).count());
+
     notcurses_stop(nc);
+    log_close();
     return 0;
 }

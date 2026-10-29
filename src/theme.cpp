@@ -1,6 +1,7 @@
 #include "theme.h"
 #include "state.h"
 #include "paths.h"
+#include "log.h"
 
 #include <algorithm>
 #include <cctype>
@@ -88,7 +89,10 @@ bool parse_color(const std::string& text, uint32_t& out) {
 
 bool load_theme_file(const fs::path& path, Theme& out) {
     std::ifstream f(path);
-    if (!f) return false;
+    if (!f) {
+        LOG_WARN("theme", "cannot open %s", path.string().c_str());
+        return false;
+    }
 
     Theme t = builtin_theme();
     t.name = path.stem().string();
@@ -114,12 +118,16 @@ bool load_theme_file(const fs::path& path, Theme& out) {
             if (!trim(val).empty()) t.name = trim(val);
             continue;
         }
+        bool known = false;
         for (const Role& r : ROLES) {
             if (key != r.key) continue;
+            known = true;
             uint32_t c = 0;
             if (parse_color(val, c)) t.*(r.field) = c;
+            else LOG_WARN("theme", "%s: invalid color for %s: \"%s\"", path.filename().string().c_str(), key.c_str(), val.c_str());
             break;
         }
+        if (!known) LOG_WARN("theme", "%s: unknown key \"%s\"", path.filename().string().c_str(), key.c_str());
     }
 
     out = std::move(t);
@@ -133,7 +141,11 @@ const std::vector<Theme>& registry() {
         for (const fs::path& dir : theme_dirs()) {
             std::error_code ec;
             fs::directory_iterator it(dir, ec), end;
-            if (ec) continue;
+            if (ec) {
+                LOG_INFO("theme", "%s: not readable (%s)", dir.string().c_str(), ec.message().c_str());
+                continue;
+            }
+            LOG_INFO("theme", "scanning %s", dir.string().c_str());
             for (; it != end; it.increment(ec)) {
                 if (ec) break;
                 const fs::path& p = it->path();
@@ -142,7 +154,12 @@ const std::vector<Theme>& registry() {
                 if (!fs::is_regular_file(p, fec)) continue;
 
                 Theme t;
-                if (load_theme_file(p, t)) by_file[lower(p.stem().string())] = std::move(t);
+                if (load_theme_file(p, t)) {
+                    const std::string key = lower(p.stem().string());
+                    if (by_file.count(key)) LOG_INFO("theme", "%s overrides an earlier theme of the same name", p.string().c_str());
+                    else LOG_DEBUG("theme", "loaded %s as \"%s\"", p.string().c_str(), t.name.c_str());
+                    by_file[key] = std::move(t);
+                }
             }
         }
 
@@ -157,6 +174,7 @@ const std::vector<Theme>& registry() {
         all.reserve(files.size() + 1);
         all.push_back(builtin_theme());
         for (Theme& t : files) all.push_back(std::move(t));
+        LOG_INFO("theme", "%zu themes available (including the built-in one)", all.size());
         return all;
     }();
     return themes;

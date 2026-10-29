@@ -55,8 +55,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
 
-    # notcurses source and its build tree; the key rolls over weekly so
-    # compiler and library updates in the images are picked up
+    # notcurses source and its build tree; the key rolls over weekly so compiler and library updates in the images are picked up
     - name: Cache key
       id: cache_key
       run: echo "week=$(date +%G-%V)" >> "$GITHUB_OUTPUT"
@@ -135,7 +134,7 @@ jobs:
       run: |
         set -eux
         mkdir -p "$HOME/.config/vitals"
-        touch "$HOME/.config/vitals/config"
+        touch "$HOME/.config/vitals/config.conf"
         printf 'y\ny\n' | bash uninstall.sh
         test ! -e /usr/local/bin/vitals
         test ! -e /usr/local/share/vitals
