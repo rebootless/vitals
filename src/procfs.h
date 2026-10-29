@@ -17,6 +17,8 @@ struct cpustat { // /proc/stat; named so to avoid clashing with POSIX stat
     unsigned long long steal;
     unsigned long long guest;
     unsigned long long guest_nice;
+
+    int cpu = -1; // N of "cpuN" for per-core lines
 };
 
 struct meminfo { // /proc/meminfo, values in kiB
@@ -127,6 +129,7 @@ struct filesystemstat { // statvfs(); named so to avoid clashing with POSIX stat
     unsigned long long total_bytes;
     unsigned long long used_bytes;
     unsigned long long free_bytes;
+    unsigned long long avail_bytes; // free space for unprivileged users (excludes the root reserve)
 
     unsigned long long total_inodes;
     unsigned long long free_inodes;

@@ -16,7 +16,9 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     try {
         const auto& fs = G.root_fs;
         if (fs.total_bytes > 0 && row < iy + ih) {
-            double fpct = 100.0 * static_cast<double>(fs.used_bytes) / fs.total_bytes;
+            // same basis as df: the root-reserved blocks are neither used nor available
+            const double basis = static_cast<double>(fs.used_bytes + fs.avail_bytes);
+            double fpct = basis > 0 ? 100.0 * static_cast<double>(fs.used_bytes) / basis : 0.0;
             uint32_t fc = pct_color(fpct);
 
             nc_set(n, theme().LABEL);

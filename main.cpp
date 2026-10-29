@@ -277,14 +277,20 @@ int main(int argc, char** argv) {
             if (static_cast<int>(G.cpu_hist.size()) > HIST_CAP)
                 G.cpu_hist.pop_front();
 
+            // match cores by CPU number: hotplug shifts positions
+            std::map<int, const cpustat*> prev_by_cpu;
+            for (const auto& p : G.prev_core) prev_by_cpu[p.cpu] = &p;
+
             std::vector<double> core_pcts;
+            std::vector<int>    core_ids;
             core_pcts.reserve(cur_core.size());
-            for (size_t i = 0; i < cur_core.size(); ++i) {
-                core_pcts.push_back(
-                    i < G.prev_core.size()
-                    ? cpu_delta(G.prev_core[i], cur_core[i])
-                    : 0.0);
+            core_ids.reserve(cur_core.size());
+            for (const auto& c : cur_core) {
+                auto it = prev_by_cpu.find(c.cpu);
+                core_pcts.push_back(it != prev_by_cpu.end() ? cpu_delta(*it->second, c) : 0.0);
+                core_ids.push_back(c.cpu);
             }
+            G.core_ids = std::move(core_ids);
 
             // per-interface/device rates must use G.prev_* before the rollover below overwrites them
             std::map<std::string, double> net_rx_rate, net_tx_rate;

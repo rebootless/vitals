@@ -20,6 +20,7 @@ std::vector<cpustat> parse_percpu() {
         if (sp == std::string::npos) continue;
         std::istringstream ss(line.substr(sp + 1));
         cpustat s{};
+        try { s.cpu = std::stoi(line.substr(3, sp - 3)); } catch (...) { continue; }
         ss >> s.user >> s.nice >> s.system >> s.idle
            >> s.iowait >> s.irq >> s.softirq >> s.steal
            >> s.guest  >> s.guest_nice;
@@ -199,8 +200,6 @@ static bool classify_hwmon_chip(const std::string& name,
 }
 
 std::vector<HwmonChip> parse_hwmon() {
-    std::map<std::string, HwmonChip> chips_map;
-
     DIR* base = opendir("/sys/class/hwmon");
     if (!base) return {};
 
@@ -212,29 +211,46 @@ std::vector<HwmonChip> parse_hwmon() {
         return {v / 1000.0, true};
     };
 
+    // one chip per hwmonN directory; same-named chips (two NVMe drives, two sockets) stay separate
+    std::vector<std::pair<std::string, std::string>> found; // {dir name, chip name}
     struct dirent* de;
     while ((de = readdir(base)) != nullptr) {
         std::string dname = de->d_name;
-        if (dname == "." || dname == "..") continue;
-        if (dname.size() < 5 || dname.substr(0, 5) != "hwmon") continue;
-
-        std::string dir = "/sys/class/hwmon/" + dname;
+        if (dname.size() < 6 || dname.substr(0, 5) != "hwmon") continue;
 
         std::string chip_name;
-        { std::ifstream nf(dir + "/name"); if (!nf) continue; std::getline(nf, chip_name); }
+        { std::ifstream nf("/sys/class/hwmon/" + dname + "/name"); if (!nf) continue; std::getline(nf, chip_name); }
         if (chip_name.empty()) continue;
 
         // GPUs come from parse_gpus(); skip here to avoid a duplicate entry
         if (chip_name == "amdgpu" || chip_name == "nouveau" || chip_name == "nvidia")
             continue;
 
-        HwmonChip& chip = chips_map[chip_name];
+        found.emplace_back(dname, chip_name);
+    }
+    closedir(base);
+
+    // hwmon10 sorts after hwmon9
+    std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) {
+        if (a.first.size() != b.first.size()) return a.first.size() < b.first.size();
+        return a.first < b.first;
+    });
+
+    std::map<std::string, int> total_of, seen_of;
+    for (const auto& f : found) ++total_of[f.second];
+
+    std::vector<HwmonChip> chips;
+    for (const auto& [dname, chip_name] : found) {
+        std::string dir = "/sys/class/hwmon/" + dname;
+
+        chips.emplace_back();
+        HwmonChip& chip = chips.back();
         chip.name = chip_name;
         classify_hwmon_chip(chip_name, chip.category, chip.display);
         if (chip.display.empty()) chip.display = chip_name;
 
         DIR* d = opendir(dir.c_str());
-        if (!d) continue;
+        if (!d) { chips.pop_back(); continue; }
         std::vector<std::string> prefixes;
         struct dirent* e;
         while ((e = readdir(d)) != nullptr) {
@@ -283,20 +299,24 @@ std::vector<HwmonChip> parse_hwmon() {
                 if (s.label == chip.display)
                     s.label = chip.display + " " + std::to_string(++n);
         }
-    }
-    closedir(base);
 
-    // Result order: coretemp -> k10temp -> rest
-    std::vector<HwmonChip> result;
-    for (const char* pref : {"coretemp", "k10temp"}) {
-        auto it = chips_map.find(pref);
-        if (it != chips_map.end() && !it->second.sensors.empty()) {
-            result.push_back(std::move(it->second));
-            chips_map.erase(it);
-        }
+        // tell identical chips apart by number; CPU labels ("Core N") are parsed by the panel
+        const int ordinal = ++seen_of[chip_name];
+        if (total_of[chip_name] > 1 && chip.category != HwmonCategory::CPU)
+            for (auto& s : chip.sensors) s.label += " " + std::to_string(ordinal);
     }
-    for (auto& [nm, chip] : chips_map)
-        if (!chip.sensors.empty()) result.push_back(std::move(chip));
+
+    // Result order: coretemp -> k10temp -> rest (by name)
+    std::vector<HwmonChip> result;
+    for (const char* pref : {"coretemp", "k10temp"})
+        for (auto& chip : chips)
+            if (chip.name == pref && !chip.sensors.empty()) result.push_back(std::move(chip));
+
+    std::stable_sort(chips.begin(), chips.end(),
+                     [](const HwmonChip& a, const HwmonChip& b) { return a.name < b.name; });
+    for (auto& chip : chips)
+        if (chip.name != "coretemp" && chip.name != "k10temp" && !chip.sensors.empty())
+            result.push_back(std::move(chip));
     return result;
 }
 

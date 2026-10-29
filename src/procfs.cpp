@@ -399,6 +399,7 @@ filesystemstat parse_filesystemstat(const std::string& path) {
     filesystemstat stat{};
     stat.total_bytes  = sv.f_blocks * block;
     stat.free_bytes   = sv.f_bfree  * block;
+    stat.avail_bytes  = sv.f_bavail * block;
     stat.used_bytes   = stat.total_bytes - stat.free_bytes;
     stat.total_inodes = sv.f_files;
     stat.free_inodes  = sv.f_ffree;

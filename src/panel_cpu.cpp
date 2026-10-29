@@ -73,12 +73,13 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
             if (r >= iy + ih - 1) break;
             int cx = ix + (i % ncol) * slot;
             double cp = core_pcts[i];
+            const int cpu_id = i < static_cast<int>(G.core_ids.size()) ? G.core_ids[i] : i;
             uint32_t pc = pct_color(cp);
 
             nc_set(n, theme().MUTED);
             ncplane_putstr_yx(n, r, cx, " (");
             nc_set(n, theme().LABEL);
-            ncplane_printf_yx(n, r, cx + 2, "%02d", i);
+            ncplane_printf_yx(n, r, cx + 2, "%02d", cpu_id);
             nc_set(n, theme().MUTED);
             ncplane_putstr_yx(n, r, cx + 4, ") ");
 
@@ -87,12 +88,14 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
             ncplane_printf_yx(n, r, cx + 7, "%3.0f%%", cp);
             rbr(n, r, cx + 11);
 
-            if (has_freq && i < static_cast<int>(freqs.size())) {
+            const auto freq = std::find_if(freqs.begin(), freqs.end(),
+                [&](const cpufreq& f) { return f.cpu == cpu_id; });
+            if (has_freq && freq != freqs.end()) {
                 int fx = cx + 12;
                 lbr(n, r, fx);
                 nc_set(n, theme().TITLE);
                 ncplane_printf_yx(n, r, fx + 1, "%4.0f MHz",
-                                  freqs[i].current_khz / 1000.0);
+                                  freq->current_khz / 1000.0);
                 rbr(n, r, fx + 9);
             }
 

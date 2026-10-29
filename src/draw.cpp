@@ -58,15 +58,15 @@ draw_box(ncplane* n, int y, int x, int h, int w,
     hline(n, y + h - 1, x + 1, w - 2, "─", theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x + w - 1, br);
 
-    if (!title.empty() && w > 4) {
-        std::string t = " " + str_trunc(title, w - 4) + " ";
+    // labels stop two columns short of each corner
+    if (!title.empty() && w > 6) {
+        std::string t = " " + str_trunc(title, w - 6) + " ";
         nc_set(n, theme().TITLE, NCSTYLE_BOLD);
         ncplane_putstr_yx(n, y, x + 2, t.c_str());
     }
 
-    if (!bl_label.empty() && w > 4) {
-        std::string t = " " + str_trunc(bl_label, w - 4) + " ";
-        hline(n, y + h - 1, x + 1, static_cast<int>(t.size()) + 1, "─", theme().BORDER);
+    if (!bl_label.empty() && w > 6) {
+        std::string t = " " + str_trunc(bl_label, w - 6) + " ";
         nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, y + h - 1, x + 2, t.c_str());
     }

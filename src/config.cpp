@@ -57,15 +57,24 @@ void save_config(const Config& cfg) {
     std::filesystem::create_directories(dir, ec);
     if (ec) return;
 
-    std::string path = dir + "/config";
-    std::ofstream f(path, std::ios::trunc);
-    if (!f) return;
+    // write beside the target and rename, so a crash never leaves a partial config
+    const std::string path = dir + "/config";
+    const std::string tmp  = path + ".tmp";
+    {
+        std::ofstream f(tmp, std::ios::trunc);
+        if (!f) return;
 
-    f << "theme=" << cfg.theme_name << "\n";
-    f << "background=" << cfg.bg_mode << "\n";
-    f << "terminal=" << cfg.tty_mode << "\n";
-    f << "refresh_ms=" << cfg.refresh_ms << "\n";
-    f << "corners=" << cfg.corners << "\n";
-    f << "graph_style=" << cfg.graph_style << "\n";
-    f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";
+        f << "theme=" << cfg.theme_name << "\n";
+        f << "background=" << cfg.bg_mode << "\n";
+        f << "terminal=" << cfg.tty_mode << "\n";
+        f << "refresh_ms=" << cfg.refresh_ms << "\n";
+        f << "corners=" << cfg.corners << "\n";
+        f << "graph_style=" << cfg.graph_style << "\n";
+        f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";
+
+        f.close();
+        if (f.fail()) { std::filesystem::remove(tmp, ec); return; }
+    }
+    std::filesystem::rename(tmp, path, ec);
+    if (ec) std::filesystem::remove(tmp, ec);
 }

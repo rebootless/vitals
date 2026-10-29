@@ -31,6 +31,7 @@ struct HwmonChip {
 struct AppState {
     cpustat                prev_cpu  = {};
     std::vector<cpustat>   prev_core;
+    std::vector<int>       core_ids;   // CPU number of each entry in the per-core results
     std::deque<double>     cpu_hist;
 
     std::deque<double>     net_rx_hist, net_tx_hist;
