@@ -42,5 +42,5 @@ echo "  notcurses: $SCRIPT_DIR/notcurses"
 
 echo ""
 echo "Build vitals:"
-echo "  cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF"
+echo "  cmake -B build"
 echo "  cmake --build build -j\$(nproc)"

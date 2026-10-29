@@ -10,7 +10,7 @@ if [[ -d build && -z "${VITALS_KEEP_BUILD:-}" ]]; then
 fi
 
 echo "Configuring..."
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_PANDOC=OFF
+cmake -B build
 
 echo "Building..."
 cmake --build build -j"$(nproc)"

@@ -1,12 +1,16 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 0.9.8 LANGUAGES CXX)
+project(vitals VERSION 0.9.9 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
 # notcurses is linked statically and never installed; skip its C++ bindings, multimedia, tests, demos and docs; zlib instead of libdeflate
 set(USE_PANDOC        OFF  CACHE BOOL   "" FORCE)
