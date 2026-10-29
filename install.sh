@@ -3,7 +3,8 @@
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-REPO_URL="https://github.com/rebootless/vitals.git"
+# VITALS_REPO_URL lets CI install from the checkout under test
+REPO_URL="${VITALS_REPO_URL:-https://github.com/rebootless/vitals.git}"
 INSTALL_BIN="/usr/local/bin/vitals"
 BUILD_DIR="$(mktemp -d /tmp/vitals-build.XXXXXX)"
 

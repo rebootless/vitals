@@ -3,7 +3,8 @@
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-if [[ -d build ]]; then
+# VITALS_KEEP_BUILD=1 reuses build/ (CI restores it from a cache)
+if [[ -d build && -z "${VITALS_KEEP_BUILD:-}" ]]; then
     echo "Removing old build directory..."
     rm -rf build
 fi
