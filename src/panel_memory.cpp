@@ -4,7 +4,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Memory");
     if (ih <= 0 || iw <= 0) return;
 
-    const meminfo mi = parse_meminfo();
+    const meminfo& mi = G.mem;
     int row = iy;
     const int LBL = 8;
 

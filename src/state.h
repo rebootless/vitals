@@ -44,6 +44,13 @@ struct AppState {
     double                 peak_tx   = 0.0;
     cpuinfo                ci        = {};
     systemuname            un        = {};
+
+    // sampled once per tick: panels draw these, so redraws never touch /proc
+    meminfo                mem       = {};
+    snmp                   net_snmp  = {};
+    uptime                 up        = {};
+    loadavg                load      = {};
+    filesystemstat         root_fs   = {};
     std::string            local_ip  = "N/A";
 
     std::vector<GpuInfo>   gpus;

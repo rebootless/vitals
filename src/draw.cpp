@@ -176,8 +176,8 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
 }
 
 void draw_titlebar(ncplane* n, int cols) {
-    auto up = parse_uptime();
-    auto la = parse_loadavg();
+    const auto& up = G.up;
+    const auto& la = G.load;
 
     int col = 0;
 

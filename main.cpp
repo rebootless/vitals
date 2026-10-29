@@ -233,6 +233,11 @@ int main(int argc, char** argv) {
             try { freqs    = parse_cpufreq();   } catch (...) {}
             try { hwmon    = parse_hwmon();     } catch (...) {}
             try { G.gpus   = parse_gpus();      } catch (...) {}
+            try { G.mem      = parse_meminfo();            } catch (...) {}
+            try { G.net_snmp = parse_snmp();               } catch (...) {}
+            try { G.up       = parse_uptime();             } catch (...) {}
+            try { G.load     = parse_loadavg();            } catch (...) {}
+            try { G.root_fs  = parse_filesystemstat("/");  } catch (...) { G.root_fs = {}; }
             G.local_ip = get_local_ip();
 
             const double pct = cpu_delta(G.prev_cpu, cur_cpu);

@@ -14,7 +14,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     const int C3 = ix + 31;
 
     try {
-        auto fs = parse_filesystemstat("/");
+        const auto& fs = G.root_fs;
         if (fs.total_bytes > 0 && row < iy + ih) {
             double fpct = 100.0 * static_cast<double>(fs.used_bytes) / fs.total_bytes;
             uint32_t fc = pct_color(fpct);

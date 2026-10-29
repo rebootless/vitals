@@ -60,7 +60,7 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
 
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
-    auto sn = parse_snmp();
+    const auto& sn = G.net_snmp;
 
     if (row < iy + ih) {
         nc_set(n, theme().LABEL);
