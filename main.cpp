@@ -85,11 +85,14 @@ int main(int argc, char** argv) {
     try { G.ci = parse_cpuinfo();     } catch (...) {}
     try { G.un = parse_systemuname(); } catch (...) {}
 
-    try { G.prev_cpu  = parse_cpustat();   } catch (...) {}
-    try { G.prev_core = parse_percpu();    } catch (...) {}
-    try { G.prev_net  = parse_netdev();    } catch (...) {}
-    try { G.prev_disk = parse_diskstats(); } catch (...) {}
-    G.t_prev = Clock::now();
+    auto take_baseline = [] {
+        try { G.prev_cpu  = parse_cpustat();   } catch (...) {}
+        try { G.prev_core = parse_percpu();    } catch (...) {}
+        try { G.prev_net  = parse_netdev();    } catch (...) {}
+        try { G.prev_disk = parse_diskstats(); } catch (...) {}
+        G.t_prev = Clock::now();
+    };
+    take_baseline();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -105,6 +108,7 @@ int main(int argc, char** argv) {
     std::map<std::string, double> last_disk_rd, last_disk_wr;
 
     auto last_tick = Clock::now() - std::chrono::hours(1);
+    bool was_paused = false;
 
     for (;;) {
         ncinput ni{};
@@ -141,7 +145,6 @@ int main(int argc, char** argv) {
 
             if (ch == 'f' || ch == 'F') {
                 G.frozen = !G.frozen;
-                if (!G.frozen) last_tick = Clock::now() - std::chrono::hours(1);
             }
 
             // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
@@ -227,6 +230,16 @@ int main(int argc, char** argv) {
                 G.settings_open = false;
             }
         }
+
+        // rates must not span a pause: start from a fresh baseline and tick within a second
+        const bool paused = G.settings_open || G.frozen;
+        if (was_paused && !paused) {
+            take_baseline();
+            try { G.gpus = parse_gpus(); } catch (...) {}
+            const auto wait = std::min(G.refresh_ms, 1000);
+            last_tick = G.t_prev - std::chrono::milliseconds(G.refresh_ms - wait);
+        }
+        was_paused = paused;
 
         const auto t_now = Clock::now();
         bool due_for_tick = !G.settings_open && !G.frozen &&
