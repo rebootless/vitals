@@ -144,9 +144,6 @@ chmod +x setup.sh build.sh
 | **Storage** | `/proc/diskstats`, `statvfs()` | Filesystem usage and disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard temperatures |
 
-> [!NOTE]
-> The GPU panel is displayed only when a supported device is detected. Otherwise, the CPU panel expands to use the available space.
-
 ## ⌨️ Controls
 
 | Key | Action |

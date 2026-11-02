@@ -1,5 +1,7 @@
 #pragma once
 
+#include "panel_ids.h"
+
 #include <string>
 
 struct Config {
@@ -10,6 +12,7 @@ struct Config {
     std::string corners     = "square";
     std::string graph_style = "sparkline";
     bool        symbol_mirroring = false;
+    PanelFlags  panels      = all_panels_on();
 };
 
 Config load_config();

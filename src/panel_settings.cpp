@@ -12,7 +12,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
 
     int w = std::min(68, std::max(30, cols - 4));
-    int right_rows = (2 + 2) + 1 + (2 + 3) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + 2);
+    int right_rows = (2 + 2) + 1 + (2 + 3) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + PANEL_N);
     int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
     int h = std::min(content_h, rows - 4);
     if (w < 24 || h < 6) return;
@@ -21,8 +21,8 @@ void panel_settings(ncplane* n, int rows, int cols) {
     int y = (rows - h) / 2;
 
     std::string hint = G.tty_active
-        ? "Esc:close  Tab:switch  Up/Down:select  Enter:save"
-        : "Esc:close  Tab:switch  \xe2\x86\x91\xe2\x86\x93:select  Enter:save";
+        ? "esc:Close  tab:Next  up/down:Select  space:Toggle  enter:Save"
+        : "esc:Close  tab:Next  \xe2\x86\x91\xe2\x86\x93:Select  space:Toggle  enter:Save";
 
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Settings", hint);
     if (ih <= 0 || iw <= 0) return;
@@ -145,11 +145,28 @@ void panel_settings(ncplane* n, int rows, int cols) {
                 ncplane_putstr_yx(n, r, right_x, label.c_str());
             }
         }
+
+        r++;
+
+        if (r < iy + ih) {
+            draw_group_header(r, 6, "Panels");
+            r += 2;
+
+            for (int i = 0; i < PANEL_N && r < iy + ih; ++i, ++r) {
+                const bool on     = G.panel_on[static_cast<size_t>(i)];
+                const bool cursor = (G.settings_focus == 6 && i == G.settings_panel_cursor);
+
+                nc_set(n, on ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+
+                std::string label = std::string(cursor ? "> " : "  ") + (on ? "[x] " : "[ ] ") + PANELS[i].label;
+                ncplane_putstr_yx(n, r, right_x, label.c_str());
+            }
+        }
     }
 
     int frow = iy + ih - 1;
     if (frow >= iy) {
-        bool focused = (G.settings_focus == 6);
+        bool focused = (G.settings_focus == 7);
 
         nc_set(n, theme().LABEL);
         std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";

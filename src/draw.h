@@ -24,3 +24,5 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
                       const std::deque<double>& bot_hist, uint32_t bot_color);
 
 void draw_titlebar(ncplane* n, int cols);
+
+void draw_footer(ncplane* n, int rows, int cols);

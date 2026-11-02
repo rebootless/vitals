@@ -47,12 +47,14 @@ Config load_config() {
 
         std::string key = trim(line.substr(0, eq));
         std::string val = trim(line.substr(eq + 1));
+        const int panel = key.rfind("panel_", 0) == 0 ? panel_index(key.substr(6)) : -1;
         if (key == "theme")           cfg.theme_name = val;
         else if (key == "background") cfg.bg_mode    = val;
         else if (key == "terminal")   cfg.tty_mode    = val;
         else if (key == "corners")    cfg.corners     = val;
         else if (key == "graph_style") cfg.graph_style = val;
         else if (key == "symbol_mirroring") cfg.symbol_mirroring = (val == "true");
+        else if (panel >= 0)          cfg.panels[static_cast<size_t>(panel)] = (val == "true");
         else if (key == "refresh_ms") {
             try {
                 int v = std::stoi(val);
@@ -102,6 +104,8 @@ void save_config(const Config& cfg) {
         f << "corners=" << cfg.corners << "\n";
         f << "graph_style=" << cfg.graph_style << "\n";
         f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";
+        for (int i = 0; i < PANEL_N; ++i)
+            f << "panel_" << PANELS[i].key << "=" << (cfg.panels[static_cast<size_t>(i)] ? "true" : "false") << "\n";
 
         f.close();
         if (f.fail()) {

@@ -27,18 +27,22 @@ void render(notcurses* nc, ncplane* n,
 
     draw_titlebar(n, cols);
 
-    const Layout L = compute_layout(rows, cols, gpus);
+    const Layout L = compute_layout(rows, cols, gpus, G.panel_on);
 
-    panel_cpu(n, L.cpu.y, L.cpu.x, L.cpu.h, L.cpu.w, cur_cpu, cpu_pct, freqs, core_pcts);
-    if (L.gpu.h > 0)
-        panel_gpu(n, L.gpu.y, L.gpu.x, L.gpu.h, L.gpu.w, gpus);
-    panel_memory (n, L.memory.y,  L.memory.x,  L.memory.h,  L.memory.w);
-    panel_network(n, L.network.y, L.network.x, L.network.h, L.network.w,
-                  cur_net, net_rx_rate, net_tx_rate);
-    panel_storage(n, L.storage.y, L.storage.x, L.storage.h, L.storage.w,
-                  cur_disk, disk_rd_rate, disk_wr_rate);
-    panel_thermal(n, L.thermal.y, L.thermal.x, L.thermal.h, L.thermal.w,
-                  therm, hwmon, gpus);
+    if (const Rect& a = L.panel[P_CPU]; a.h > 0)
+        panel_cpu(n, a.y, a.x, a.h, a.w, cur_cpu, cpu_pct, freqs, core_pcts);
+    if (const Rect& a = L.panel[P_GPU]; a.h > 0)
+        panel_gpu(n, a.y, a.x, a.h, a.w, gpus);
+    if (const Rect& a = L.panel[P_MEMORY]; a.h > 0)
+        panel_memory(n, a.y, a.x, a.h, a.w);
+    if (const Rect& a = L.panel[P_NETWORK]; a.h > 0)
+        panel_network(n, a.y, a.x, a.h, a.w, cur_net, net_rx_rate, net_tx_rate);
+    if (const Rect& a = L.panel[P_STORAGE]; a.h > 0)
+        panel_storage(n, a.y, a.x, a.h, a.w, cur_disk, disk_rd_rate, disk_wr_rate);
+    if (const Rect& a = L.panel[P_THERMAL]; a.h > 0)
+        panel_thermal(n, a.y, a.x, a.h, a.w, therm, hwmon, gpus);
+
+    draw_footer(n, rows, cols);
 
     if (G.settings_open)
         panel_settings(n, rows, cols);

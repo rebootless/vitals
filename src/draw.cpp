@@ -221,3 +221,9 @@ void draw_titlebar(ncplane* n, int cols) {
     kv("time: ",     fmt_time());
     if (G.frozen) kv("", "FROZEN", theme().HIGH);
 }
+
+void draw_footer(ncplane* n, int rows, int cols) {
+    if (rows < 2) return;
+    nc_set(n, theme().LABEL);
+    ncplane_putstr_yx(n, rows - 1, 1, str_trunc("q:Quit f:Freeze esc:Settings", cols - 1).c_str());
+}
