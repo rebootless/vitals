@@ -54,7 +54,10 @@ Config load_config() {
         else if (key == "corners")    cfg.corners     = val;
         else if (key == "graph_style") cfg.graph_style = val;
         else if (key == "symbol_mirroring") cfg.symbol_mirroring = (val == "true");
-        else if (panel >= 0)          cfg.panels[static_cast<size_t>(panel)] = (val == "true");
+        else if (panel >= 0) {
+            if (!mode_from_string(val, cfg.panels[static_cast<size_t>(panel)]))
+                LOG_WARN("config", "line %d: invalid value \"%s\" for %s", lineno, val.c_str(), key.c_str());
+        }
         else if (key == "refresh_ms") {
             try {
                 int v = std::stoi(val);
@@ -105,7 +108,7 @@ void save_config(const Config& cfg) {
         f << "graph_style=" << cfg.graph_style << "\n";
         f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";
         for (int i = 0; i < PANEL_N; ++i)
-            f << "panel_" << PANELS[i].key << "=" << (cfg.panels[static_cast<size_t>(i)] ? "true" : "false") << "\n";
+            f << "panel_" << PANELS[i].key << "=" << mode_name(cfg.panels[static_cast<size_t>(i)]) << "\n";
 
         f.close();
         if (f.fail()) {

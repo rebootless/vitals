@@ -16,9 +16,10 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
     if (row < iy + ih) {
         nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
-        nc_set(n, theme().FG);
+        const bool has_model = !G.ci.model_name.empty();
+        nc_set(n, has_model ? theme().FG : theme().BORDER);
         ncplane_putstr_yx(n, row, ix + LBL,
-                          str_trunc(G.ci.model_name, iw - LBL).c_str());
+                          str_trunc(has_model ? G.ci.model_name : "N/A", iw - LBL).c_str());
         row++;
     }
 
@@ -28,8 +29,13 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Usage:");
 
         lbr(n, row, ix + LBL);
-        nc_set(n, pc, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", pct);
+        if (!core_pcts.empty()) {
+            nc_set(n, pc, NCSTYLE_BOLD);
+            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", pct);
+        } else {
+            nc_set(n, theme().BORDER);
+            ncplane_printf_yx(n, row, ix + LBL + 1, "%4s", "N/A");
+        }
         rbr(n, row, ix + LBL + 5);
 
         int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
@@ -111,8 +117,13 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
     if (frow >= row && frow >= iy) {
         nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, frow, ix, "Threads: ");
-        nc_set(n, theme().FG);
-        ncplane_printf_yx(n, frow, ix + 9, "%d cores / %d threads",
-                          G.ci.cpu_cores, G.ci.cpu_siblings);
+        if (G.ci.cpu_siblings > 0) {
+            nc_set(n, theme().FG);
+            ncplane_printf_yx(n, frow, ix + 9, "%d cores / %d threads",
+                              G.ci.cpu_cores, G.ci.cpu_siblings);
+        } else {
+            nc_set(n, theme().BORDER);
+            ncplane_putstr_yx(n, frow, ix + 9, "N/A");
+        }
     }
 }

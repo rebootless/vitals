@@ -9,4 +9,4 @@ struct Layout {
     Rect panel[PANEL_N]; // h == 0: the panel is not drawn
 };
 
-Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, const PanelFlags& on);
+Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, const PanelFlags& visible);

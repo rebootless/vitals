@@ -153,13 +153,17 @@ void panel_settings(ncplane* n, int rows, int cols) {
             r += 2;
 
             for (int i = 0; i < PANEL_N && r < iy + ih; ++i, ++r) {
-                const bool on     = G.panel_on[static_cast<size_t>(i)];
-                const bool cursor = (G.settings_focus == 6 && i == G.settings_panel_cursor);
+                const size_t k        = static_cast<size_t>(i);
+                const PanelMode mode  = G.panel_mode[k];
+                const bool cursor     = (G.settings_focus == 6 && i == G.settings_panel_cursor);
+                const bool no_data    = (mode == PanelMode::Auto && !G.panel_avail[k]);
 
-                nc_set(n, on ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+                nc_set(n, (mode == PanelMode::Off || no_data) ? theme().FG_DIM : theme().LOW, NCSTYLE_NONE);
 
-                std::string label = std::string(cursor ? "> " : "  ") + (on ? "[x] " : "[ ] ") + PANELS[i].label;
-                ncplane_putstr_yx(n, r, right_x, label.c_str());
+                char label[48];
+                snprintf(label, sizeof(label), "%s%-8s %s%s", cursor ? "> " : "  ",
+                         PANELS[i].label, mode_name(mode), no_data ? " (no data)" : "");
+                ncplane_putstr_yx(n, r, right_x, str_trunc(label, ix + iw - right_x).c_str());
             }
         }
     }

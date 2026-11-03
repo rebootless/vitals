@@ -6,12 +6,8 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "GPU");
     if (ih <= 0 || iw <= 0) return;
 
-    if (gpus.empty()) {
-        nc_set(n, theme().BORDER);
-        ncplane_putstr_yx(n, iy, ix, str_trunc("No GPU found", iw).c_str());
-        return;
-    }
-    const auto& g = gpus.front();
+    const GpuInfo none{};
+    const auto& g = gpus.empty() ? none : gpus.front();
 
     const int LBL       = 7;
     const int BRACKET_W = 6;
@@ -29,7 +25,7 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
             ncplane_printf_yx(n, row, bx + 1, "%3.0f%%", val);
         } else {
             nc_set(n, theme().BORDER);
-            ncplane_printf_yx(n, row, bx + 1, "%4s", "n/a");
+            ncplane_printf_yx(n, row, bx + 1, "%4s", "N/A");
         }
         rbr(n, row, bx + BRACKET_W - 1);
 
@@ -43,9 +39,9 @@ void panel_gpu(ncplane* n, int y, int x, int h, int w,
 
     nc_set(n, theme().LABEL);
     ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Model:");
-    nc_set(n, theme().FG);
+    nc_set(n, g.name.empty() ? theme().BORDER : theme().FG);
     ncplane_putstr_yx(n, row, ix + LBL,
-                      str_trunc(g.name, iw - LBL).c_str());
+                      str_trunc(g.name.empty() ? "N/A" : g.name, iw - LBL).c_str());
     row++;
     if (row >= iy + ih) return;
 

@@ -159,8 +159,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     for (auto& item : zone_items) push_group(groups, item.label, {item});
 
     if (groups.empty()) {
+        nc_set(n, theme().LABEL);
+        ncplane_putstr_yx(n, row, ix, "Sensors:");
         nc_set(n, theme().BORDER);
-        ncplane_putstr_yx(n, row, ix, "No thermal data found");
+        ncplane_putstr_yx(n, row, ix + 9, "N/A");
         return;
     }
 

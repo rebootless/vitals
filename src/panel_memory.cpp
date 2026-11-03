@@ -17,8 +17,13 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Memory:");
 
         lbr(n, row, ix + LBL);
-        nc_set(n, pc, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", mu.pct);
+        if (mi.MemTotal > 0) {
+            nc_set(n, pc, NCSTYLE_BOLD);
+            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", mu.pct);
+        } else {
+            nc_set(n, theme().BORDER);
+            ncplane_printf_yx(n, row, ix + LBL + 1, "%4s", "N/A");
+        }
         rbr(n, row, ix + LBL + 5);
 
         int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
@@ -31,8 +36,9 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
     }
 
     if (row < iy + ih) {
-        nc_set(n, theme().FG);
-        std::string used_str = fmt_mem_kib(mu.used_kib) + " / " + fmt_mem_kib(mi.MemTotal);
+        nc_set(n, mi.MemTotal > 0 ? theme().FG : theme().BORDER);
+        std::string used_str = mi.MemTotal > 0
+            ? fmt_mem_kib(mu.used_kib) + " / " + fmt_mem_kib(mi.MemTotal) : "N/A";
         ncplane_printf_yx(n, row, ix + LBL, "%s",
                           str_trunc(used_str, iw - LBL).c_str());
         row++;

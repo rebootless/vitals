@@ -339,3 +339,20 @@ std::string parent_of(const std::string& dev) {
     }
     return "";
 }
+
+PanelFlags panel_availability(const meminfo& mem, const std::vector<GpuInfo>& gpus,
+                              const filesystemstat& root_fs, const std::vector<cpustat>& cores,
+                              const std::vector<netdev>& net, const std::vector<diskstats>& disks,
+                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon) {
+    PanelFlags a{};
+    a[P_CPU]     = !cores.empty();
+    a[P_GPU]     = !gpus.empty();
+    a[P_MEMORY]  = mem.MemTotal > 0;
+    a[P_NETWORK] = std::any_of(net.begin(), net.end(),
+                               [](const netdev& nd) { return !is_hidden_iface(nd.interface); });
+    a[P_STORAGE] = root_fs.total_bytes > 0 ||
+                   std::any_of(disks.begin(), disks.end(),
+                               [](const diskstats& d) { return !is_virtual_disk(d.device); });
+    a[P_THERMAL] = !hwmon.empty() || !zones.empty() || (!gpus.empty() && gpus.front().temp_c >= 0);
+    return a;
+}

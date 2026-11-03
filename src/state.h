@@ -71,13 +71,14 @@ struct AppState {
 
     int symbol_mirror_idx = 0;
 
-    PanelFlags panel_on = all_panels_on();
+    PanelModes panel_mode  = all_panels_auto();
+    PanelFlags panel_avail = {}; // refreshed every tick: which panels have data
 
     bool frozen               = false;
     bool settings_open        = false;
     int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=panels 7=refresh
     int  settings_panel_cursor = 0;
-    PanelFlags settings_saved_panels = all_panels_on();
+    PanelModes settings_saved_panels = all_panels_auto();
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
     TtyForce settings_saved_tty = TtyForce::Auto;

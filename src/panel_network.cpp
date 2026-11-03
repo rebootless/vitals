@@ -29,6 +29,28 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
 
     ull total_rx = 0, total_tx = 0;
 
+    auto iface_row = [&](const std::string& name, const std::string& rx_text, const std::string& tx_text) {
+        nc_set(n, theme().FG);
+        ncplane_printf_yx(n, row, C1, "%-14s", str_trunc(name, 14).c_str());
+        if (C2 < ix + iw) {
+            nc_set(n, theme().DATA_A);
+            ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
+            nc_set(n, theme().FG);
+            ncplane_printf_yx(n, row, C2 + 2, "%-12s", str_trunc(rx_text, 12).c_str());
+        }
+        if (C3 < ix + iw) {
+            nc_set(n, theme().DATA_B, NCSTYLE_BOLD);
+            ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
+            nc_set(n, theme().FG);
+            ncplane_printf_yx(n, row, C3 + 2, "%-12s", str_trunc(tx_text, 12).c_str());
+        }
+        row++;
+    };
+
+    const bool has_iface = std::any_of(cur_net.begin(), cur_net.end(),
+                                       [](const netdev& nd) { return !is_hidden_iface(nd.interface); });
+    if (!has_iface && row < iy + ih) iface_row("N/A", "N/A", "N/A");
+
     for (const auto& nd : cur_net) {
         if (is_hidden_iface(nd.interface)) continue;
         double rx = 0, tx = 0;
@@ -38,24 +60,7 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         total_tx += nd.tx_bytes;
 
         if (row >= iy + ih) break;
-        nc_set(n, theme().FG);
-        ncplane_printf_yx(n, row, C1, "%-14s",
-                          str_trunc(nd.interface, 14).c_str());
-        if (C2 < ix + iw) {
-            nc_set(n, theme().DATA_A);
-            ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
-            nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C2 + 2, "%-12s",
-                              str_trunc(fmt_net_rate(rx), 12).c_str());
-        }
-        if (C3 < ix + iw) {
-            nc_set(n, theme().DATA_B, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
-            nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C3 + 2, "%-12s",
-                              str_trunc(fmt_net_rate(tx), 12).c_str());
-        }
-        row++;
+        iface_row(nd.interface, fmt_net_rate(rx), fmt_net_rate(tx));
     }
 
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }

@@ -33,3 +33,9 @@ std::pair<double,double> thermal_trip_limits(int zone);
 std::vector<HwmonChip> parse_hwmon();
 
 std::string parent_of(const std::string& dev);
+
+// per panel: is there anything to show (auto panels appear and disappear with it)
+PanelFlags panel_availability(const meminfo& mem, const std::vector<GpuInfo>& gpus,
+                              const filesystemstat& root_fs, const std::vector<cpustat>& cores,
+                              const std::vector<netdev>& net, const std::vector<diskstats>& disks,
+                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon);

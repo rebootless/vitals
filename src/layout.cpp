@@ -66,7 +66,8 @@ void place_stack(Layout& L, const std::vector<PanelId>& stack, int y, int x, int
     }
 
     // GPU's content height is satisfied first, CPU gets the rest (the reverse starved GPU to 0 rows)
-    const int gpu_want = ((gpus.front().mem_total_mb > 0) ? 3 : 2) + 2;
+    const bool vram    = !gpus.empty() && gpus.front().mem_total_mb > 0;
+    const int gpu_want = (vram ? 3 : 2) + 2;
     const int CPU_MIN  = 5;
     const int gpu_h = std::min(gpu_want, std::max(0, h - CPU_MIN));
     const int cpu_h = h - gpu_h;
@@ -76,7 +77,7 @@ void place_stack(Layout& L, const std::vector<PanelId>& stack, int y, int x, int
 
 }
 
-Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, const PanelFlags& on) {
+Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, const PanelFlags& visible) {
     Layout L;
     L.rows = rows;
     L.cols = cols;
@@ -84,13 +85,11 @@ Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, cons
     // title bar above, key hints below
     const int avail = std::max(0, rows - 2);
 
-    auto shown = [&](PanelId id) { return on[id] && (id != P_GPU || !gpus.empty()); };
-
     Template live;
     for (Row row : (cols >= 130 ? WIDE : cols >= 80 ? MEDIUM : NARROW)) {
         for (Cell& c : row.cells)
             c.panels.erase(std::remove_if(c.panels.begin(), c.panels.end(),
-                                          [&](PanelId id) { return !shown(id); }),
+                                          [&](PanelId id) { return !visible[id]; }),
                            c.panels.end());
         row.cells.erase(std::remove_if(row.cells.begin(), row.cells.end(),
                                        [](const Cell& c) { return c.panels.empty(); }),

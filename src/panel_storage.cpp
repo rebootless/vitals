@@ -15,7 +15,8 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
 
     try {
         const auto& fs = G.root_fs;
-        if (fs.total_bytes > 0 && row < iy + ih) {
+        const bool has_fs = fs.total_bytes > 0;
+        if (row < iy + ih) {
             // same basis as df: the root-reserved blocks are neither used nor available
             const double basis = static_cast<double>(fs.used_bytes + fs.avail_bytes);
             double fpct = basis > 0 ? 100.0 * static_cast<double>(fs.used_bytes) / basis : 0.0;
@@ -24,8 +25,13 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
             nc_set(n, theme().LABEL);
             ncplane_putstr_yx(n, row, ix, "Root: ");
             lbr(n, row, ix + 6);
-            nc_set(n, fc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + 7, "%3.0f%%", fpct);
+            if (has_fs) {
+                nc_set(n, fc, NCSTYLE_BOLD);
+                ncplane_printf_yx(n, row, ix + 7, "%3.0f%%", fpct);
+            } else {
+                nc_set(n, theme().BORDER);
+                ncplane_printf_yx(n, row, ix + 7, "%4s", "N/A");
+            }
             rbr(n, row, ix + 11);
 
             int bx = ix + 12, bw = iw - 14;
@@ -36,9 +42,9 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
             }
             row++;
         }
-        if (fs.total_bytes > 0 && row < iy + ih) {
-            nc_set(n, theme().FG);
-            std::string s = fmt_bytes(fs.used_bytes) + " / " + fmt_bytes(fs.total_bytes);
+        if (row < iy + ih) {
+            nc_set(n, has_fs ? theme().FG : theme().BORDER);
+            std::string s = has_fs ? fmt_bytes(fs.used_bytes) + " / " + fmt_bytes(fs.total_bytes) : "N/A";
             ncplane_printf_yx(n, row, ix + 6, "%s", str_trunc(s, iw - 6).c_str());
             row++;
         }
@@ -61,26 +67,29 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         return {rd, wr};
     };
 
-    auto disk_row = [&](const std::string& prefix, const diskstats& ds) {
+    auto disk_line = [&](const std::string& name, const std::string& wr_text, const std::string& rd_text) {
         if (row >= iy + ih) return;
-        auto [rd, wr] = rate(ds);
-        const int prefix_cols = prefix.empty() ? 0 : 2;
-        std::string name = prefix + str_trunc(ds.device, 13 - prefix_cols);
         nc_set(n, theme().FG);
         ncplane_printf_yx(n, row, C1, "%-13s", name.c_str());
         if (C2 < ix + iw) {
             nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
             ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
             nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C2 + 2, "%-12s", fmt_io_rate(wr).c_str());
+            ncplane_printf_yx(n, row, C2 + 2, "%-12s", wr_text.c_str());
         }
         if (C3 < ix + iw) {
             nc_set(n, theme().DATA_B);
             ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
             nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C3 + 2, "%-12s", fmt_io_rate(rd).c_str());
+            ncplane_printf_yx(n, row, C3 + 2, "%-12s", rd_text.c_str());
         }
         row++;
+    };
+
+    auto disk_row = [&](const std::string& prefix, const diskstats& ds) {
+        auto [rd, wr] = rate(ds);
+        const int prefix_cols = prefix.empty() ? 0 : 2;
+        disk_line(prefix + str_trunc(ds.device, 13 - prefix_cols), fmt_io_rate(wr), fmt_io_rate(rd));
     };
 
     std::vector<const diskstats*> roots;
@@ -88,6 +97,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         if (is_virtual_disk(ds.device)) continue;
         if (parent_of(ds.device).empty()) roots.push_back(&ds);
     }
+    if (roots.empty()) disk_line("N/A", "N/A", "N/A");
 
     for (const auto* root : roots) {
         if (row >= iy + ih) break;

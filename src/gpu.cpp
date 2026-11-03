@@ -256,7 +256,7 @@ bool parse_smi_line(const std::string& line, GpuInfo& g) {
 
 class NvidiaSmi {
     using Tp = std::chrono::steady_clock::time_point;
-    static constexpr std::chrono::seconds STALE{5};  // no new line for this long: values become n/a
+    static constexpr std::chrono::seconds STALE{5};  // no new line for this long: values become N/A
     static constexpr std::chrono::seconds RETRY{5};  // pause before respawning
     static constexpr int FIRST_SAMPLE_MS = 2000;     // the only blocking wait, once
 
@@ -282,7 +282,7 @@ public:
         const bool stale = now - last_line_ > STALE;
         if (stale != stale_) {
             stale_ = stale;
-            if (stale) LOG_WARN("gpu", "nvidia-smi: no new data for %lld s, values shown as n/a", static_cast<long long>(STALE.count()));
+            if (stale) LOG_WARN("gpu", "nvidia-smi: no new data for %lld s, values shown as N/A", static_cast<long long>(STALE.count()));
             else       LOG_INFO("gpu", "nvidia-smi: data is fresh again");
         }
         if (stale) g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = -1.0;

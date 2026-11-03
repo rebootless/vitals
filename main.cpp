@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
         G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
         G.graph_style_idx = (cfg.graph_style == "braille") ? 1 : 0;
         G.symbol_mirror_idx = cfg.symbol_mirroring ? 1 : 0;
-        G.panel_on   = cfg.panels;
+        G.panel_mode = cfg.panels;
     }
 
     sample("cpuinfo", [] { G.ci = parse_cpuinfo();     });
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
                 G.settings_saved_corners = G.corners_idx;
                 G.settings_saved_graph_style = G.graph_style_idx;
                 G.settings_saved_symbol_mirror = G.symbol_mirror_idx;
-                G.settings_saved_panels  = G.panel_on;
+                G.settings_saved_panels  = G.panel_mode;
                 G.settings_panel_cursor  = 0;
                 G.settings_focus         = 0;
                 G.settings_open          = true;
@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
                 G.corners_idx   = G.settings_saved_corners;
                 G.graph_style_idx = G.settings_saved_graph_style;
                 G.symbol_mirror_idx = G.settings_saved_symbol_mirror;
-                G.panel_on      = G.settings_saved_panels;
+                G.panel_mode    = G.settings_saved_panels;
                 G.settings_open = false;
                 LOG_INFO("ui", "settings discarded");
 
@@ -223,8 +223,10 @@ int main(int argc, char** argv) {
                 G.settings_focus = (G.settings_focus + 1) % 8;
 
             } else if (ch == ' ' && G.settings_focus == 6) {
-                const size_t i = static_cast<size_t>(G.settings_panel_cursor);
-                G.panel_on[i] = !G.panel_on[i];
+                PanelMode& m = G.panel_mode[static_cast<size_t>(G.settings_panel_cursor)];
+                m = (m == PanelMode::On)   ? PanelMode::Auto
+                  : (m == PanelMode::Auto) ? PanelMode::Off
+                                           : PanelMode::On;
 
             } else if (ch == NCKEY_UP) {
                 if (G.settings_focus == 0) {
@@ -279,7 +281,7 @@ int main(int argc, char** argv) {
                 cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
                 cfg.graph_style = (G.graph_style_idx == 1) ? "braille" : "sparkline";
                 cfg.symbol_mirroring = (G.symbol_mirror_idx == 1);
-                cfg.panels     = G.panel_on;
+                cfg.panels     = G.panel_mode;
                 save_config(cfg);
                 G.settings_open = false;
                 LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
@@ -330,6 +332,8 @@ int main(int argc, char** argv) {
             sample("uptime",    [&] { G.up       = parse_uptime();    });
             sample("loadavg",   [&] { G.load     = parse_loadavg();   });
             if (!sample("statvfs", [&] { G.root_fs = parse_filesystemstat("/"); })) G.root_fs = {};
+
+            G.panel_avail = panel_availability(G.mem, G.gpus, G.root_fs, cur_core, cur_net, cur_disk, therm, hwmon);
 
             const std::string ip = get_local_ip();
             if (ip != G.local_ip) LOG_INFO("network", "local address: %s -> %s", G.local_ip.c_str(), ip.c_str());

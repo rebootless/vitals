@@ -5,7 +5,7 @@
 
 enum class GpuVendor { AMD, Intel, Nvidia, Unknown };
 
-// -1.0 means "not available" (panel renders n/a)
+// -1.0 means "not available" (panel renders N/A)
 struct GpuInfo {
     GpuVendor   vendor = GpuVendor::Unknown;
     std::string name;

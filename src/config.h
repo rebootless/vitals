@@ -12,7 +12,7 @@ struct Config {
     std::string corners     = "square";
     std::string graph_style = "sparkline";
     bool        symbol_mirroring = false;
-    PanelFlags  panels      = all_panels_on();
+    PanelModes  panels      = all_panels_auto();
 };
 
 Config load_config();
