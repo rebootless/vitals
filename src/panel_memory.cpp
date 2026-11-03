@@ -80,7 +80,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
             ncplane_printf_yx(n, row, ix + LBL, "%s",
                               str_trunc(s, iw - LBL).c_str());
         } else {
-            ncplane_putstr_yx(n, row, ix + LBL, "0B / 0B");
+            ncplane_putstr_yx(n, row, ix + LBL, "0 B / 0 B");
         }
         row++;
     }
