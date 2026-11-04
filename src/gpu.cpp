@@ -251,6 +251,7 @@ bool parse_smi_line(const std::string& line, GpuInfo& g) {
     try { g.mem_total_mb = std::stod(fields[3]); } catch (...) {}
     try { g.temp_c       = std::stod(fields[4]); } catch (...) {}
     try { g.power_w      = std::stod(fields[5]); } catch (...) {}
+    if (fields.size() > 6) { try { g.fan_pct = std::stod(fields[6]); } catch (...) {} }
     return true;
 }
 
@@ -285,7 +286,7 @@ public:
             if (stale) LOG_WARN("gpu", "nvidia-smi: no new data for %lld s, values shown as N/A", static_cast<long long>(STALE.count()));
             else       LOG_INFO("gpu", "nvidia-smi: data is fresh again");
         }
-        if (stale) g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = -1.0;
+        if (stale) g.util_pct = g.mem_used_mb = g.mem_total_mb = g.temp_c = g.power_w = g.fan_pct = -1.0;
         return {g};
     }
 
@@ -316,7 +317,7 @@ private:
 
         const char* const args[] = {
             "nvidia-smi", "-i", "0",
-            "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw",
+            "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,fan.speed",
             "--format=csv,noheader,nounits", "-l", "1", nullptr};
         pid_t pid = -1;
         const int rc = posix_spawnp(&pid, "nvidia-smi", &fa, nullptr,

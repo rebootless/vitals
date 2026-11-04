@@ -15,6 +15,7 @@ struct GpuInfo {
     double mem_total_mb = -1.0;
     double temp_c        = -1.0;
     double power_w        = -1.0;
+    double fan_pct        = -1.0; // NVIDIA only: percent of max speed, not RPM
 };
 
 GpuVendor gpu_vendor_from_id(const std::string& vendor_id);

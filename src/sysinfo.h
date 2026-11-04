@@ -32,10 +32,19 @@ std::pair<double,double> thermal_trip_limits(int zone);
 
 std::vector<HwmonChip> parse_hwmon();
 
+constexpr int FAN_NAME_W = 4;  // longest short name: CPU, GPU, PSU, FAN1
+constexpr int FAN_MAX    = 6;  // the panel shows at most this many
+
+// "CPU_FAN" -> "CPU", "Chassis Fan 2" -> "SYS"; "" when the label says nothing useful
+std::string fan_short_name(const std::string& label);
+// hwmon fanN_input in sensor order, then the NVIDIA fan; at most FAN_MAX entries with unique names
+std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus);
+
 std::string parent_of(const std::string& dev);
 
 // per panel: is there anything to show (auto panels appear and disappear with it)
 PanelFlags panel_availability(const meminfo& mem, const std::vector<GpuInfo>& gpus,
                               const filesystemstat& root_fs, const std::vector<cpustat>& cores,
                               const std::vector<netdev>& net, const std::vector<diskstats>& disks,
-                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon);
+                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon,
+                              const std::vector<FanInfo>& fans);

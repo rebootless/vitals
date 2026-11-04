@@ -29,6 +29,13 @@ struct HwmonChip {
     std::vector<HwmonSensor> sensors;
 };
 
+// rpm or pct is -1 when not reported; name is at most FAN_NAME_W characters
+struct FanInfo {
+    std::string name;
+    int         rpm = -1;
+    int         pct = -1;
+};
+
 struct AppState {
     cpustat                prev_cpu  = {};
     std::vector<cpustat>   prev_core;
@@ -56,6 +63,7 @@ struct AppState {
     std::string            local_ip  = "N/A";
 
     std::vector<GpuInfo>   gpus;
+    std::vector<FanInfo>   fans;
 
     int  theme_idx = 0;
     int  bg_idx    = 0;   // 0 = transparent (terminal default), 1 = theme's own BG color

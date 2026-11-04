@@ -5,6 +5,8 @@
 #include <sstream>
 #include <cstring>
 #include <algorithm>
+#include <map>
+#include <set>
 #include <cctype>
 
 std::vector<cpustat> parse_percpu() {
@@ -320,6 +322,85 @@ std::vector<HwmonChip> parse_hwmon() {
     return result;
 }
 
+std::string fan_short_name(const std::string& label) {
+    std::string u;
+    for (unsigned char c : label) u += static_cast<char>(std::toupper(c));
+    for (const char* key : {"CPU", "GPU", "PSU", "PUMP", "AIO"})
+        if (u.find(key) != std::string::npos) return key;
+    for (const char* key : {"SYS", "CHA", "CASE"})
+        if (u.find(key) != std::string::npos) return "SYS";
+    return "";
+}
+
+std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus) {
+    std::vector<FanInfo> fans;
+
+    if (DIR* base = opendir("/sys/class/hwmon")) {
+        std::vector<std::string> dirs;
+        while (struct dirent* de = readdir(base)) {
+            const std::string d = de->d_name;
+            if (d.size() > 5 && d.compare(0, 5, "hwmon") == 0) dirs.push_back(d);
+        }
+        closedir(base);
+        // hwmon10 sorts after hwmon9
+        std::sort(dirs.begin(), dirs.end(), [](const std::string& a, const std::string& b) {
+            return a.size() != b.size() ? a.size() < b.size() : a < b;
+        });
+
+        for (const auto& d : dirs) {
+            const std::string dir = "/sys/class/hwmon/" + d;
+            std::string chip;
+            { std::ifstream nf(dir + "/name"); if (nf) std::getline(nf, chip); }
+
+            std::vector<std::string> prefixes;
+            if (DIR* hd = opendir(dir.c_str())) {
+                while (struct dirent* e = readdir(hd)) {
+                    const std::string fn = e->d_name;
+                    const size_t pos = fn.find("_input");
+                    if (fn.compare(0, 3, "fan") == 0 && pos != std::string::npos) prefixes.push_back(fn.substr(0, pos));
+                }
+                closedir(hd);
+            }
+            std::sort(prefixes.begin(), prefixes.end(), [](const std::string& a, const std::string& b) {
+                return a.size() != b.size() ? a.size() < b.size() : a < b;
+            });
+
+            for (const auto& pfx : prefixes) {
+                long long rpm = 0;
+                { std::ifstream f(dir + "/" + pfx + "_input"); if (!(f >> rpm)) continue; }
+                std::string label;
+                { std::ifstream lf(dir + "/" + pfx + "_label"); if (lf) std::getline(lf, label); }
+
+                FanInfo fi;
+                fi.rpm  = static_cast<int>(std::clamp(rpm, 0LL, 9999LL));
+                fi.name = chip == "amdgpu" ? "GPU" : fan_short_name(label);
+                fans.push_back(fi);
+            }
+        }
+    }
+
+    for (const auto& g : gpus)
+        if (g.fan_pct >= 0) {
+            FanInfo fi;
+            fi.name = "GPU";
+            fi.pct  = static_cast<int>(std::clamp(g.fan_pct, 0.0, 100.0) + 0.5);
+            fans.push_back(fi);
+        }
+
+    if (fans.size() > static_cast<size_t>(FAN_MAX)) fans.resize(FAN_MAX);
+
+    // an unnamed or repeated name falls back to its position: FAN1..FAN6
+    std::map<std::string, int> count;
+    for (const auto& f : fans) ++count[f.name];
+    std::set<std::string> taken;
+    for (size_t i = 0; i < fans.size(); ++i) {
+        std::string& nm = fans[i].name;
+        if (nm.empty() || (count[nm] > 1 && taken.count(nm))) nm = "FAN" + std::to_string(i + 1);
+        taken.insert(nm);
+    }
+    return fans;
+}
+
 std::string parent_of(const std::string& dev) {
     if (dev.size() >= 3 &&
         (dev[0]=='s' || dev[0]=='h' || dev[0]=='v') && dev[1]=='d') {
@@ -343,7 +424,8 @@ std::string parent_of(const std::string& dev) {
 PanelFlags panel_availability(const meminfo& mem, const std::vector<GpuInfo>& gpus,
                               const filesystemstat& root_fs, const std::vector<cpustat>& cores,
                               const std::vector<netdev>& net, const std::vector<diskstats>& disks,
-                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon) {
+                              const std::vector<thermal>& zones, const std::vector<HwmonChip>& hwmon,
+                              const std::vector<FanInfo>& fans) {
     PanelFlags a{};
     a[P_CPU]     = !cores.empty();
     a[P_GPU]     = !gpus.empty();
@@ -353,6 +435,7 @@ PanelFlags panel_availability(const meminfo& mem, const std::vector<GpuInfo>& gp
     a[P_STORAGE] = root_fs.total_bytes > 0 ||
                    std::any_of(disks.begin(), disks.end(),
                                [](const diskstats& d) { return !is_virtual_disk(d.device); });
+    a[P_FAN]     = !fans.empty();
     a[P_THERMAL] = !hwmon.empty() || !zones.empty() || (!gpus.empty() && gpus.front().temp_c >= 0);
     return a;
 }

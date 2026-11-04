@@ -41,6 +41,8 @@ void render(notcurses* nc, ncplane* n,
         panel_storage(n, a.y, a.x, a.h, a.w, cur_disk, disk_rd_rate, disk_wr_rate);
     if (const Rect& a = L.panel[P_THERMAL]; a.h > 0)
         panel_thermal(n, a.y, a.x, a.h, a.w, therm, hwmon, gpus);
+    if (const Rect& a = L.panel[P_FAN]; a.h > 0)
+        panel_fan(n, a.y, a.x, a.h, a.w);
 
     draw_footer(n, rows, cols);
 

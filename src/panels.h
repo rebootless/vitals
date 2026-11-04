@@ -27,6 +27,8 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                    const std::vector<HwmonChip>& hwmon,
                    const std::vector<GpuInfo>&   gpus);
 
+void panel_fan    (ncplane* n, int y, int x, int h, int w);
+
 void panel_gpu    (ncplane* n, int y, int x, int h, int w,
                    const std::vector<GpuInfo>& gpus);
 

@@ -143,6 +143,7 @@ chmod +x setup.sh build.sh
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput |
 | **Storage** | `/proc/diskstats`, `statvfs()` | Filesystem usage and disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard temperatures |
+| **Fans** | `/sys/class/hwmon` (`fan*_input`), `nvidia-smi` | Up to 6 fans: RPM (NVIDIA: percent of max speed) |
 
 ## ⌨️ Controls
 

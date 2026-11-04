@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 1.0.4 LANGUAGES CXX)
+project(vitals VERSION 1.0.5 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -41,6 +41,7 @@ set(SOURCES
     src/panel_network.cpp
     src/panel_storage.cpp
     src/panel_thermal.cpp
+    src/panel_fan.cpp
     src/panel_gpu.cpp
     src/panel_settings.cpp
     src/layout.cpp

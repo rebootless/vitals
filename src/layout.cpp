@@ -7,17 +7,20 @@
 namespace {
 
 struct Cell { int w; std::vector<PanelId> panels; }; // panels stacked top to bottom
-struct Row  { int h; std::vector<Cell>    cells;  };
+struct Row  { int h; std::vector<Cell>    cells; int fixed_h = 0; }; // fixed_h > 0: exact height, h is ignored
+
+constexpr int FAN_H   = 5; // box + 3 rows of fans
+constexpr int MEM_MIN = 5; // Memory keeps at least this much above Fans
 
 using Template = std::vector<Row>;
 
 const Template WIDE = {
-    { 3, { { 2, { P_CPU, P_GPU } }, { 1, { P_MEMORY } }, { 1, { P_THERMAL } } } },
+    { 3, { { 2, { P_CPU, P_GPU } }, { 1, { P_MEMORY, P_FAN } }, { 1, { P_THERMAL } } } },
     { 2, { { 1, { P_NETWORK } },    { 1, { P_STORAGE } } } },
 };
 
 const Template MEDIUM = {
-    { 2, { { 1, { P_CPU, P_GPU } }, { 1, { P_MEMORY } } } },
+    { 2, { { 1, { P_CPU, P_GPU } }, { 1, { P_MEMORY, P_FAN } } } },
     { 2, { { 1, { P_NETWORK } },    { 1, { P_STORAGE } } } },
     { 1, { { 1, { P_THERMAL } } } },
 };
@@ -26,6 +29,7 @@ const Template NARROW = {
     { 1, { { 1, { P_CPU } } } },
     { 1, { { 1, { P_GPU } } } },
     { 1, { { 1, { P_MEMORY } } } },
+    { 1, { { 1, { P_FAN } } }, FAN_H },
     { 1, { { 1, { P_NETWORK } } } },
     { 1, { { 1, { P_STORAGE } } } },
     { 1, { { 1, { P_THERMAL } } } },
@@ -61,7 +65,15 @@ std::vector<int> split_edges(int total, const std::vector<int>& weights) {
 void place_stack(Layout& L, const std::vector<PanelId>& stack, int y, int x, int h, int w,
                  const std::vector<GpuInfo>& gpus) {
     if (stack.size() == 1) {
-        L.panel[stack[0]] = { y, x, h, w };
+        // Fans never stretch: three rows of fans need no more
+        L.panel[stack[0]] = { y, x, stack[0] == P_FAN ? std::min(h, FAN_H) : h, w };
+        return;
+    }
+
+    if (stack[1] == P_FAN) {
+        const int fan_h = std::min(FAN_H, std::max(0, h - MEM_MIN));
+        L.panel[stack[0]] = { y,             x, h - fan_h, w };
+        L.panel[stack[1]] = { y + h - fan_h, x, fan_h,     w };
         return;
     }
 
@@ -98,9 +110,19 @@ Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, cons
     }
     if (live.empty()) return L;
 
+    // fixed rows take their height first, the weighted rows share the rest
+    std::vector<int> heights(live.size(), 0);
     std::vector<int> row_weights;
-    for (const Row& r : live) row_weights.push_back(r.h);
-    const std::vector<int> heights = split_floor(avail, row_weights);
+    int left = avail;
+    for (size_t i = 0; i < live.size(); ++i) {
+        if (live[i].fixed_h > 0) { heights[i] = std::min(live[i].fixed_h, left); left -= heights[i]; }
+        else row_weights.push_back(live[i].h);
+    }
+    if (!row_weights.empty()) {
+        const std::vector<int> shares = split_floor(left, row_weights);
+        for (size_t i = 0, k = 0; i < live.size(); ++i)
+            if (live[i].fixed_h == 0) heights[i] = shares[k++];
+    }
 
     int y = 1;
     for (size_t ri = 0; ri < live.size(); ++ri) {

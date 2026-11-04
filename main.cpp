@@ -327,13 +327,14 @@ int main(int argc, char** argv) {
             sample("cpufreq",   [&] { freqs    = parse_cpufreq();   });
             sample("hwmon",     [&] { hwmon    = parse_hwmon();     });
             sample("gpu",       [&] { G.gpus   = parse_gpus();      });
+            sample("fans",      [&] { G.fans   = collect_fans(G.gpus); });
             sample("meminfo",   [&] { G.mem      = parse_meminfo();   });
             sample("snmp",      [&] { G.net_snmp = parse_snmp();      });
             sample("uptime",    [&] { G.up       = parse_uptime();    });
             sample("loadavg",   [&] { G.load     = parse_loadavg();   });
             if (!sample("statvfs", [&] { G.root_fs = parse_filesystemstat("/"); })) G.root_fs = {};
 
-            G.panel_avail = panel_availability(G.mem, G.gpus, G.root_fs, cur_core, cur_net, cur_disk, therm, hwmon);
+            G.panel_avail = panel_availability(G.mem, G.gpus, G.root_fs, cur_core, cur_net, cur_disk, therm, hwmon, G.fans);
 
             const std::string ip = get_local_ip();
             if (ip != G.local_ip) LOG_INFO("network", "local address: %s -> %s", G.local_ip.c_str(), ip.c_str());

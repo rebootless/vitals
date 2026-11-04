@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <string_view>
 
-enum PanelId { P_CPU, P_GPU, P_MEMORY, P_NETWORK, P_STORAGE, P_THERMAL, PANEL_N };
+enum PanelId { P_CPU, P_GPU, P_MEMORY, P_NETWORK, P_STORAGE, P_THERMAL, P_FAN, PANEL_N };
 
 struct PanelInfo {
     const char* key;   // config key suffix: panel_<key>
@@ -18,6 +18,7 @@ inline constexpr PanelInfo PANELS[PANEL_N] = {
     { "network", "Network" },
     { "storage", "Storage" },
     { "thermal", "Thermal" },
+    { "fan",     "Fans"    },
 };
 
 enum class PanelMode { On, Auto, Off }; // config values: true, auto, false
