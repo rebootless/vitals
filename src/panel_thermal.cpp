@@ -1,5 +1,8 @@
 #include "panels.h"
 
+#include <algorithm>
+#include <cstdlib>
+
 namespace {
 
 struct ThermItem {
@@ -14,6 +17,28 @@ struct ThermGroup {
     std::string             name;
     std::vector<ThermItem>  items;
 };
+
+// display names: the chip's own labels are too long for the label column (11 characters)
+std::string short_label(const std::string& l) {
+    if (l == "PCH CHIP")       return "Chipset";
+    if (l == "PECI 0.0")       return "PECI";
+    if (l.rfind("Thermistor ", 0) == 0) return "Therm " + l.substr(11);
+    std::string s = l;
+    const std::string cur = " (curr)";
+    if (s.size() > cur.size() && s.compare(s.size() - cur.size(), cur.size(), cur) == 0)
+        s.erase(s.size() - cur.size());
+    return s == "Diode 0" ? "Diode" : s;
+}
+
+// "Therm N" rows go last, in number order (the chip lists them by channel: 15, 16, 0, 1)
+void sort_thermistors(std::vector<ThermItem>& items) {
+    auto is_th = [](const ThermItem& t) { return t.label.rfind("Therm ", 0) == 0; };
+    std::stable_partition(items.begin(), items.end(), [&](const ThermItem& t) { return !is_th(t); });
+    auto first = std::find_if(items.begin(), items.end(), is_th);
+    std::stable_sort(first, items.end(), [](const ThermItem& a, const ThermItem& b) {
+        return std::atoi(a.label.c_str() + 6) < std::atoi(b.label.c_str() + 6);
+    });
+}
 
 void push_group(std::vector<ThermGroup>& groups, const std::string& name,
                 std::vector<ThermItem> items) {
@@ -109,6 +134,8 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         }
         for (const auto& s : chip.sensors) {
             std::string lbl = s.label;
+            if (chip.name == "acpitz" && lbl == chip.display) lbl = "ACPI";
+            lbl = short_label(lbl);
             if (lbl.size() > 5 && lbl.substr(0, 5) == "Core ") {
                 std::string num = lbl.substr(5);
                 bool all_dig = !num.empty();
@@ -148,14 +175,17 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (!gpus.empty() && gpus.front().temp_c >= 0)
         gpu_items.push_back({"GPU", gpus.front().temp_c, false, -1.0, -1.0});
 
+    sort_thermistors(mobo_items);
+
+    // GPU right after CPU: when height runs out the board's minor sensors go first
     std::vector<ThermGroup> groups;
     push_group(groups, "CPU",         cpu_items);
+    push_group(groups, "GPU",         gpu_items);
     push_group(groups, "Motherboard", mobo_items);
     push_group(groups, "Storage",     storage_items);
     push_group(groups, "Wi-Fi",       network_items);
     push_group(groups, "Laptop",      laptop_items);
     for (auto& [nm, items] : other_items) push_group(groups, nm, items);
-    push_group(groups, "GPU",         gpu_items);
     for (auto& item : zone_items) push_group(groups, item.label, {item});
 
     if (groups.empty()) {

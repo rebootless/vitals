@@ -186,6 +186,8 @@ static bool classify_hwmon_chip(const std::string& name,
         {"nct6793",   {HwmonCategory::Motherboard, "Motherboard"}},
         {"nct6795",   {HwmonCategory::Motherboard, "Motherboard"}},
         {"nct6796",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6683",   {HwmonCategory::Motherboard, "Motherboard"}},
+        {"nct6687",   {HwmonCategory::Motherboard, "Motherboard"}}, // the in-kernel nct6683 driver names an NCT6687D this way
         {"it8792",    {HwmonCategory::Motherboard, "Motherboard"}},
         {"it8686",    {HwmonCategory::Motherboard, "Motherboard"}},
         {"w83627ehf", {HwmonCategory::Motherboard, "Motherboard"}},

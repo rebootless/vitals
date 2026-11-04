@@ -3,6 +3,9 @@
 // nct6683 doesn't load on boot, so I have to run this manually to display fan speeds
 // sudo modprobe nct6683
 
+// autostart:
+// echo nct6683 | sudo tee /etc/modules-load.d/nct6683.conf && sudo systemctl restart systemd-modules-load && lsmod | grep nct6683
+
 namespace {
 // "NAME:  [XXXX RPM]": name padded to FAN_NAME_W + 2, then a 10-column value box
 constexpr int ITEM_W = FAN_NAME_W + 2 + 10;
