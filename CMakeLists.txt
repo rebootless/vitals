@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 1.0.7 LANGUAGES CXX)
+project(vitals VERSION 1.0.8 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 

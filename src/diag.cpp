@@ -152,6 +152,13 @@ void log_data_sources() {
         }
     });
 
+    probe("fans", [] {
+        const auto fans = collect_fans(parse_gpus());
+        LOG_INFO("fans", "%zu fans", fans.size());
+        for (const auto& f : fans)
+            LOG_INFO("fans", "  %s rpm=%d pct=%d", f.name.c_str(), f.rpm, f.pct);
+    });
+
     probe("gpu", [] {
         const auto gpus = parse_gpus();
         if (gpus.empty()) LOG_INFO("gpu", "no GPU detected");

@@ -328,6 +328,14 @@ int main(int argc, char** argv) {
             sample("hwmon",     [&] { hwmon    = parse_hwmon();     });
             sample("gpu",       [&] { G.gpus   = parse_gpus();      });
             sample("fans",      [&] { G.fans   = collect_fans(G.gpus); });
+            {   // one line whenever the list changes: what the Fans panel is given
+                static std::string last_fans;
+                std::string d;
+                for (const auto& f : G.fans)
+                    d += (d.empty() ? "" : ", ") + f.name + "=" +
+                         (f.rpm >= 0 ? std::to_string(f.rpm) + " RPM" : std::to_string(f.pct) + " %");
+                if (d != last_fans) { LOG_INFO("fans", "%zu fans: %s", G.fans.size(), d.empty() ? "(none)" : d.c_str()); last_fans = d; }
+            }
             sample("meminfo",   [&] { G.mem      = parse_meminfo();   });
             sample("snmp",      [&] { G.net_snmp = parse_snmp();      });
             sample("uptime",    [&] { G.up       = parse_uptime();    });
