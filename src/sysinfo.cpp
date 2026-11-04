@@ -333,15 +333,13 @@ std::string fan_short_name(const std::string& label) {
 }
 
 std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus, const std::string& hwmon_root) {
-    // a channel at 0 RPM that has never spun is an empty header: hidden until it first reports > 0
-    static std::set<std::string> alive;
-
     auto by_len = [](const std::string& a, const std::string& b) {
         return a.size() != b.size() ? a.size() < b.size() : a < b; // hwmon10 after hwmon9
     };
-    auto channel_name = [](const std::string& pfx) { // "fan3" -> FAN3, "fan12" -> F12 (FAN_NAME_W)
+    // "fan3" -> 3; 0 when the channel is not 1..9 (FAN10+ would break the name width and the naming scheme)
+    auto channel_of = [](const std::string& pfx) {
         const std::string num = pfx.substr(3);
-        return (num.size() + 3 <= static_cast<size_t>(FAN_NAME_W) ? "FAN" : "F") + num;
+        return num.size() == 1 && num[0] >= '1' && num[0] <= '9' ? num[0] - '0' : 0;
     };
 
     struct Entry { FanInfo fan; std::string fallback; };
@@ -374,18 +372,17 @@ std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus, const std::s
             std::sort(prefixes.begin(), prefixes.end(), by_len);
 
             for (const auto& pfx : prefixes) {
+                const int chan = channel_of(pfx);
+                if (chan == 0) continue;
                 long long rpm = 0;
                 { std::ifstream f(dir + "/" + pfx + "_input"); if (!(f >> rpm)) continue; }
-                const std::string key = d + "/" + pfx;
-                if (rpm > 0) alive.insert(key);
-                else if (!alive.count(key)) continue;
 
                 std::string label;
                 { std::ifstream lf(dir + "/" + pfx + "_label"); if (lf) std::getline(lf, label); }
 
                 Entry en;
                 en.fan.rpm  = static_cast<int>(std::clamp(rpm, 0LL, 9999LL));
-                en.fallback = channel_name(pfx);
+                en.fallback = "FAN" + std::to_string(chan);
                 en.fan.name = chip == "amdgpu" ? "GPU" : fan_short_name(label);
                 if (en.fan.name.empty()) en.fan.name = en.fallback;
                 hw.push_back(en);
@@ -401,21 +398,20 @@ std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus, const std::s
             nv.push_back(en);
         }
 
-    // the cap applies after filtering and always leaves room for the GPU fan
-    const size_t room = static_cast<size_t>(FAN_MAX) - std::min(nv.size(), static_cast<size_t>(FAN_MAX));
-    if (hw.size() > room) hw.resize(room);
+    // GPU first (NVIDIA, or amdgpu's hwmon fan), then the board's fans in channel order
+    std::vector<Entry> all = nv;
+    all.insert(all.end(), hw.begin(), hw.end());
+    std::stable_partition(all.begin(), all.end(), [](const Entry& e) { return e.fan.name == "GPU"; });
+    if (all.size() > static_cast<size_t>(FAN_MAX)) all.resize(FAN_MAX);
 
-    std::vector<Entry> all = hw;
-    all.insert(all.end(), nv.begin(), nv.end());
-    all.resize(std::min(all.size(), static_cast<size_t>(FAN_MAX)));
-
-    // a repeated name (two "CPU" labels) keeps the first, the others fall back to their channel
+    // a repeated name (two "CPU" labels, two chips with a fan1) falls back to the first free FAN<1..9>
     std::set<std::string> taken;
     std::vector<FanInfo> fans;
-    for (size_t i = 0; i < all.size(); ++i) {
-        Entry& en = all[i];
-        if (taken.count(en.fan.name))
-            en.fan.name = en.fallback.empty() ? "FAN" + std::to_string(i + 1) : en.fallback;
+    for (Entry& en : all) {
+        if (taken.count(en.fan.name)) {
+            en.fan.name = en.fallback;
+            for (int k = 1; taken.count(en.fan.name) && k <= 9; ++k) en.fan.name = "FAN" + std::to_string(k);
+        }
         taken.insert(en.fan.name);
         fans.push_back(en.fan);
     }

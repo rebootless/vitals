@@ -38,7 +38,7 @@ constexpr int FAN_MAX    = 6;  // the panel shows at most this many
 // "CPU_FAN" -> "CPU", "Chassis Fan 2" -> "SYS"; "" when the label says nothing useful
 std::string fan_short_name(const std::string& label);
 // hwmon fanN_input in sensor order, then the NVIDIA fan; at most FAN_MAX entries with unique names.
-// Channels stuck at 0 RPM since start (empty headers) are left out; unlabeled ones are named FAN<channel>.
+// GPU first, then the board's channels fan1..fan9 (0 RPM included; fan10+ ignored); unlabeled ones are named FAN<channel>.
 std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus,
                                   const std::string& hwmon_root = "/sys/class/hwmon");
 
