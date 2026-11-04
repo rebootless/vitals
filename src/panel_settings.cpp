@@ -2,19 +2,103 @@
 #include "theme.h"
 #include "draw_tty.h"
 
-static const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
-static const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
-static const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
-static const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
-static const char* MIRROR_NAMES[2] = { "Symbol Mirroring: False", "Symbol Mirroring: True" };
+namespace {
+
+const char* BG_MODE_NAMES[2] = { "Theme background: False", "Theme background: True" };
+const char* TTY_MODE_NAMES[3] = { "Auto-detect", "Force TTY mode", "Force graphics mode" };
+const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
+const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
+const char* MIRROR_NAMES[2] = { "Symbol Mirroring: False", "Symbol Mirroring: True" };
+
+// Focus ids, as main.cpp uses them
+enum Focus { F_THEME, F_BG, F_TERMINAL, F_CORNERS, F_GRAPH, F_MIRROR, F_PANELS, F_REFRESH };
+
+// One line of the right-hand column; the whole column is built first so it can be scrolled
+enum class Kind { Blank, Block, Header, Note, Option, PanelRow, Refresh };
+
+struct Line {
+    Kind        kind  = Kind::Blank;
+    std::string text;
+    int         group = -1;     // focus id this line belongs to
+    bool        selected = false;
+    bool        dim      = false;
+};
+
+std::vector<Line> build_lines() {
+    std::vector<Line> v;
+    auto blank  = [&] { v.push_back({}); };
+    auto block  = [&](const char* t, int group = -1) { Line l; l.kind = Kind::Block; l.text = t; l.group = group; v.push_back(l); };
+    auto header = [&](const char* t, int group) { Line l; l.kind = Kind::Header; l.text = t; l.group = group; v.push_back(l); };
+    auto note   = [&](const char* t, int group) { Line l; l.kind = Kind::Note; l.text = t; l.group = group; v.push_back(l); };
+    auto option = [&](const char* t, int group, bool sel) {
+        Line l; l.kind = Kind::Option; l.text = t; l.group = group; l.selected = sel; v.push_back(l);
+    };
+
+    block("Appearance");
+    header("Background", F_BG);
+    for (int i = 0; i < 2; ++i) option(BG_MODE_NAMES[i], F_BG, i == G.bg_idx);
+    header("Corners", F_CORNERS);
+    for (int i = 0; i < 2; ++i) option(CORNER_MODE_NAMES[i], F_CORNERS, i == G.corners_idx);
+    header("Graph style", F_GRAPH);
+    for (int i = 0; i < 2; ++i) option(GRAPH_STYLE_NAMES[i], F_GRAPH, i == G.graph_style_idx);
+    header("Graph Symbol Mirroring", F_MIRROR);
+    note("(Experimental)", F_MIRROR);
+    for (int i = 0; i < 2; ++i) option(MIRROR_NAMES[i], F_MIRROR, i == G.symbol_mirror_idx);
+
+    blank();
+    block("Behavior");
+    header("Terminal", F_TERMINAL);
+    for (int i = 0; i < 3; ++i) option(TTY_MODE_NAMES[i], F_TERMINAL, static_cast<int>(G.tty_force) == i);
+    { Line l; l.kind = Kind::Refresh; l.group = F_REFRESH; v.push_back(l); }
+
+    blank();
+    block("Panels", F_PANELS);
+    for (int i = 0; i < PANEL_N; ++i) {
+        const size_t    k    = static_cast<size_t>(i);
+        const PanelMode mode = G.panel_mode[k];
+        const bool no_data   = (mode == PanelMode::Auto && !G.panel_avail[k]);
+        Line l;
+        l.kind     = Kind::PanelRow;
+        l.group    = F_PANELS;
+        l.selected = (G.settings_focus == F_PANELS && i == G.settings_panel_cursor);
+        l.dim      = (mode == PanelMode::Off || no_data);
+        char buf[48];
+        snprintf(buf, sizeof(buf), "%-8s %s%s", PANELS[i].label, mode_name(mode), no_data ? " (no data)" : "");
+        l.text = buf;
+        v.push_back(l);
+    }
+    return v;
+}
+
+// keep the window [top, top+vis) over the lines lo..hi (hi wins when the range is taller than the window)
+int follow(int top, int lo, int hi, int vis, int total) {
+    if (hi >= top + vis) top = hi - vis + 1;
+    if (lo < top)        top = lo;
+    return std::max(0, std::min(top, std::max(0, total - vis)));
+}
+
+void draw_scrollbar(ncplane* n, int x, int y, int h, int top, int vis, int total) {
+    if (total <= vis || h < 3) return;
+    const int thumb = std::max(1, h * vis / total);
+    const int pos   = (h - thumb) * top / std::max(1, total - vis);
+    for (int i = 0; i < h; ++i) {
+        const bool on = (i >= pos && i < pos + thumb);
+        nc_set(n, on ? theme().LABEL : theme().BORDER, NCSTYLE_NONE);
+        ncplane_putstr_yx(n, y + i, x, on ? "\xe2\x96\x88" : "\xe2\x96\x91");
+    }
+}
+
+}
 
 void panel_settings(ncplane* n, int rows, int cols) {
     const auto& themes = all_themes();
+    const int n_themes = static_cast<int>(themes.size());
+
+    const std::vector<Line> lines = build_lines();
+    const int total = static_cast<int>(lines.size());
 
     int w = std::min(68, std::max(30, cols - 4));
-    int right_rows = (2 + 2) + 1 + (2 + 3) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + 2) + 1 + (2 + PANEL_N);
-    int content_h  = std::max(static_cast<int>(themes.size()), right_rows) + 6;
-    int h = std::min(content_h, rows - 4);
+    int h = std::min(total + 2, rows - 4); // the right column sets the height; both columns scroll when it doesn't fit
     if (w < 24 || h < 6) return;
 
     int x = (cols - w) / 2;
@@ -27,157 +111,96 @@ void panel_settings(ncplane* n, int rows, int cols) {
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Settings", hint);
     if (ih <= 0 || iw <= 0) return;
 
-    int left_w  = iw * 3 / 5;
-    int right_x = ix + left_w + 1;
+    // the right column needs 26 columns for its longest line (e.g. "> Symbol Mirroring: False" and the scrollbar); the themes get the rest
+    const int left_w  = std::min(iw * 3 / 5, std::max(26, iw - 28));
+    const int right_x = ix + left_w + 1;
+    const bool two_cols = right_x < ix + iw - 3;
 
-    auto draw_group_header = [&](int r, int group_idx, const char* title) {
-        bool focused = (G.settings_focus == group_idx);
-        nc_set(n, theme().LABEL, NCSTYLE_BOLD);
-        std::string hdr = std::string(focused ? "> " : "  ") + title;
-        ncplane_putstr_yx(n, r, right_x, hdr.c_str());
-    };
-
+    // ---- left: themes ----
     {
-        bool focused = (G.settings_focus == 0);
+        const bool focused = (G.settings_focus == F_THEME);
         nc_set(n, theme().LABEL, NCSTYLE_BOLD);
-        std::string hdr = std::string(focused ? "> " : "  ") + "Theme";
-        ncplane_putstr_yx(n, iy, ix, hdr.c_str());
+        char hdr[64];
+        snprintf(hdr, sizeof(hdr), "%sTheme (%d of %d)", focused ? "> " : "  ", G.theme_idx + 1, n_themes);
+        ncplane_putstr_yx(n, iy, ix, str_trunc(hdr, left_w).c_str());
+
+        const int vis = std::max(0, ih - 1);
+        G.settings_theme_top = follow(G.settings_theme_top, G.theme_idx, G.theme_idx, vis, n_themes);
+
+        for (int i = 0; i < vis && G.settings_theme_top + i < n_themes; ++i) {
+            const int t = G.settings_theme_top + i;
+            nc_set(n, t == G.theme_idx ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+            const std::string label = std::string(t == G.theme_idx ? "> " : "  ") +
+                                      str_trunc(themes[static_cast<size_t>(t)].name, left_w - 3);
+            ncplane_putstr_yx(n, iy + 1 + i, ix, label.c_str());
+        }
+        draw_scrollbar(n, ix + left_w - 1, iy + 1, vis, G.settings_theme_top, vis, n_themes);
     }
 
-    for (size_t i = 0; i < themes.size(); ++i) {
-        int r = iy + 2 + static_cast<int>(i);
-        if (r >= iy + ih) break;
+    if (!two_cols) return;
 
-        bool selected = (static_cast<int>(i) == G.theme_idx);
+    // ---- right: blocks ----
+    const int vis    = ih;
+    const bool bar   = total > vis;
+    const int text_w = ix + iw - right_x - (bar ? 1 : 0);
 
-        uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-        nc_set(n, col, NCSTYLE_NONE);
-
-        std::string label = (selected ? "> " : "  ") +
-                            str_trunc(themes[i].name, left_w - 3);
-        ncplane_putstr_yx(n, r, ix, label.c_str());
+    // lines of the focused group: the window must show them (for Panels, up to the cursor row)
+    int lo = -1, hi = -1;
+    for (int i = 0; i < total; ++i)
+        if (lines[static_cast<size_t>(i)].group == G.settings_focus) { if (lo < 0) lo = i; hi = i; }
+    if (lo >= 0) {
+        const Line& first = lines[static_cast<size_t>(lo)];
+        if (first.kind == Kind::Header && lo > 0 && lines[static_cast<size_t>(lo - 1)].kind == Kind::Block) --lo; // keep the block title with its first group
+        if (G.settings_focus == F_PANELS) hi = lo + 1 + G.settings_panel_cursor;
+        G.settings_right_top = follow(G.settings_right_top, lo, hi, vis, total);
+    } else {
+        G.settings_right_top = follow(G.settings_right_top, 0, 0, vis, total);
     }
 
-    if (right_x < ix + iw - 3) {
-        int r = iy;
+    for (int i = 0; i < vis && G.settings_right_top + i < total; ++i) {
+        const Line& l = lines[static_cast<size_t>(G.settings_right_top + i)];
+        const int r = iy + i;
+        const bool focused = (l.group == G.settings_focus);
 
-        draw_group_header(r, 1, "Background");
-        r += 2;
-
-        for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
-            bool selected = (i == G.bg_idx);
-
-            uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-            nc_set(n, col, NCSTYLE_NONE);
-
-            std::string label = std::string(selected ? "> " : "  ") + BG_MODE_NAMES[i];
-            ncplane_putstr_yx(n, r, right_x, label.c_str());
+        switch (l.kind) {
+        case Kind::Blank:
+            break;
+        case Kind::Block: {
+            nc_set(n, theme().TITLE, NCSTYLE_BOLD);
+            const std::string t = std::string(l.group >= 0 && focused ? "> " : "") + l.text + " ";
+            ncplane_putstr_yx(n, r, right_x, str_trunc(t, text_w).c_str());
+            const int used = static_cast<int>(str_trunc(t, text_w).size());
+            nc_set(n, theme().BORDER, NCSTYLE_NONE);
+            for (int c = used; c < text_w; ++c) ncplane_putstr_yx(n, r, right_x + c, "\xe2\x94\x80");
+            break;
         }
-
-        r++;
-
-        if (r < iy + ih) {
-            draw_group_header(r, 2, "Terminal");
-            r += 2;
-
-            for (int i = 0; i < 3 && r < iy + ih; ++i, ++r) {
-                bool selected = (static_cast<int>(G.tty_force) == i);
-
-                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-                nc_set(n, col, NCSTYLE_NONE);
-
-                std::string label = std::string(selected ? "> " : "  ") + TTY_MODE_NAMES[i];
-                ncplane_putstr_yx(n, r, right_x, label.c_str());
-            }
+        case Kind::Header:
+            nc_set(n, theme().LABEL, NCSTYLE_BOLD);
+            ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(focused ? "> " : "  ") + l.text, text_w).c_str());
+            break;
+        case Kind::Note:
+            nc_set(n, theme().MUTED, NCSTYLE_NONE);
+            ncplane_putstr_yx(n, r, right_x + 2, str_trunc(l.text, text_w - 2).c_str());
+            break;
+        case Kind::Option:
+            nc_set(n, l.selected ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+            ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(l.selected ? "> " : "  ") + l.text, text_w).c_str());
+            break;
+        case Kind::PanelRow:
+            nc_set(n, l.dim ? theme().FG_DIM : theme().LOW, NCSTYLE_NONE);
+            ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(l.selected ? "> " : "  ") + l.text, text_w).c_str());
+            break;
+        case Kind::Refresh: {
+            nc_set(n, theme().LABEL);
+            const std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";
+            ncplane_putstr_yx(n, r, right_x, str_trunc(lead, text_w).c_str());
+            nc_set(n, focused ? theme().LOW : theme().FG, NCSTYLE_NONE);
+            const int lx = static_cast<int>(lead.size());
+            if (lx < text_w)
+                ncplane_putstr_yx(n, r, right_x + lx, str_trunc(std::to_string(G.refresh_ms) + "ms", text_w - lx).c_str());
+            break;
         }
-
-        r++;
-
-        if (r < iy + ih) {
-            draw_group_header(r, 3, "Corners");
-            r += 2;
-
-            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
-                bool selected = (i == G.corners_idx);
-
-                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-                nc_set(n, col, NCSTYLE_NONE);
-
-                std::string label = std::string(selected ? "> " : "  ") + CORNER_MODE_NAMES[i];
-                ncplane_putstr_yx(n, r, right_x, label.c_str());
-            }
-        }
-
-        r++;
-
-        if (r < iy + ih) {
-            draw_group_header(r, 4, "Graph style");
-            r += 2;
-
-            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
-                bool selected = (i == G.graph_style_idx);
-
-                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-                nc_set(n, col, NCSTYLE_NONE);
-
-                std::string label = std::string(selected ? "> " : "  ") + GRAPH_STYLE_NAMES[i];
-                ncplane_putstr_yx(n, r, right_x, label.c_str());
-            }
-        }
-
-        r++;
-
-        if (r < iy + ih) {
-            draw_group_header(r, 5, "Graph Symbol Mirroring");
-            if (r + 1 < iy + ih) {
-                nc_set(n, theme().MUTED, NCSTYLE_NONE);
-                ncplane_putstr_yx(n, r + 1, right_x + 2, "(Experimental)");
-            }
-            r += 2;
-
-            for (int i = 0; i < 2 && r < iy + ih; ++i, ++r) {
-                bool selected = (i == G.symbol_mirror_idx);
-
-                uint32_t col = selected ? theme().LOW : theme().FG_DIM;
-                nc_set(n, col, NCSTYLE_NONE);
-
-                std::string label = std::string(selected ? "> " : "  ") + MIRROR_NAMES[i];
-                ncplane_putstr_yx(n, r, right_x, label.c_str());
-            }
-        }
-
-        r++;
-
-        if (r < iy + ih) {
-            draw_group_header(r, 6, "Panels");
-            r += 2;
-
-            for (int i = 0; i < PANEL_N && r < iy + ih; ++i, ++r) {
-                const size_t k        = static_cast<size_t>(i);
-                const PanelMode mode  = G.panel_mode[k];
-                const bool cursor     = (G.settings_focus == 6 && i == G.settings_panel_cursor);
-                const bool no_data    = (mode == PanelMode::Auto && !G.panel_avail[k]);
-
-                nc_set(n, (mode == PanelMode::Off || no_data) ? theme().FG_DIM : theme().LOW, NCSTYLE_NONE);
-
-                char label[48];
-                snprintf(label, sizeof(label), "%s%-8s %s%s", cursor ? "> " : "  ",
-                         PANELS[i].label, mode_name(mode), no_data ? " (no data)" : "");
-                ncplane_putstr_yx(n, r, right_x, str_trunc(label, ix + iw - right_x).c_str());
-            }
         }
     }
-
-    int frow = iy + ih - 1;
-    if (frow >= iy) {
-        bool focused = (G.settings_focus == 7);
-
-        nc_set(n, theme().LABEL);
-        std::string lead = std::string(focused ? "> " : "  ") + "Refresh: ";
-        ncplane_putstr_yx(n, frow, ix, lead.c_str());
-
-        nc_set(n, focused ? theme().LOW : theme().FG, NCSTYLE_NONE);
-        std::string val = std::to_string(G.refresh_ms) + "ms";
-        ncplane_putstr_yx(n, frow, ix + static_cast<int>(lead.size()), val.c_str());
-    }
+    if (bar) draw_scrollbar(n, ix + iw - 1, iy, vis, G.settings_right_top, vis, total);
 }

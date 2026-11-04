@@ -199,6 +199,8 @@ int main(int argc, char** argv) {
                 G.settings_saved_panels  = G.panel_mode;
                 G.settings_panel_cursor  = 0;
                 G.settings_focus         = 0;
+                G.settings_theme_top     = 0;
+                G.settings_right_top     = 0;
                 G.settings_open          = true;
                 LOG_INFO("ui", "settings opened");
             }
@@ -220,7 +222,8 @@ int main(int argc, char** argv) {
                 LOG_INFO("ui", "settings discarded");
 
             } else if (ch == '\t') {
-                G.settings_focus = (G.settings_focus + 1) % 8;
+                const int* at = std::find(std::begin(SETTINGS_TAB_ORDER), std::end(SETTINGS_TAB_ORDER), G.settings_focus);
+                G.settings_focus = SETTINGS_TAB_ORDER[(at - std::begin(SETTINGS_TAB_ORDER) + 1) % 8];
 
             } else if (ch == ' ' && G.settings_focus == 6) {
                 PanelMode& m = G.panel_mode[static_cast<size_t>(G.settings_panel_cursor)];

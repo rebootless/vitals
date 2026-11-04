@@ -84,8 +84,10 @@ struct AppState {
 
     bool frozen               = false;
     bool settings_open        = false;
-    int  settings_focus       = 0;   // 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=panels 7=refresh
+    int  settings_focus       = 0;   // ids: 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=panels 7=refresh
     int  settings_panel_cursor = 0;
+    int  settings_theme_top   = 0;   // first visible row of the theme list
+    int  settings_right_top   = 0;   // first visible line of the right-hand column
     PanelModes settings_saved_panels = all_panels_auto();
     int  settings_saved_theme = 0;
     int  settings_saved_bg    = 0;
@@ -95,5 +97,8 @@ struct AppState {
     int  settings_saved_graph_style = 0;
     int  settings_saved_symbol_mirror = 0;
 };
+
+// Tab visits the groups in the order they appear on screen (focus ids are listed above)
+inline constexpr int SETTINGS_TAB_ORDER[8] = { 0, 1, 3, 4, 5, 2, 7, 6 };
 
 extern AppState G;
