@@ -1,5 +1,8 @@
 #include "panels.h"
 
+// nct6683 doesn't load on boot, so I have to run this manually to display fan speeds
+// sudo modprobe nct6683
+
 namespace {
 // "NAME:  [XXXX RPM]": name padded to FAN_NAME_W + 2, then a 10-column value box
 constexpr int ITEM_W = FAN_NAME_W + 2 + 10;
@@ -21,8 +24,8 @@ void panel_fan(ncplane* n, int y, int x, int h, int w) {
         return;
     }
 
-    // two columns when they fit, otherwise one: same item width either way
-    const int ncol = iw >= 2 * ITEM_W + GAP ? 2 : 1;
+    // as many columns as fit (1 below 33 inner columns, 2 up to 49, 3 up to 66, ...), same item width
+    const int ncol = std::max(1, (iw + GAP) / (ITEM_W + GAP));
     const int slot = ITEM_W + GAP; // compact: extra width stays empty on the right
     const int cap  = std::min({ static_cast<int>(fans.size()), ncol * ROWS, ncol * ih });
 

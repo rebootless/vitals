@@ -33,7 +33,7 @@ std::pair<double,double> thermal_trip_limits(int zone);
 std::vector<HwmonChip> parse_hwmon();
 
 constexpr int FAN_NAME_W = 4;  // longest short name: CPU, GPU, PSU, FAN1
-constexpr int FAN_MAX    = 6;  // the panel shows at most this many
+constexpr int FAN_MAX    = 10; // GPU + fan1..fan9; the panel shows as many as its width fits
 
 // "CPU_FAN" -> "CPU", "Chassis Fan 2" -> "SYS"; "" when the label says nothing useful
 std::string fan_short_name(const std::string& label);
