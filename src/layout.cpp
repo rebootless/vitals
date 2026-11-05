@@ -7,7 +7,11 @@
 namespace {
 
 struct Cell { int w; std::vector<PanelId> panels; }; // panels stacked top to bottom
-struct Row  { int h; std::vector<Cell>    cells; int fixed_h = 0; }; // fixed_h > 0: exact height, h is ignored
+struct Row  {
+    int h; std::vector<Cell> cells;
+    int fixed_h = 0;               // > 0: exact height, h is ignored
+    std::vector<PanelId> fan_over{}; // Fans sit under these panels and span their full width
+};
 
 constexpr int FAN_H   = 5; // box + 3 rows of fans
 constexpr int MEM_MIN = 5; // Memory keeps at least this much above Fans
@@ -15,7 +19,9 @@ constexpr int MEM_MIN = 5; // Memory keeps at least this much above Fans
 using Template = std::vector<Row>;
 
 const Template WIDE = {
-    { 3, { { 2, { P_CPU, P_GPU } }, { 1, { P_MEMORY, P_FAN } }, { 1, { P_THERMAL } } } },
+    // I caught myself thinking that I just don't know what to add to the planned panel under panel_thermal,
+    // so I just made panel_fan bigger
+    { 3, { { 2, { P_CPU, P_GPU } }, { 1, { P_MEMORY } }, { 1, { P_THERMAL } } }, 0, { P_MEMORY, P_THERMAL } },
     { 2, { { 1, { P_NETWORK } },    { 1, { P_STORAGE } } } },
 };
 
@@ -106,6 +112,15 @@ Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, cons
         row.cells.erase(std::remove_if(row.cells.begin(), row.cells.end(),
                                        [](const Cell& c) { return c.panels.empty(); }),
                         row.cells.end());
+        if (!visible[P_FAN]) row.fan_over.clear();
+        if (!row.fan_over.empty()) {
+            // Fans need a host to sit under; without one they take the right half of the row on their own
+            bool host = false;
+            for (const Cell& c : row.cells)
+                for (PanelId id : c.panels)
+                    host = host || std::find(row.fan_over.begin(), row.fan_over.end(), id) != row.fan_over.end();
+            if (!host) { row.cells.push_back({ 2, { P_FAN } }); row.fan_over.clear(); }
+        }
         if (!row.cells.empty()) live.push_back(std::move(row));
     }
     if (live.empty()) return L;
@@ -134,6 +149,23 @@ Layout compute_layout(int rows, int cols, const std::vector<GpuInfo>& gpus, cons
         for (size_t ci = 0; ci < live[ri].cells.size(); ++ci) {
             place_stack(L, live[ri].cells[ci].panels, y, x, heights[ri], widths[ci], gpus);
             x += widths[ci];
+        }
+
+        if (!live[ri].fan_over.empty()) {
+            // one wide Fans box under the hosts; the hosts give up its height
+            int x0 = cols, x1 = 0;
+            for (PanelId id : live[ri].fan_over) {
+                const Rect& r = L.panel[id];
+                if (r.h <= 0) continue;
+                x0 = std::min(x0, r.x);
+                x1 = std::max(x1, r.x + r.w);
+            }
+            const int fan_h = std::min(FAN_H, std::max(0, heights[ri] - MEM_MIN));
+            if (fan_h > 0 && x1 > x0) {
+                for (PanelId id : live[ri].fan_over)
+                    if (L.panel[id].h > 0) L.panel[id].h -= fan_h;
+                L.panel[P_FAN] = { y + heights[ri] - fan_h, x0, fan_h, x1 - x0 };
+            }
         }
         y += heights[ri];
     }
