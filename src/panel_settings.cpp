@@ -112,7 +112,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
     if (ih <= 0 || iw <= 0) return;
 
     // the right column keeps 29 columns for its longest line ("Theme background: False"); the themes get the rest
-    constexpr int RIGHT_W = 29;
+    constexpr int RIGHT_W = 29 + 1; // for gap
     const bool two_cols = iw - 1 - RIGHT_W >= 14;
     const int left_w  = two_cols ? iw - 1 - RIGHT_W : iw; // the divider sits in the column after the left area
     const int right_x = ix + left_w + 1;
