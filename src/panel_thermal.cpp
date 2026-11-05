@@ -18,25 +18,14 @@ struct ThermGroup {
     std::vector<ThermItem>  items;
 };
 
-// display names: the chip's own labels are too long for the label column (11 characters)
-std::string short_label(const std::string& l) {
-    if (l == "PCH CHIP")       return "Chipset";
-    if (l == "PECI 0.0")       return "PECI";
-    if (l.rfind("Thermistor ", 0) == 0) return "Therm " + l.substr(11);
-    std::string s = l;
-    const std::string cur = " (curr)";
-    if (s.size() > cur.size() && s.compare(s.size() - cur.size(), cur.size(), cur) == 0)
-        s.erase(s.size() - cur.size());
-    return s == "Diode 0" ? "Diode" : s;
-}
-
-// "Therm N" rows go last, in number order (the chip lists them by channel: 15, 16, 0, 1)
+// "Thermistor N" rows go last, in number order (the chip lists them by channel: 15, 16, 0, 1)
 void sort_thermistors(std::vector<ThermItem>& items) {
-    auto is_th = [](const ThermItem& t) { return t.label.rfind("Therm ", 0) == 0; };
+    constexpr size_t PFX = 11; // "Thermistor "
+    auto is_th = [](const ThermItem& t) { return t.label.rfind("Thermistor ", 0) == 0; };
     std::stable_partition(items.begin(), items.end(), [&](const ThermItem& t) { return !is_th(t); });
     auto first = std::find_if(items.begin(), items.end(), is_th);
     std::stable_sort(first, items.end(), [](const ThermItem& a, const ThermItem& b) {
-        return std::atoi(a.label.c_str() + 6) < std::atoi(b.label.c_str() + 6);
+        return std::atoi(a.label.c_str() + PFX) < std::atoi(b.label.c_str() + PFX);
     });
 }
 
@@ -56,7 +45,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (ih <= 0 || iw <= 0) return;
 
     int row = iy;
-    const int LBL_W  = 12;
+    int       LBL_W  = 12;   // grows to fit the longest sensor name once the rows are known
     const int TEMP_W =  9;
     int bar_w = iw - LBL_W - TEMP_W - 3;
 
@@ -135,7 +124,6 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         for (const auto& s : chip.sensors) {
             std::string lbl = s.label;
             if (chip.name == "acpitz" && lbl == chip.display) lbl = "ACPI";
-            lbl = short_label(lbl);
             if (lbl.size() > 5 && lbl.substr(0, 5) == "Core ") {
                 std::string num = lbl.substr(5);
                 bool all_dig = !num.empty();
@@ -194,6 +182,17 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         nc_set(n, theme().BORDER);
         ncplane_putstr_yx(n, row, ix + 9, "N/A");
         return;
+    }
+
+    // sensor names are written in full: the label column grows to the longest one and the bars give way
+    {
+        size_t longest = 0;
+        for (const auto& g : groups) {
+            const bool tree = (g.items.size() > 1) || (g.name == "CPU"); // rows get a 2-column "├─" prefix
+            for (const auto& it : g.items) longest = std::max(longest, it.label.size() + (tree ? 2 : 0));
+        }
+        LBL_W  = std::max(12, std::min(static_cast<int>(longest) + 1, iw - TEMP_W - 1));
+        bar_w  = iw - LBL_W - TEMP_W - 3;
     }
 
     bool first_group = true;
