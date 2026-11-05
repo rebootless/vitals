@@ -107,10 +107,6 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                             network_items, laptop_items;
     std::map<std::string, std::vector<ThermItem>> other_items;
 
-    // CPU header: package reading if the chip has one, else the core average
-    double cpu_header_temp = -1.0;
-    bool   cpu_has_package = false;
-
     for (const auto& chip : hwmon) {
         std::vector<ThermItem>* bucket = nullptr;
         switch (chip.category) {
@@ -135,20 +131,10 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
                     lbl = fmt_lbl;
                 }
             }
-            if (s.is_package) {
-                cpu_header_temp = s.temp_celsius;
-                cpu_has_package = true;
-                continue;
-            }
+            if (s.is_package) continue; // the CPU group lists the cores only
             const auto [row_hi, row_crit] = hwmon_limits(s);
             bucket->push_back({lbl, s.temp_celsius, s.is_package, row_hi, row_crit});
         }
-    }
-
-    if (!cpu_has_package && !cpu_items.empty()) {
-        double sum = 0.0;
-        for (const auto& it : cpu_items) sum += it.temp;
-        cpu_header_temp = sum / cpu_items.size();
     }
 
     std::vector<ThermItem> zone_items;
@@ -161,7 +147,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
     std::vector<ThermItem> gpu_items;
     if (!gpus.empty() && gpus.front().temp_c >= 0)
-        gpu_items.push_back({"GPU", gpus.front().temp_c, false, -1.0, -1.0});
+        gpu_items.push_back({"GPU 00", gpus.front().temp_c, false, -1.0, -1.0});
 
     sort_thermistors(mobo_items);
 
@@ -174,7 +160,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     push_group(groups, "Wi-Fi",       network_items);
     push_group(groups, "Laptop",      laptop_items);
     for (auto& [nm, items] : other_items) push_group(groups, nm, items);
-    for (auto& item : zone_items) push_group(groups, item.label, {item});
+    push_group(groups, "Thermal zones", zone_items);
 
     if (groups.empty()) {
         nc_set(n, theme().LABEL);
@@ -187,10 +173,8 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     // sensor names are written in full: the label column grows to the longest one and the bars give way
     {
         size_t longest = 0;
-        for (const auto& g : groups) {
-            const bool tree = (g.items.size() > 1) || (g.name == "CPU"); // rows get a 2-column "├─" prefix
-            for (const auto& it : g.items) longest = std::max(longest, it.label.size() + (tree ? 2 : 0));
-        }
+        for (const auto& g : groups)
+            for (const auto& it : g.items) longest = std::max(longest, it.label.size() + 2); // 2 columns of "├─"
         LBL_W  = std::max(12, std::min(static_cast<int>(longest) + 1, iw - TEMP_W - 1));
         bar_w  = iw - LBL_W - TEMP_W - 3;
     }
@@ -201,39 +185,16 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         if (!first_group) { if (row < iy + ih - 1) draw_sep(n, row++, ix, iw); }
         first_group = false;
 
-        bool show_header = (g.items.size() > 1) || (g.name == "CPU");
+        if (row >= iy + ih - 1) break;
+        nc_set(n, theme().TITLE, NCSTYLE_BOLD);
+        ncplane_putstr_yx(n, row++, ix, str_trunc(g.name, iw).c_str());
 
-        if (show_header) {
-            if (row >= iy + ih - 1) break;
-
-            if (g.name == "CPU") {
-                if (cpu_header_temp >= 0)
-                    draw_temp_row(row, "CPU", cpu_header_temp, false, -1.0, -1.0);
-                else {
-                    nc_set(n, theme().TITLE, NCSTYLE_BOLD);
-                    ncplane_putstr_yx(n, row, ix, g.name.c_str());
-                }
-            } else if (g.name == "Storage") {
-                nc_set(n, theme().LABEL, NCSTYLE_BOLD);
-                ncplane_putstr_yx(n, row, ix, g.name.c_str());
-            } else {
-                nc_set(n, theme().TITLE, NCSTYLE_BOLD);
-                ncplane_putstr_yx(n, row, ix, g.name.c_str());
-            }
-            row++;
-
-            for (size_t i = 0; i < g.items.size() && row < iy + ih - 1; ++i) {
-                bool last = (i + 1 == g.items.size());
-                std::string prefix = last ? "\xe2\x94\x94\xe2\x94\x80"
-                                          : "\xe2\x94\x9c\xe2\x94\x80";
-                const auto& it = g.items[i];
-                draw_temp_row(row++, prefix + it.label, it.temp,
-                             it.featured, it.row_hi, it.row_crit);
-            }
-        } else {
-            const auto& it = g.items[0];
-            draw_temp_row(row++, it.label, it.temp, it.featured,
-                         it.row_hi, it.row_crit);
+        for (size_t i = 0; i < g.items.size() && row < iy + ih - 1; ++i) {
+            const bool last = (i + 1 == g.items.size());
+            const std::string prefix = last ? "\xe2\x94\x94\xe2\x94\x80"
+                                            : "\xe2\x94\x9c\xe2\x94\x80";
+            const auto& it = g.items[i];
+            draw_temp_row(row++, prefix + it.label, it.temp, it.featured, it.row_hi, it.row_crit);
         }
     }
 
