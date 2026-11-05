@@ -78,8 +78,7 @@ int follow(int top, int lo, int hi, int vis, int total) {
 }
 
 void draw_scrollbar(ncplane* n, int x, int y, int h, int top, int vis, int total) {
-    if (total <= vis || h < 4) return;
-    h -= 1; // the track stops one row short of the bottom border
+    if (total <= vis || h < 3) return;
     const int thumb = std::max(1, std::min(h, (h * vis + total - 1) / total)); // rounded up: the thumb never vanishes
     const int pos   = (h - thumb) * top / std::max(1, total - vis);
     for (int i = 0; i < h; ++i) {
@@ -124,7 +123,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
         nc_set(n, theme().LABEL, NCSTYLE_BOLD);
         char hdr[64];
         snprintf(hdr, sizeof(hdr), " %sTheme (%d of %d)", focused ? "> " : "  ", G.theme_idx + 1, n_themes);
-        ncplane_putstr_yx(n, iy, ix, str_trunc(hdr, left_w).c_str());
+        ncplane_putstr_yx(n, iy, ix, str_trunc(hdr, left_w - 1).c_str());
 
         const int vis = std::max(0, ih - 1);
         G.settings_theme_top = follow(G.settings_theme_top, G.theme_idx, G.theme_idx, vis, n_themes);
@@ -136,7 +135,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
                                       str_trunc(themes[static_cast<size_t>(t)].name, left_w - 6);
             ncplane_putstr_yx(n, iy + 1 + i, ix, label.c_str());
         }
-        draw_scrollbar(n, ix + left_w - 1, iy + 1, vis, G.settings_theme_top, vis, n_themes);
+        draw_scrollbar(n, ix + left_w - 1, iy, ih, G.settings_theme_top, vis, n_themes); // same full height as the right one
     }
 
     if (!two_cols) return;
