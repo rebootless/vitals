@@ -57,6 +57,18 @@ Result check_thermal() {
     return ok();
 }
 
+Result check_fans() {
+    const std::vector<FanInfo> fans = collect_fans(parse_gpus());
+    if (fans.empty()) return skip("no fan channels in hwmon and no GPU fan reading");
+    if (fans.size() > static_cast<size_t>(FAN_MAX)) return fail("more fans than FAN_MAX");
+    for (size_t i = 0; i < fans.size(); ++i) {
+        if (fans[i].rpm < 0 && fans[i].pct < 0) return fail("fan " + fans[i].name + " has neither RPM nor percent");
+        for (size_t j = 0; j < i; ++j)
+            if (fans[j].name == fans[i].name) return fail("duplicate fan name " + fans[i].name);
+    }
+    return ok();
+}
+
 Result check_hostname() {
     (void)parse_systemuname();
     return ok();

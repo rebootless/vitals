@@ -30,6 +30,8 @@ const Metric METRICS[] = {
      check_network,  check_fixture_network},
     {"Thermal",  "sysfs temp",      "temp = 45000 (millidegrees)",
      check_thermal,  check_fixture_thermal},
+    {"Fans",     "hwmon fan RPM",   "fan1_input = 698 (RPM)  GPU fan.speed = 45 (%)",
+     check_fans,     check_fixture_fans},
     {"Hostname", "uname",           "utsname.nodename = \"host-generic\"",
      check_hostname, check_fixture_hostname},
     {"Kernel",   "uname",           "utsname.release = \"6.1.0-generic\"",

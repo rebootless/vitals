@@ -143,7 +143,7 @@ chmod +x setup.sh build.sh
 | **Network** | `/proc/net/dev` | Per-interface RX/TX throughput |
 | **Storage** | `/proc/diskstats`, `statvfs()` | Filesystem usage and disk I/O |
 | **Thermal** | `/sys/class/thermal`, `/sys/class/hwmon` | CPU, GPU, and motherboard temperatures |
-| **Fans** | `/sys/class/hwmon` (`fan*_input`), `nvidia-smi` | Up to 6 fans: RPM (NVIDIA: percent of max speed) |
+| **Fans** | `/sys/class/hwmon` (`fan*_input`), `nvidia-smi` | Fans RPM (NVIDIA: percent of max speed) |
 
 ## ⌨️ Controls
 
@@ -163,7 +163,7 @@ chmod +x setup.sh build.sh
 vitals --self-test
 ```
 
-Checks that every data source Vitals reads (CPU, memory, GPU, storage, network, thermal sensors, and system info) is available and returns sane values.
+Checks that every data source Vitals reads (CPU, memory, GPU, storage, network, thermal sensors, fans, and system info) is available and returns sane values.
 
 > [!NOTE]
 > Linux buffers disk writes in RAM, then flushes them in batches.

@@ -6,6 +6,9 @@
 
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <unistd.h>
 #include <sstream>
 #include <string>
 #include <sys/utsname.h>
@@ -123,6 +126,45 @@ Result check_fixture_thermal() {
     const double c = millideg_to_celsius(45000);
     if (std::abs(c - 45.0) > 0.001)
         return fail("millideg_to_celsius(45000): expected 45.0, got " + std::to_string(c));
+    return ok();
+}
+
+Result check_fixture_fans() {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const fs::path root = fs::temp_directory_path(ec) / ("vitals-selftest-fans-" + std::to_string(::getpid()));
+    if (ec) return skip("no temporary directory");
+    fs::remove_all(root, ec);
+
+    auto put = [&](const char* dir, const char* file, const char* text) {
+        fs::create_directories(root / dir);
+        std::ofstream(root / dir / file) << text << "\n";
+    };
+    put("hwmon0", "name", "nct6687");
+    put("hwmon0", "fan1_input", "698");
+    put("hwmon0", "fan2_input", "0");
+    put("hwmon0", "fan10_input", "5");          // fan10 and above are never listed
+    put("hwmon1", "name", "it8688");
+    put("hwmon1", "fan1_input", "1200");
+    put("hwmon1", "fan1_label", "CPU_FAN");
+    put("hwmon1", "fan2_input", "900");
+    put("hwmon1", "fan2_label", "CPU_OPT");      // a repeated name falls back to the first free FAN<n>
+
+    GpuInfo g;
+    g.fan_pct = 45.0;
+    const std::vector<FanInfo> fans = collect_fans({g}, root.string());
+    fs::remove_all(root, ec);
+
+    // GPU first, then the board's channels in order
+    const char* names[] = {"GPU", "FAN1", "FAN2", "CPU", "FAN3"};
+    const int   rpms[]  = {-1, 698, 0, 1200, 900};
+    if (fans.size() != 5)
+        return fail("collect_fans: expected 5 fans, got " + std::to_string(fans.size()));
+    for (size_t i = 0; i < 5; ++i) {
+        if (fans[i].name != names[i] || fans[i].rpm != rpms[i])
+            return fail("collect_fans: entry " + std::to_string(i) + " expected " + names[i] + ", got " + fans[i].name);
+    }
+    if (fans[0].pct != 45) return fail("collect_fans: GPU fan expected 45 %");
     return ok();
 }
 

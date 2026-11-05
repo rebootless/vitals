@@ -8,6 +8,7 @@ Result check_gpu();
 Result check_storage();
 Result check_network();
 Result check_thermal();
+Result check_fans();
 Result check_hostname();
 Result check_kernel();
 Result check_loadavg();
