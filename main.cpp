@@ -548,8 +548,7 @@ int main(int argc, char** argv) {
 
     notcurses_stop(nc);
     con_release();
-    if (std::strcmp(exit_reason, "stdin closed") == 0 || std::strcmp(exit_reason, "input error") == 0)
-        con_say("exited: %s", exit_reason);
+    con_say("exited: %s", exit_reason);
     log_close();
     return 0;
 }
