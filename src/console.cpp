@@ -60,6 +60,14 @@ void on_signal(int sig) {
     raise(sig);
 }
 
+// Ctrl+C or kill: not a crash, but the held lines would be lost with the process
+void on_stop(int sig) {
+    flush_held();
+    put(sig == SIGINT ? "exited: interrupted by SIGINT\n" : "exited: terminated by SIGTERM\n");
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void on_terminate() {
     std::string what = "unknown exception";
     if (std::exception_ptr ep = std::current_exception()) {
@@ -121,4 +129,7 @@ void con_install_crash_handlers() {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND | SA_NODEFER;
     for (int sig : {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT}) sigaction(sig, &sa, nullptr);
+
+    sa.sa_handler = on_stop;
+    for (int sig : {SIGINT, SIGTERM}) sigaction(sig, &sa, nullptr);
 }
