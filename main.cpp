@@ -5,13 +5,16 @@
 #include "paths.h"
 #include "log.h"
 #include "diag.h"
+#include "console.h"
 
+#include <cerrno>
 #include <clocale>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <thread>
 #include <chrono>
+#include <unistd.h>
 #include <utility>
 
 AppState G;
@@ -47,6 +50,58 @@ static int refresh_step_index() {
     return best;
 }
 
+// ---- startup report on stderr (see console.h) ----
+
+static void report_terminal_failure() {
+    con_say("error: cannot start the terminal UI (notcurses_init failed)");
+    const char* term = getenv("TERM");
+    if (!isatty(STDOUT_FILENO))
+        con_say("hint: stdout is not a terminal; run vitals directly in a terminal, not through a pipe or redirect");
+    else if (!term || !*term)
+        con_say("hint: TERM is not set; set it to a real terminal type, e.g. xterm-256color");
+    else if (std::strcmp(term, "dumb") == 0)
+        con_say("hint: TERM is \"dumb\"; set TERM to a real terminal type, e.g. xterm-256color");
+    if (!log_path().empty()) con_say("see %s for details", log_path().c_str());
+}
+
+static void report_terminal(notcurses* nc) {
+    const char* term = getenv("TERM");
+    unsigned rows = 0, cols = 0;
+    notcurses_stddim_yx(nc, &rows, &cols);
+
+    const bool utf8 = notcurses_canutf8(nc);
+    char colors[32];
+    if (notcurses_cantruecolor(nc)) std::snprintf(colors, sizeof(colors), "truecolor");
+    else                            std::snprintf(colors, sizeof(colors), "%u colors", notcurses_palette_size(nc));
+
+    con_say("[3/6] terminal: %s, %s, %s, %ux%u", term && *term ? term : "(unset)",
+            utf8 ? "UTF-8" : "not UTF-8", colors, cols, rows);
+    if (!utf8) {
+        const char* loc = std::setlocale(LC_CTYPE, nullptr);
+        con_say("warning: locale \"%s\" is not UTF-8, borders and graphs may be drawn incorrectly", loc ? loc : "?");
+    }
+}
+
+static void report_config() {
+    const std::string path = config_path();
+    if (path.empty()) { con_say("[4/6] config: unavailable (HOME is not set), using defaults"); return; }
+    if (access(path.c_str(), R_OK) == 0) { con_say("[4/6] config: %s", path.c_str()); return; }
+    if (errno == ENOENT) { con_say("[4/6] config: %s (not found, using defaults)", path.c_str()); return; }
+    con_say("warning: cannot read %s: %s, using defaults", path.c_str(), std::strerror(errno));
+    con_say("[4/6] config: %s (unreadable, using defaults)", path.c_str());
+}
+
+static void report_data() {
+    static const PanelId ORDER[] = { P_CPU, P_MEMORY, P_NETWORK, P_STORAGE, P_GPU, P_THERMAL, P_FAN };
+    std::string s;
+    for (PanelId id : ORDER) {
+        std::string name = PANELS[id].label;
+        for (char& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        s += (s.empty() ? "" : ", ") + name + (G.panel_avail[static_cast<size_t>(id)] ? " ok" : " n/a");
+    }
+    con_say("[5/6] data: %s", s.c_str());
+}
+
 int main(int argc, char** argv) {
     bool self_test = false;
     for (int i = 1; i < argc; ++i) {
@@ -77,25 +132,34 @@ int main(int argc, char** argv) {
     }
     if (self_test) return run_self_test();
 
+    con_install_crash_handlers();
+    con_say("[1/6] arguments ok");
+
     setlocale(LC_ALL, "");
 
+    con_stage("log");
     log_open();
     log_startup(argc, argv);
+    con_say("[2/6] log: %s", log_path().empty() ? "disabled" : log_path().c_str());
 
+    con_stage("terminal");
     notcurses_options opts{};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
     notcurses* nc = notcurses_init(&opts, nullptr);
     if (!nc) {
         LOG_ERROR("terminal", "notcurses_init failed");
-        fprintf(stderr, "notcurses_init failed\n");
+        report_terminal_failure();
         log_close();
         return 1;
     }
+    con_hold(nc);
     log_terminal(nc);
+    report_terminal(nc);
 
     ncplane* n = notcurses_stdplane(nc);
     ncplane_set_bg_default(n);
 
+    con_stage("config");
     {
         Config cfg = load_config();
         int ti = find_theme_index(cfg.theme_name);
@@ -110,6 +174,9 @@ int main(int argc, char** argv) {
         G.panel_mode = cfg.panels;
     }
 
+    report_config();
+
+    con_stage("first-sample");
     sample("cpuinfo", [] { G.ci = parse_cpuinfo();     });
     sample("uname",   [] { G.un = parse_systemuname(); });
 
@@ -347,6 +414,12 @@ int main(int argc, char** argv) {
 
             G.panel_avail = panel_availability(G.mem, G.gpus, G.root_fs, cur_core, cur_net, cur_disk, therm, hwmon, G.fans);
 
+            if (tick_count == 1) {
+                report_data();
+                con_say("[6/6] starting, refresh %d ms", G.refresh_ms);
+                con_stage("main-loop");
+            }
+
             const std::string ip = get_local_ip();
             if (ip != G.local_ip) LOG_INFO("network", "local address: %s -> %s", G.local_ip.c_str(), ip.c_str());
             G.local_ip = ip;
@@ -474,6 +547,9 @@ int main(int argc, char** argv) {
              std::chrono::duration<double>(Clock::now() - started_at).count());
 
     notcurses_stop(nc);
+    con_release();
+    if (std::strcmp(exit_reason, "stdin closed") == 0 || std::strcmp(exit_reason, "input error") == 0)
+        con_say("exited: %s", exit_reason);
     log_close();
     return 0;
 }

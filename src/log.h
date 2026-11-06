@@ -1,11 +1,16 @@
 #pragma once
 
+#include <string>
+
 enum class LogLevel { Debug, Info, Warn, Error };
 
 // Opens <config dir>/MM-DD-YYYY.log and truncates it. Logging stays off when the file
 // can't be created or another running instance holds it.
 void log_open();
 void log_close();
+
+// the open log file; empty while logging is off
+const std::string& log_path();
 
 void log_write(LogLevel level, const char* tag, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));

@@ -1,8 +1,11 @@
 #include "log.h"
+#include "console.h"
 #include "paths.h"
 
 #include <cstdarg>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <fcntl.h>
 #include <filesystem>
@@ -21,6 +24,7 @@ constexpr long long MAX_BYTES = 32LL * 1024 * 1024;
 std::mutex  g_mutex;
 int         g_fd    = -1;
 long long   g_bytes = 0;
+std::string g_path;
 
 const char* level_name(LogLevel l) {
     switch (l) {
@@ -66,26 +70,44 @@ void log_open() {
     if (g_fd >= 0) return;
 
     const std::string dir = config_dir();
-    if (dir.empty()) return;
+    if (dir.empty()) { con_say("warning: log disabled: HOME is not set"); return; }
 
     std::error_code ec;
     std::filesystem::create_directories(dir, ec);
-    if (ec) return;
+    if (ec) { con_say("warning: log disabled: cannot create %s: %s", dir.c_str(), ec.message().c_str()); return; }
 
     char name[32];
     const time_t now = time(nullptr);
     tm lt{};
     localtime_r(&now, &lt);
     std::strftime(name, sizeof(name), "%m-%d-%Y.log", &lt);
+    const std::string path = dir + "/" + name;
 
     // lock before truncating: a second instance must not wipe the first one's log
-    const int fd = open((dir + "/" + name).c_str(), O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0600);
-    if (fd < 0) return;
-    if (flock(fd, LOCK_EX | LOCK_NB) != 0 || ftruncate(fd, 0) != 0) { close(fd); return; }
+    const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0600);
+    if (fd < 0) { con_say("warning: log disabled: cannot open %s: %s", path.c_str(), std::strerror(errno)); return; }
+
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
+        const int err = errno;
+        if (err == EWOULDBLOCK) con_say("warning: log disabled: another instance is using %s", path.c_str());
+        else                    con_say("warning: log disabled: cannot lock %s: %s", path.c_str(), std::strerror(err));
+        close(fd);
+        return;
+    }
+    if (ftruncate(fd, 0) != 0) {
+        const int err = errno;
+        con_say("warning: log disabled: cannot truncate %s: %s", path.c_str(), std::strerror(err));
+        close(fd);
+        return;
+    }
 
     g_fd    = fd;
     g_bytes = 0;
+    g_path  = path;
+    con_set_log_path(path.c_str());
 }
+
+const std::string& log_path() { return g_path; }
 
 void log_close() {
     std::lock_guard<std::mutex> lock(g_mutex);
