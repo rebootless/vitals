@@ -8,55 +8,48 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     auto [iy, ix, ih, iw] = draw_box(n, y, x, h, w, "Storage");
     if (ih <= 0 || iw <= 0) return;
 
+    const PairCols cols{13, 15, 31, true, false};
     int row = iy;
-    const int C1 = ix;
-    const int C2 = ix + 15;
-    const int C3 = ix + 31;
 
-    try {
-        const auto& fs = G.root_fs;
-        const bool has_fs = fs.total_bytes > 0;
-        if (row < iy + ih) {
-            // same basis as df: the root-reserved blocks are neither used nor available
-            const double basis = static_cast<double>(fs.used_bytes + fs.avail_bytes);
-            double fpct = basis > 0 ? 100.0 * static_cast<double>(fs.used_bytes) / basis : 0.0;
-            uint32_t fc = pct_color(fpct);
+    const auto& fs = G.root_fs;
+    const bool has_fs = fs.total_bytes > 0;
+    if (row < iy + ih) {
+        // same basis as df: the root-reserved blocks are neither used nor available
+        const double basis = static_cast<double>(fs.used_bytes + fs.avail_bytes);
+        double fpct = basis > 0 ? 100.0 * static_cast<double>(fs.used_bytes) / basis : 0.0;
+        uint32_t fc = pct_color(fpct);
 
-            nc_set(n, theme().LABEL);
-            ncplane_putstr_yx(n, row, ix, "Root: ");
-            lbr(n, row, ix + 6);
-            if (has_fs) {
-                nc_set(n, fc, NCSTYLE_BOLD);
-                ncplane_printf_yx(n, row, ix + 7, "%3.0f%%", fpct);
-            } else {
-                nc_set(n, theme().BORDER);
-                ncplane_printf_yx(n, row, ix + 7, "%4s", "N/A");
-            }
-            rbr(n, row, ix + 11);
-
-            int bx = ix + 12, bw = iw - 14;
-            if (bw > 2) {
-                lbr(n, row, bx);
-                draw_bar_grad(n, row, bx + 1, bw, fpct / 100.0, GRAD_STORAGE);
-                rbr(n, row, bx + 1 + bw);
-            }
-            row++;
+        nc_set(n, theme().LABEL);
+        ncplane_putstr_yx(n, row, ix, "Root: ");
+        lbr(n, row, ix + 6);
+        if (has_fs) {
+            nc_set(n, fc, NCSTYLE_BOLD);
+            ncplane_printf_yx(n, row, ix + 7, "%3.0f%%", fpct);
+        } else {
+            nc_set(n, theme().BORDER);
+            ncplane_printf_yx(n, row, ix + 7, "%4s", "N/A");
         }
-        if (row < iy + ih) {
-            nc_set(n, has_fs ? theme().FG : theme().BORDER);
-            std::string s = has_fs ? fmt_bytes(fs.used_bytes) + " / " + fmt_bytes(fs.total_bytes) : "N/A";
-            ncplane_printf_yx(n, row, ix + 6, "%s", str_trunc(s, iw - 6).c_str());
-            row++;
+        rbr(n, row, ix + 11);
+
+        int bx = ix + 12, bw = iw - 14;
+        if (bw > 2) {
+            lbr(n, row, bx);
+            draw_bar_grad(n, row, bx + 1, bw, fpct / 100.0, GRAD_STORAGE);
+            rbr(n, row, bx + 1 + bw);
         }
-    } catch (...) {}
+        row++;
+    }
+    if (row < iy + ih) {
+        nc_set(n, has_fs ? theme().FG : theme().BORDER);
+        std::string s = has_fs ? fmt_bytes(fs.used_bytes) + " / " + fmt_bytes(fs.total_bytes) : "N/A";
+        ncplane_printf_yx(n, row, ix + 6, "%s", str_trunc(s, iw - 6).c_str());
+        row++;
+    }
 
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     if (row < iy + ih) {
-        nc_set(n, theme().LABEL);
-        ncplane_printf_yx(n, row, C1, "%-13s", "Device");
-        if (C2 < ix + iw) { nc_set(n, theme().DATA_A, NCSTYLE_BOLD); ncplane_printf_yx(n, row, C2, "%-14s", "Write/s"); }
-        if (C3 < ix + iw) { nc_set(n, theme().DATA_B);                 ncplane_printf_yx(n, row, C3, "%-14s", "Read/s");  }
+        draw_pair_header(n, row, ix, iw, cols, "Device", "Write/s", "Read/s");
         row++;
     }
 
@@ -69,20 +62,7 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
 
     auto disk_line = [&](const std::string& name, const std::string& wr_text, const std::string& rd_text) {
         if (row >= iy + ih) return;
-        nc_set(n, theme().FG);
-        ncplane_printf_yx(n, row, C1, "%-13s", name.c_str());
-        if (C2 < ix + iw) {
-            nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
-            ncplane_putstr_yx(n, row, C2, (std::string(glyph_down()) + " ").c_str());
-            nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C2 + 2, "%-12s", wr_text.c_str());
-        }
-        if (C3 < ix + iw) {
-            nc_set(n, theme().DATA_B);
-            ncplane_putstr_yx(n, row, C3, (std::string(glyph_up()) + " ").c_str());
-            nc_set(n, theme().FG);
-            ncplane_printf_yx(n, row, C3 + 2, "%-12s", rd_text.c_str());
-        }
+        draw_pair_row(n, row, ix, iw, cols, name, wr_text, rd_text);
         row++;
     };
 
@@ -122,27 +102,6 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     if (row + 2 < iy + ih) {
         nc_set(n, theme().LABEL);
         ncplane_putstr_yx(n, row, ix, "History:");
-        row++;
-
-        constexpr int label_w = 5;
-        int bx = ix + 1 + 1 + label_w + 1;
-        int sx = bx + 1;
-        int sw = iw - (sx - ix) - 1;
-
-        nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row, ix, "%s %-*s ", glyph_down(), label_w, "Write");
-        nc_set(n, theme().DATA_B, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row + 1, ix, "%s %-*s ", glyph_up(), label_w, "Read");
-
-        if (sw > 0) {
-            lbr(n, row,     bx);
-            lbr(n, row + 1, bx);
-            draw_spark_bidir(n, row, sx, sw,
-                             G.disk_wr_hist, theme().DATA_A,
-                             G.disk_rd_hist, theme().DATA_B);
-            rbr(n, row,     sx + sw);
-            rbr(n, row + 1, sx + sw);
-        }
-        row += 2;
+        draw_history_pair(n, row + 1, ix, iw, 5, "Write", "Read", G.disk_wr_hist, G.disk_rd_hist);
     }
 }

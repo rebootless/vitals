@@ -175,6 +175,58 @@ void draw_spark_bidir(ncplane* n, int y, int x, int w,
     draw_row(bot_hist, y + 1, bot_color, glyphs_bot);
 }
 
+void draw_pair_header(ncplane* n, int y, int x, int w, const PairCols& c,
+                      const char* name, const char* down, const char* up) {
+    nc_set(n, theme().LABEL);
+    ncplane_printf_yx(n, y, x, "%-*s", c.name_w, name);
+    if (c.c2 < w) {
+        nc_set(n, theme().DATA_A, c.down_bold ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        ncplane_printf_yx(n, y, x + c.c2, "%-14s", down);
+    }
+    if (c.c3 < w) {
+        nc_set(n, theme().DATA_B, c.up_bold ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        ncplane_printf_yx(n, y, x + c.c3, "%-14s", up);
+    }
+}
+
+void draw_pair_row(ncplane* n, int y, int x, int w, const PairCols& c,
+                   const std::string& name, const std::string& down, const std::string& up) {
+    nc_set(n, theme().FG);
+    ncplane_printf_yx(n, y, x, "%-*s", c.name_w, str_trunc(name, c.name_w).c_str());
+    if (c.c2 < w) {
+        nc_set(n, theme().DATA_A, c.down_bold ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        ncplane_printf_yx(n, y, x + c.c2, "%s ", glyph_down());
+        nc_set(n, theme().FG);
+        ncplane_printf_yx(n, y, x + c.c2 + 2, "%-12s", str_trunc(down, 12).c_str());
+    }
+    if (c.c3 < w) {
+        nc_set(n, theme().DATA_B, c.up_bold ? NCSTYLE_BOLD : NCSTYLE_NONE);
+        ncplane_printf_yx(n, y, x + c.c3, "%s ", glyph_up());
+        nc_set(n, theme().FG);
+        ncplane_printf_yx(n, y, x + c.c3 + 2, "%-12s", str_trunc(up, 12).c_str());
+    }
+}
+
+void draw_history_pair(ncplane* n, int y, int x, int w, int label_w,
+                       const char* down_label, const char* up_label,
+                       const std::deque<double>& down_hist, const std::deque<double>& up_hist) {
+    const int bx = x + 1 + 1 + label_w + 1;
+    const int sx = bx + 1;
+    const int sw = w - (sx - x) - 1;
+
+    nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
+    ncplane_printf_yx(n, y, x, "%s %-*s ", glyph_down(), label_w, down_label);
+    nc_set(n, theme().DATA_B, NCSTYLE_BOLD);
+    ncplane_printf_yx(n, y + 1, x, "%s %-*s ", glyph_up(), label_w, up_label);
+
+    if (sw <= 0) return;
+    lbr(n, y,     bx);
+    lbr(n, y + 1, bx);
+    draw_spark_bidir(n, y, sx, sw, down_hist, theme().DATA_A, up_hist, theme().DATA_B);
+    rbr(n, y,     sx + sw);
+    rbr(n, y + 1, sx + sw);
+}
+
 void draw_titlebar(ncplane* n, int cols) {
     const auto& up = G.up;
     const auto& la = G.load;
