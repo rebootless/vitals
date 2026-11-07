@@ -28,6 +28,11 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
     }
 
     ull total_rx = 0, total_tx = 0;
+    for (const auto& nd : cur_net) {
+        if (is_hidden_iface(nd.interface)) continue;
+        total_rx += nd.rx_bytes;
+        total_tx += nd.tx_bytes;
+    }
 
     auto iface_row = [&](const std::string& name, const std::string& rx_text, const std::string& tx_text) {
         nc_set(n, theme().FG);
@@ -56,8 +61,6 @@ void panel_network(ncplane* n, int y, int x, int h, int w,
         double rx = 0, tx = 0;
         if (auto it = rx_rates.find(nd.interface); it != rx_rates.end()) rx = it->second;
         if (auto it = tx_rates.find(nd.interface); it != tx_rates.end()) tx = it->second;
-        total_rx += nd.rx_bytes;
-        total_tx += nd.tx_bytes;
 
         if (row >= iy + ih) break;
         iface_row(nd.interface, fmt_net_rate(rx), fmt_net_rate(tx));
