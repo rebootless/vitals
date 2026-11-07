@@ -3,8 +3,7 @@
 #include "common.h"
 #include "procfs.h"
 #include "gpu.h"
-#include "tty.h"
-#include "panel_ids.h"
+#include "settings.h"
 
 enum GradType { GRAD_CPU, GRAD_MEM, GRAD_TEMP, GRAD_STORAGE, GRAD_HIST };
 
@@ -65,40 +64,18 @@ struct AppState {
     std::vector<GpuInfo>   gpus;
     std::vector<FanInfo>   fans;
 
-    int  theme_idx = 0;
-    int  bg_idx    = 0;   // 0 = transparent (terminal default), 1 = theme's own BG color
+    Settings opt;
+    Settings opt_saved;
+    bool     tty_active = false; // opt.tty_force resolved against the terminal
 
-    TtyForce tty_force  = TtyForce::Auto;
-    bool     tty_active = false;
-
-    int refresh_ms = 1000;
-
-    int corners_idx = 0;
-
-    int graph_style_idx = 0;
-
-    int symbol_mirror_idx = 0;
-
-    PanelModes panel_mode  = all_panels_auto();
     PanelFlags panel_avail = {}; // refreshed every tick: which panels have data
 
     bool frozen               = false;
     bool settings_open        = false;
-    int  settings_focus       = 0;   // ids: 0=theme 1=bg 2=terminal 3=corners 4=graph style 5=mirroring 6=panels 7=refresh
+    int  settings_focus       = F_THEME;
     int  settings_panel_cursor = 0;
     int  settings_theme_top   = 0;   // first visible row of the theme list
     int  settings_right_top   = 0;   // first visible line of the right-hand column
-    PanelModes settings_saved_panels = all_panels_auto();
-    int  settings_saved_theme = 0;
-    int  settings_saved_bg    = 0;
-    TtyForce settings_saved_tty = TtyForce::Auto;
-    int  settings_saved_refresh = 1000;
-    int  settings_saved_corners = 0;
-    int  settings_saved_graph_style = 0;
-    int  settings_saved_symbol_mirror = 0;
 };
-
-// Tab visits the groups in the order they appear on screen (focus ids are listed above)
-inline constexpr int SETTINGS_TAB_ORDER[8] = { 0, 1, 3, 4, 5, 2, 7, 6 };
 
 extern AppState G;

@@ -2,6 +2,7 @@
 #include "paths.h"
 #include "log.h"
 #include "strutil.h"
+#include "theme.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -64,6 +65,33 @@ Config load_config() {
     LOG_INFO("config", "read %s: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
              path.c_str(), cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
              cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+    return cfg;
+}
+
+Settings settings_from_config(const Config& cfg) {
+    Settings s;
+    const int ti = find_theme_index(cfg.theme_name);
+    s.theme_idx  = ti >= 0 ? ti : 0;
+    s.solid_bg   = (cfg.bg_mode == "solid");
+    s.tty_force  = tty_force_from_string(cfg.tty_mode);
+    s.refresh_ms = cfg.refresh_ms;
+    s.rounded    = (cfg.corners == "rounded");
+    s.braille    = (cfg.graph_style == "braille");
+    s.mirror     = cfg.symbol_mirroring;
+    s.panels     = cfg.panels;
+    return s;
+}
+
+Config config_from_settings(const Settings& s) {
+    Config cfg;
+    cfg.theme_name       = all_themes()[static_cast<size_t>(s.theme_idx)].name;
+    cfg.bg_mode          = s.solid_bg ? "solid" : "transparent";
+    cfg.tty_mode         = tty_force_to_string(s.tty_force);
+    cfg.refresh_ms       = s.refresh_ms;
+    cfg.corners          = s.rounded ? "rounded" : "square";
+    cfg.graph_style      = s.braille ? "braille" : "sparkline";
+    cfg.symbol_mirroring = s.mirror;
+    cfg.panels           = s.panels;
     return cfg;
 }
 

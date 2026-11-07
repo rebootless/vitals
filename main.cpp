@@ -6,6 +6,7 @@
 #include "log.h"
 #include "diag.h"
 #include "console.h"
+#include "input.h"
 
 #include <cerrno>
 #include <clocale>
@@ -32,22 +33,6 @@ static bool sample(const char* name, F&& fn) {
         log_source(name, false);
     }
     return false;
-}
-
-static const int REFRESH_STEPS[] = {
-    100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000,
-    7500, 10000, 15000, 20000, 30000, 45000, 60000
-};
-static const int REFRESH_STEPS_N = sizeof(REFRESH_STEPS) / sizeof(REFRESH_STEPS[0]);
-
-static int refresh_step_index() {
-    int best = 0;
-    int best_diff = std::abs(REFRESH_STEPS[0] - G.refresh_ms);
-    for (int i = 1; i < REFRESH_STEPS_N; ++i) {
-        int diff = std::abs(REFRESH_STEPS[i] - G.refresh_ms);
-        if (diff < best_diff) { best = i; best_diff = diff; }
-    }
-    return best;
 }
 
 // ---- startup report on stderr (see console.h) ----
@@ -160,19 +145,8 @@ int main(int argc, char** argv) {
     ncplane_set_bg_default(n);
 
     con_stage("config");
-    {
-        Config cfg = load_config();
-        int ti = find_theme_index(cfg.theme_name);
-        set_theme_index(ti >= 0 ? ti : 0);
-        G.bg_idx     = (cfg.bg_mode == "solid") ? 1 : 0;
-        G.tty_force  = tty_force_from_string(cfg.tty_mode);
-        G.tty_active = resolve_tty_active(G.tty_force);
-        G.refresh_ms = cfg.refresh_ms;
-        G.corners_idx = (cfg.corners == "rounded") ? 1 : 0;
-        G.graph_style_idx = (cfg.graph_style == "braille") ? 1 : 0;
-        G.symbol_mirror_idx = cfg.symbol_mirroring ? 1 : 0;
-        G.panel_mode = cfg.panels;
-    }
+    G.opt        = settings_from_config(load_config());
+    G.tty_active = resolve_tty_active(G.opt.tty_force);
 
     report_config();
 
@@ -208,7 +182,7 @@ int main(int argc, char** argv) {
     const char* exit_reason = "unknown";
     unsigned long long tick_count = 0;
     const auto started_at = Clock::now();
-    LOG_INFO("main", "entering main loop, refresh %d ms", G.refresh_ms);
+    LOG_INFO("main", "entering main loop, refresh %d ms", G.opt.refresh_ms);
 
     for (;;) {
         ncinput ni{};
@@ -217,7 +191,7 @@ int main(int argc, char** argv) {
         uint32_t ch;
         std::chrono::nanoseconds left{0};
         if (!G.settings_open && !G.frozen)
-            left = std::chrono::milliseconds(G.refresh_ms) - (Clock::now() - last_tick);
+            left = std::chrono::milliseconds(G.opt.refresh_ms) - (Clock::now() - last_tick);
 
         if (G.settings_open || G.frozen) {
             ch = notcurses_get(nc, nullptr, &ni);
@@ -243,121 +217,8 @@ int main(int argc, char** argv) {
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
         if (ch != 0) LOG_DEBUG("input", "key %u", static_cast<unsigned>(ch));
 
-        bool settings_was_open = G.settings_open;
-
-        if (!G.settings_open) {
-            if (ch == 'q' || ch == 'Q') { exit_reason = "quit key"; break; }
-
-            if (ch == 'f' || ch == 'F') {
-                G.frozen = !G.frozen;
-                LOG_INFO("ui", "freeze %s", G.frozen ? "on" : "off");
-            }
-
-            // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
-            if (ch == NCKEY_ESC || ch == 27) {
-                G.settings_saved_theme   = G.theme_idx;
-                G.settings_saved_bg      = G.bg_idx;
-                G.settings_saved_tty     = G.tty_force;
-                G.settings_saved_refresh = G.refresh_ms;
-                G.settings_saved_corners = G.corners_idx;
-                G.settings_saved_graph_style = G.graph_style_idx;
-                G.settings_saved_symbol_mirror = G.symbol_mirror_idx;
-                G.settings_saved_panels  = G.panel_mode;
-                G.settings_panel_cursor  = 0;
-                G.settings_focus         = 0;
-                G.settings_theme_top     = 0;
-                G.settings_right_top     = 0;
-                G.settings_open          = true;
-                LOG_INFO("ui", "settings opened");
-            }
-        } else {
-            const int n_themes = static_cast<int>(all_themes().size());
-
-            // Some terminals report Escape as ASCII 27 instead of NCKEY_ESC.
-            if (ch == NCKEY_ESC || ch == 27) {
-                G.theme_idx     = G.settings_saved_theme;
-                G.bg_idx        = G.settings_saved_bg;
-                G.tty_force     = G.settings_saved_tty;
-                G.tty_active    = resolve_tty_active(G.tty_force);
-                G.refresh_ms    = G.settings_saved_refresh;
-                G.corners_idx   = G.settings_saved_corners;
-                G.graph_style_idx = G.settings_saved_graph_style;
-                G.symbol_mirror_idx = G.settings_saved_symbol_mirror;
-                G.panel_mode    = G.settings_saved_panels;
-                G.settings_open = false;
-                LOG_INFO("ui", "settings discarded");
-
-            } else if (ch == '\t') {
-                const int* at = std::find(std::begin(SETTINGS_TAB_ORDER), std::end(SETTINGS_TAB_ORDER), G.settings_focus);
-                G.settings_focus = SETTINGS_TAB_ORDER[(at - std::begin(SETTINGS_TAB_ORDER) + 1) % 8];
-
-            } else if (ch == ' ' && G.settings_focus == 6) {
-                PanelMode& m = G.panel_mode[static_cast<size_t>(G.settings_panel_cursor)];
-                m = (m == PanelMode::On)   ? PanelMode::Auto
-                  : (m == PanelMode::Auto) ? PanelMode::Off
-                                           : PanelMode::On;
-
-            } else if (ch == NCKEY_UP) {
-                if (G.settings_focus == 0) {
-                    G.theme_idx = (G.theme_idx - 1 + n_themes) % n_themes;
-                } else if (G.settings_focus == 1) {
-                    G.bg_idx    = (G.bg_idx - 1 + 2) % 2;
-                } else if (G.settings_focus == 2) {
-                    int f = (static_cast<int>(G.tty_force) - 1 + 3) % 3;
-                    G.tty_force  = static_cast<TtyForce>(f);
-                    G.tty_active = resolve_tty_active(G.tty_force);
-                } else if (G.settings_focus == 3) {
-                    G.corners_idx = (G.corners_idx - 1 + 2) % 2;
-                } else if (G.settings_focus == 4) {
-                    G.graph_style_idx = (G.graph_style_idx - 1 + 2) % 2;
-                } else if (G.settings_focus == 5) {
-                    G.symbol_mirror_idx = (G.symbol_mirror_idx - 1 + 2) % 2;
-                } else if (G.settings_focus == 6) {
-                    G.settings_panel_cursor = (G.settings_panel_cursor - 1 + PANEL_N) % PANEL_N;
-                } else {
-                    int idx = std::min(REFRESH_STEPS_N - 1, refresh_step_index() + 1);
-                    G.refresh_ms = REFRESH_STEPS[idx];
-                }
-
-            } else if (ch == NCKEY_DOWN) {
-                if (G.settings_focus == 0) {
-                    G.theme_idx = (G.theme_idx + 1) % n_themes;
-                } else if (G.settings_focus == 1) {
-                    G.bg_idx    = (G.bg_idx + 1) % 2;
-                } else if (G.settings_focus == 2) {
-                    int f = (static_cast<int>(G.tty_force) + 1) % 3;
-                    G.tty_force  = static_cast<TtyForce>(f);
-                    G.tty_active = resolve_tty_active(G.tty_force);
-                } else if (G.settings_focus == 3) {
-                    G.corners_idx = (G.corners_idx + 1) % 2;
-                } else if (G.settings_focus == 4) {
-                    G.graph_style_idx = (G.graph_style_idx + 1) % 2;
-                } else if (G.settings_focus == 5) {
-                    G.symbol_mirror_idx = (G.symbol_mirror_idx + 1) % 2;
-                } else if (G.settings_focus == 6) {
-                    G.settings_panel_cursor = (G.settings_panel_cursor + 1) % PANEL_N;
-                } else {
-                    int idx = std::max(0, refresh_step_index() - 1);
-                    G.refresh_ms = REFRESH_STEPS[idx];
-                }
-
-            } else if (ch == NCKEY_ENTER || ch == '\n' || ch == '\r') {
-                Config cfg;
-                cfg.theme_name = current_theme().name;
-                cfg.bg_mode    = (G.bg_idx == 1) ? "solid" : "transparent";
-                cfg.tty_mode   = tty_force_to_string(G.tty_force);
-                cfg.refresh_ms = G.refresh_ms;
-                cfg.corners    = (G.corners_idx == 1) ? "rounded" : "square";
-                cfg.graph_style = (G.graph_style_idx == 1) ? "braille" : "sparkline";
-                cfg.symbol_mirroring = (G.symbol_mirror_idx == 1);
-                cfg.panels     = G.panel_mode;
-                save_config(cfg);
-                G.settings_open = false;
-                LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
-                         cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-                         cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
-            }
-        }
+        const bool settings_was_open = G.settings_open;
+        if (handle_key(ch)) { exit_reason = "quit key"; break; }
 
         // rates must not span a pause: start from a fresh baseline and tick within a second
         const bool paused = G.settings_open || G.frozen;
@@ -365,14 +226,14 @@ int main(int argc, char** argv) {
             take_baseline();
             sample("gpu", [] { G.gpus = parse_gpus(); });
             LOG_DEBUG("tick", "resumed after a pause, baseline refreshed");
-            const auto wait = std::min(G.refresh_ms, 1000);
-            last_tick = G.t_prev - std::chrono::milliseconds(G.refresh_ms - wait);
+            const auto wait = std::min(G.opt.refresh_ms, 1000);
+            last_tick = G.t_prev - std::chrono::milliseconds(G.opt.refresh_ms - wait);
         }
         was_paused = paused;
 
         const auto t_now = Clock::now();
         bool due_for_tick = !G.settings_open && !G.frozen &&
-            (t_now - last_tick >= std::chrono::milliseconds(G.refresh_ms));
+            (t_now - last_tick >= std::chrono::milliseconds(G.opt.refresh_ms));
 
         if (due_for_tick) {
             const auto tick_start = Clock::now();
@@ -415,7 +276,7 @@ int main(int argc, char** argv) {
 
             if (tick_count == 1) {
                 report_data();
-                con_say("[6/6] starting, refresh %d ms", G.refresh_ms);
+                con_say("[6/6] starting, refresh %d ms", G.opt.refresh_ms);
                 con_stage("main-loop");
             }
 
@@ -524,8 +385,8 @@ int main(int argc, char** argv) {
                               "disk rd=%.0f wr=%.0f B/s zones=%zu hwmon=%zu gpus=%zu",
                       tick_count, G.dt, took_ms, pct, mem_used(G.mem).pct, rx_now, tx_now,
                       disk_rd_now, disk_wr_now, last_therm.size(), last_hwmon.size(), G.gpus.size());
-            if (took_ms > 250.0 || took_ms > G.refresh_ms / 2.0)
-                LOG_WARN("tick", "slow tick #%llu: %.1f ms (refresh %d ms)", tick_count, took_ms, G.refresh_ms);
+            if (took_ms > 250.0 || took_ms > G.opt.refresh_ms / 2.0)
+                LOG_WARN("tick", "slow tick #%llu: %.1f ms (refresh %d ms)", tick_count, took_ms, G.opt.refresh_ms);
         }
 
         if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {

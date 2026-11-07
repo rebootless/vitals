@@ -6,12 +6,12 @@
 
 inline const Theme& theme() { return current_theme(); }
 
-inline bool native_colors() { return G.tty_active || G.theme_idx == 0; }
+inline bool native_colors() { return G.tty_active || G.opt.theme_idx == 0; }
 
 inline void nc_bg_apply(ncplane* n) {
     uint64_t channels = 0;
 
-    if (!native_colors() && G.bg_idx == 1) {
+    if (!native_colors() && G.opt.solid_bg) {
         uint32_t rgb = theme().BG;
 
         ncchannels_set_fg_default(&channels);

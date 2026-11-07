@@ -183,15 +183,9 @@ const std::vector<Theme>& all_themes() {
 
 const Theme& current_theme() {
     const auto& themes = registry();
-    int idx = G.theme_idx;
+    int idx = G.opt.theme_idx;
     if (idx < 0 || idx >= static_cast<int>(themes.size())) idx = 0;
     return themes[static_cast<size_t>(idx)];
-}
-
-void set_theme_index(int idx) {
-    const int n = static_cast<int>(registry().size());
-    if (n == 0) return;
-    G.theme_idx = ((idx % n) + n) % n;
 }
 
 int find_theme_index(const std::string& name) {

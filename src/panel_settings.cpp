@@ -10,9 +10,6 @@ const char* CORNER_MODE_NAMES[2] = { "Square", "Rounded" };
 const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
 const char* MIRROR_NAMES[2] = { "Symbol Mirroring: False", "Symbol Mirroring: True" };
 
-// Focus ids, as main.cpp uses them
-enum Focus { F_THEME, F_BG, F_TERMINAL, F_CORNERS, F_GRAPH, F_MIRROR, F_PANELS, F_REFRESH };
-
 // One line of the right-hand column; the whole column is built first so it can be scrolled
 enum class Kind { Blank, Block, Header, Note, Option, PanelRow, Refresh };
 
@@ -36,26 +33,26 @@ std::vector<Line> build_lines() {
 
     block("Appearance");
     header("Background", F_BG);
-    for (int i = 0; i < 2; ++i) option(BG_MODE_NAMES[i], F_BG, i == G.bg_idx);
+    for (int i = 0; i < 2; ++i) option(BG_MODE_NAMES[i], F_BG, i == static_cast<int>(G.opt.solid_bg));
     header("Corners", F_CORNERS);
-    for (int i = 0; i < 2; ++i) option(CORNER_MODE_NAMES[i], F_CORNERS, i == G.corners_idx);
+    for (int i = 0; i < 2; ++i) option(CORNER_MODE_NAMES[i], F_CORNERS, i == static_cast<int>(G.opt.rounded));
     header("Graph style", F_GRAPH);
-    for (int i = 0; i < 2; ++i) option(GRAPH_STYLE_NAMES[i], F_GRAPH, i == G.graph_style_idx);
+    for (int i = 0; i < 2; ++i) option(GRAPH_STYLE_NAMES[i], F_GRAPH, i == static_cast<int>(G.opt.braille));
     header("Graph Symbol Mirroring", F_MIRROR);
     note("(Experimental)", F_MIRROR);
-    for (int i = 0; i < 2; ++i) option(MIRROR_NAMES[i], F_MIRROR, i == G.symbol_mirror_idx);
+    for (int i = 0; i < 2; ++i) option(MIRROR_NAMES[i], F_MIRROR, i == static_cast<int>(G.opt.mirror));
 
     blank();
     block("Behavior");
     header("Terminal", F_TERMINAL);
-    for (int i = 0; i < 3; ++i) option(TTY_MODE_NAMES[i], F_TERMINAL, static_cast<int>(G.tty_force) == i);
+    for (int i = 0; i < 3; ++i) option(TTY_MODE_NAMES[i], F_TERMINAL, static_cast<int>(G.opt.tty_force) == i);
     { Line l; l.kind = Kind::Refresh; l.group = F_REFRESH; v.push_back(l); }
 
     blank();
     block("Panels", F_PANELS);
     for (int i = 0; i < PANEL_N; ++i) {
         const size_t    k    = static_cast<size_t>(i);
-        const PanelMode mode = G.panel_mode[k];
+        const PanelMode mode = G.opt.panels[k];
         const bool no_data   = (mode == PanelMode::Auto && !G.panel_avail[k]);
         Line l;
         l.kind     = Kind::PanelRow;
@@ -122,16 +119,16 @@ void panel_settings(ncplane* n, int rows, int cols) {
         const bool focused = (G.settings_focus == F_THEME);
         nc_set(n, theme().LABEL, NCSTYLE_BOLD);
         char hdr[64];
-        snprintf(hdr, sizeof(hdr), " %sTheme (%d of %d)", focused ? "> " : "  ", G.theme_idx + 1, n_themes);
+        snprintf(hdr, sizeof(hdr), " %sTheme (%d of %d)", focused ? "> " : "  ", G.opt.theme_idx + 1, n_themes);
         ncplane_putstr_yx(n, iy, ix, str_trunc(hdr, left_w - 1).c_str());
 
         const int vis = std::max(0, ih - 1);
-        G.settings_theme_top = follow(G.settings_theme_top, G.theme_idx, G.theme_idx, vis, n_themes);
+        G.settings_theme_top = follow(G.settings_theme_top, G.opt.theme_idx, G.opt.theme_idx, vis, n_themes);
 
         for (int i = 0; i < vis && G.settings_theme_top + i < n_themes; ++i) {
             const int t = G.settings_theme_top + i;
-            nc_set(n, t == G.theme_idx ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
-            const std::string label = std::string(t == G.theme_idx ? "   > " : "     ") +
+            nc_set(n, t == G.opt.theme_idx ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+            const std::string label = std::string(t == G.opt.theme_idx ? "   > " : "     ") +
                                       str_trunc(themes[static_cast<size_t>(t)].name, left_w - 6);
             ncplane_putstr_yx(n, iy + 1 + i, ix, label.c_str());
         }
@@ -201,7 +198,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             nc_set(n, focused ? theme().LOW : theme().FG, NCSTYLE_NONE);
             const int lx = static_cast<int>(lead.size());
             if (lx < text_w)
-                ncplane_putstr_yx(n, r, right_x + lx, str_trunc(std::to_string(G.refresh_ms) + "ms", text_w - lx).c_str());
+                ncplane_putstr_yx(n, r, right_x + lx, str_trunc(std::to_string(G.opt.refresh_ms) + "ms", text_w - lx).c_str());
             break;
         }
         }

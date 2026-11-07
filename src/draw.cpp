@@ -36,7 +36,7 @@ draw_box(ncplane* n, int y, int x, int h, int w,
         hz = "-";
         vt = "|";
     } else {
-        const bool rounded = (G.corners_idx == 1);
+        const bool rounded = G.opt.rounded;
         tl = rounded ? "╭" : "┌";
         tr = rounded ? "╮" : "┐";
         bl = rounded ? "╰" : "└";
@@ -131,15 +131,15 @@ const char* const TTY_RAMP[] = { " ", ".", ",", ":", ";", "=", "+", "*", "#", "@
 
 Ramp spark_ramp(bool bottom_row) {
     if (G.tty_active) return { TTY_RAMP, 10 };
-    const bool braille = (G.graph_style_idx == 1);
-    if (bottom_row && G.symbol_mirror_idx)
+    const bool braille = G.opt.braille;
+    if (bottom_row && G.opt.mirror)
         return { braille ? SPARK_BRAILLE_MIRROR : SPARK_MIRROR, 8 };
     return { braille ? SPARK_BRAILLE : SPARK, 8 };
 }
 
 // Bold only for braille (heavier dots); block glyphs stay regular.
 unsigned spark_style() {
-    return (!G.tty_active && G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
+    return (!G.tty_active && G.opt.braille) ? NCSTYLE_BOLD : NCSTYLE_NONE;
 }
 
 const char* empty_cell() { return G.tty_active ? "." : BAR_BG; }

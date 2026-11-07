@@ -1,6 +1,6 @@
 #pragma once
 
-#include "panel_ids.h"
+#include "settings.h"
 
 #include <string>
 
@@ -18,3 +18,6 @@ struct Config {
 Config load_config();
 
 void save_config(const Config& cfg);
+
+Settings settings_from_config(const Config& cfg);
+Config   config_from_settings(const Settings& s);

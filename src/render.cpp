@@ -26,7 +26,7 @@ void render(notcurses* nc, ncplane* n,
 
     draw_titlebar(n, cols);
 
-    const Layout L = compute_layout(rows, cols, gpus, panel_visibility(G.panel_mode, G.panel_avail));
+    const Layout L = compute_layout(rows, cols, gpus, panel_visibility(G.opt.panels, G.panel_avail));
 
     if (const Rect& a = L.panel[P_CPU]; a.h > 0)
         panel_cpu(n, a.y, a.x, a.h, a.w, cpu_pct, freqs, core_pcts);

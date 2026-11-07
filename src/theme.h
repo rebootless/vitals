@@ -27,6 +27,4 @@ const std::vector<Theme>& all_themes();
 
 const Theme& current_theme();
 
-void set_theme_index(int idx);
-
 int find_theme_index(const std::string& name);
