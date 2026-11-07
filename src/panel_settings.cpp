@@ -127,7 +127,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
 
         for (int i = 0; i < vis && G.settings_theme_top + i < n_themes; ++i) {
             const int t = G.settings_theme_top + i;
-            nc_set(n, t == G.opt.theme_idx ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+            nc_set(n, t == G.opt.theme_idx ? theme().LOW : theme().FG, NCSTYLE_NONE);
             const std::string label = std::string(t == G.opt.theme_idx ? "   > " : "     ") +
                                       str_trunc(themes[static_cast<size_t>(t)].name, left_w - 6);
             ncplane_putstr_yx(n, iy + 1 + i, ix, label.c_str());
@@ -184,11 +184,11 @@ void panel_settings(ncplane* n, int rows, int cols) {
             ncplane_putstr_yx(n, r, right_x + 3, str_trunc(l.text, text_w - 3).c_str());
             break;
         case Kind::Option:
-            nc_set(n, l.selected ? theme().LOW : theme().FG_DIM, NCSTYLE_NONE);
+            nc_set(n, l.selected ? theme().LOW : theme().FG, NCSTYLE_NONE);
             ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(l.selected ? "   > " : "     ") + l.text, text_w).c_str());
             break;
         case Kind::PanelRow:
-            nc_set(n, l.dim ? theme().FG_DIM : theme().LOW, NCSTYLE_NONE);
+            nc_set(n, l.selected ? theme().LOW : (l.dim ? theme().MUTED : theme().FG), NCSTYLE_NONE);
             ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(l.selected ? " > " : "   ") + l.text, text_w).c_str());
             break;
         case Kind::Refresh: {
