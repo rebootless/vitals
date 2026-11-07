@@ -2,6 +2,7 @@
 #include "state.h"
 #include "paths.h"
 #include "log.h"
+#include "strutil.h"
 
 #include <algorithm>
 #include <cctype>
@@ -46,12 +47,6 @@ const Role ROLES[] = {
     { "DATA_B",    &Theme::DATA_B    },
 };
 
-std::string trim(const std::string& s) {
-    size_t start = s.find_first_not_of(" \t\r\n");
-    size_t end   = s.find_last_not_of(" \t\r\n");
-    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
-}
-
 std::string lower(std::string s) {
     for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
@@ -67,7 +62,7 @@ bool parse_hex(const std::string& h, uint32_t& out) {
 
 // Accepts "#RRGGBB", "#RR" (grey, same as btop) or "R G B" with 0-255 each.
 bool parse_color(const std::string& text, uint32_t& out) {
-    std::string s = trim(text);
+    std::string s = str_trim(text);
     if (s.empty()) return false;
 
     if (s[0] == '#') {
@@ -99,7 +94,7 @@ bool load_theme_file(const fs::path& path, Theme& out) {
 
     std::string line;
     while (std::getline(f, line)) {
-        line = trim(line);
+        line = str_trim(line);
         if (line.rfind("theme[", 0) != 0) continue;
 
         size_t close = line.find(']');
@@ -107,15 +102,15 @@ bool load_theme_file(const fs::path& path, Theme& out) {
         size_t eq = line.find('=', close);
         if (eq == std::string::npos) continue;
 
-        std::string key = trim(line.substr(6, close - 6));
-        std::string val = trim(line.substr(eq + 1));
+        std::string key = str_trim(line.substr(6, close - 6));
+        std::string val = str_trim(line.substr(eq + 1));
         if (!val.empty() && val[0] == '"') {
             size_t q = val.find('"', 1);
             val = (q == std::string::npos) ? val.substr(1) : val.substr(1, q - 1);
         }
 
         if (key == "NAME") {
-            if (!trim(val).empty()) t.name = trim(val);
+            if (!str_trim(val).empty()) t.name = str_trim(val);
             continue;
         }
         bool known = false;

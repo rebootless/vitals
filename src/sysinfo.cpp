@@ -1,34 +1,69 @@
 #include "sysinfo.h"
 
-#include <fstream>
-#include <net/if.h>
-#include <sstream>
-#include <cstring>
 #include <algorithm>
-#include <map>
-#include <set>
+#include <arpa/inet.h>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <ifaddrs.h>
+#include <map>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <optional>
+#include <set>
+#include <sstream>
 
-std::vector<cpustat> parse_percpu() {
-    std::ifstream f("/proc/stat");
-    if (!f) return {};
-    std::vector<cpustat> result;
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.size() < 4) continue;
-        if (line[0]!='c' || line[1]!='p' || line[2]!='u') continue;
-        if (!std::isdigit(static_cast<unsigned char>(line[3]))) continue;
-        size_t sp = line.find(' ');
-        if (sp == std::string::npos) continue;
-        std::istringstream ss(line.substr(sp + 1));
-        cpustat s{};
-        try { s.cpu = std::stoi(line.substr(3, sp - 3)); } catch (...) { continue; }
-        ss >> s.user >> s.nice >> s.system >> s.idle
-           >> s.iowait >> s.irq >> s.softirq >> s.steal
-           >> s.guest  >> s.guest_nice;
-        result.push_back(s);
+namespace {
+
+// hwmon10 sorts after hwmon9
+bool by_len(const std::string& a, const std::string& b) {
+    return a.size() != b.size() ? a.size() < b.size() : a < b;
+}
+
+std::string read_first_line(const std::string& path) {
+    std::ifstream f(path);
+    std::string s;
+    std::getline(f, s);
+    return s;
+}
+
+// a sysfs value in thousandths, as a whole unit
+std::optional<double> read_milli(const std::string& path) {
+    std::ifstream f(path);
+    long long v = 0;
+    if (!(f >> v)) return std::nullopt;
+    return v / 1000.0;
+}
+
+std::vector<std::string> list_dir(const std::string& dir) {
+    std::vector<std::string> names;
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+        names.push_back(it->path().filename().string());
+    return names;
+}
+
+// "hwmonN" directories under root, in numeric order
+std::vector<std::string> hwmon_dirs(const std::string& root) {
+    std::vector<std::string> dirs;
+    for (std::string& n : list_dir(root))
+        if (n.size() > 5 && n.compare(0, 5, "hwmon") == 0) dirs.push_back(std::move(n));
+    std::sort(dirs.begin(), dirs.end(), by_len);
+    return dirs;
+}
+
+// "temp3" for every temp3_input in dir, in numeric order (kind is "temp" or "fan")
+std::vector<std::string> hwmon_channels(const std::string& dir, const std::string& kind) {
+    std::vector<std::string> channels;
+    for (const std::string& fn : list_dir(dir)) {
+        const size_t pos = fn.find("_input");
+        if (fn.compare(0, kind.size(), kind) == 0 && pos != std::string::npos && pos > kind.size())
+            channels.push_back(fn.substr(0, pos));
     }
-    return result;
+    std::sort(channels.begin(), channels.end(), by_len);
+    return channels;
+}
+
 }
 
 double cpu_delta(const cpustat& prev, const cpustat& cur) {
@@ -134,26 +169,18 @@ bool is_virtual_disk(const std::string& dev) {
 }
 
 std::string thermal_zone_type(int zone) {
-    std::ifstream f("/sys/class/thermal/thermal_zone" + std::to_string(zone) + "/type");
-    if (!f) return "Zone " + std::to_string(zone);
-    std::string t; std::getline(f, t);
+    const std::string t = read_first_line("/sys/class/thermal/thermal_zone" + std::to_string(zone) + "/type");
     return t.empty() ? "Zone " + std::to_string(zone) : t;
 }
 
 std::pair<double,double> thermal_trip_limits(int zone) {
-    auto read_mc = [](const std::string& p) -> double {
-        std::ifstream f(p); if (!f) return 0.0;
-        unsigned long long v = 0; f >> v; return v / 1000.0;
-    };
-    std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(zone);
+    const std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(zone);
     double hi = 0, crit = 0;
     for (int i = 0; i <= 6; i++) {
-        std::ifstream tf(base + "/trip_point_" + std::to_string(i) + "_type");
-        if (!tf) continue;
-        std::string tp; tf >> tp;
-        double temp = read_mc(base + "/trip_point_" + std::to_string(i) + "_temp");
-        if (tp == "hot")      hi   = temp;
-        if (tp == "critical") crit = temp;
+        const std::string trip = base + "/trip_point_" + std::to_string(i);
+        const std::string type = read_first_line(trip + "_type");
+        if (type != "hot" && type != "critical") continue;
+        (type == "hot" ? hi : crit) = read_milli(trip + "_temp").value_or(0.0);
     }
     if (hi == 0 && crit == 0) { hi = 74; crit = 94; }
     else if (hi   == 0) hi   = crit - 20;
@@ -203,49 +230,22 @@ static bool classify_hwmon_chip(const std::string& name,
     return true;
 }
 
-std::vector<HwmonChip> parse_hwmon() {
-    DIR* base = opendir("/sys/class/hwmon");
-    if (!base) return {};
-
-    auto read_mc = [](const std::string& p) -> std::pair<double, bool> {
-        std::ifstream f(p);
-        if (!f) return {0.0, false};
-        long long v = 0; f >> v;
-        if (!f) return {0.0, false};
-        return {v / 1000.0, true};
-    };
-
+std::vector<HwmonChip> parse_hwmon(const std::string& root) {
     // one chip per hwmonN directory; same-named chips (two NVMe drives, two sockets) stay separate
     std::vector<std::pair<std::string, std::string>> found; // {dir name, chip name}
-    struct dirent* de;
-    while ((de = readdir(base)) != nullptr) {
-        std::string dname = de->d_name;
-        if (dname.size() < 6 || dname.substr(0, 5) != "hwmon") continue;
-
-        std::string chip_name;
-        { std::ifstream nf("/sys/class/hwmon/" + dname + "/name"); if (!nf) continue; std::getline(nf, chip_name); }
-        if (chip_name.empty()) continue;
-
+    for (const auto& d : hwmon_dirs(root)) {
+        const std::string name = read_first_line(root + "/" + d + "/name");
         // GPUs come from parse_gpus(); skip here to avoid a duplicate entry
-        if (chip_name == "amdgpu" || chip_name == "nouveau" || chip_name == "nvidia")
-            continue;
-
-        found.emplace_back(dname, chip_name);
+        if (name.empty() || name == "amdgpu" || name == "nouveau" || name == "nvidia") continue;
+        found.emplace_back(d, name);
     }
-    closedir(base);
-
-    // hwmon10 sorts after hwmon9
-    std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) {
-        if (a.first.size() != b.first.size()) return a.first.size() < b.first.size();
-        return a.first < b.first;
-    });
 
     std::map<std::string, int> total_of, seen_of;
     for (const auto& f : found) ++total_of[f.second];
 
     std::vector<HwmonChip> chips;
     for (const auto& [dname, chip_name] : found) {
-        std::string dir = "/sys/class/hwmon/" + dname;
+        const std::string dir = root + "/" + dname;
 
         chips.emplace_back();
         HwmonChip& chip = chips.back();
@@ -253,45 +253,22 @@ std::vector<HwmonChip> parse_hwmon() {
         classify_hwmon_chip(chip_name, chip.category, chip.display);
         if (chip.display.empty()) chip.display = chip_name;
 
-        DIR* d = opendir(dir.c_str());
-        if (!d) { chips.pop_back(); continue; }
-        std::vector<std::string> prefixes;
-        struct dirent* e;
-        while ((e = readdir(d)) != nullptr) {
-            std::string fn = e->d_name;
-            if (fn.substr(0, 4) == "temp") {
-                size_t pos = fn.find("_input");
-                if (pos != std::string::npos) prefixes.push_back(fn.substr(0, pos));
-            }
-        }
-        closedir(d);
-        std::sort(prefixes.begin(), prefixes.end());
-
         int unlabeled_seen = 0;
-        for (const auto& pfx : prefixes) {
-            auto [val, ok] = read_mc(dir + "/" + pfx + "_input");
-            if (!ok) continue;
-
-            std::string real_label;
-            { std::ifstream lf(dir + "/" + pfx + "_label");
-              if (lf) std::getline(lf, real_label); }
+        for (const auto& pfx : hwmon_channels(dir, "temp")) {
+            const auto val = read_milli(dir + "/" + pfx + "_input");
+            if (!val) continue;
 
             HwmonSensor s;
-            s.temp_celsius = val;
-
-            if (!real_label.empty()) {
-                s.label = real_label;
-            } else if (chip.category != HwmonCategory::Unknown) {
+            s.temp_celsius = *val;
+            s.label = read_first_line(dir + "/" + pfx + "_label");
+            if (s.label.empty()) {
+                if (chip.category == HwmonCategory::Unknown) continue;
                 unlabeled_seen++;
                 s.label = chip.display;
-            } else {
-                continue;
             }
 
-            auto [mx, hmx] = read_mc(dir + "/" + pfx + "_max");
-            s.temp_max = mx; s.has_max = hmx;
-            auto [cr, hcr] = read_mc(dir + "/" + pfx + "_crit");
-            s.temp_crit = cr; s.has_crit = hcr;
+            if (const auto mx = read_milli(dir + "/" + pfx + "_max"))  { s.temp_max  = *mx; s.has_max  = true; }
+            if (const auto cr = read_milli(dir + "/" + pfx + "_crit")) { s.temp_crit = *cr; s.has_crit = true; }
 
             s.is_package = (s.label.rfind("Package", 0) == 0);
             chip.sensors.push_back(s);
@@ -335,9 +312,6 @@ std::string fan_short_name(const std::string& label) {
 }
 
 std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus, const std::string& hwmon_root) {
-    auto by_len = [](const std::string& a, const std::string& b) {
-        return a.size() != b.size() ? a.size() < b.size() : a < b; // hwmon10 after hwmon9
-    };
     // "fan3" -> 3; 0 when the channel is not 1..9 (FAN10+ would break the name width and the naming scheme)
     auto channel_of = [](const std::string& pfx) {
         const std::string num = pfx.substr(3);
@@ -345,64 +319,36 @@ std::vector<FanInfo> collect_fans(const std::vector<GpuInfo>& gpus, const std::s
     };
 
     struct Entry { FanInfo fan; std::string fallback; };
-    std::vector<Entry> hw, nv;
-
-    if (DIR* base = opendir(hwmon_root.c_str())) {
-        std::vector<std::string> dirs;
-        while (struct dirent* de = readdir(base)) {
-            const std::string d = de->d_name;
-            if (d.size() > 5 && d.compare(0, 5, "hwmon") == 0) dirs.push_back(d);
-        }
-        closedir(base);
-        std::sort(dirs.begin(), dirs.end(), by_len);
-
-        for (const auto& d : dirs) {
-            const std::string dir = hwmon_root + "/" + d;
-            std::string chip;
-            { std::ifstream nf(dir + "/name"); if (nf) std::getline(nf, chip); }
-
-            std::vector<std::string> prefixes;
-            if (DIR* hd = opendir(dir.c_str())) {
-                while (struct dirent* e = readdir(hd)) {
-                    const std::string fn = e->d_name;
-                    const size_t pos = fn.find("_input");
-                    if (fn.compare(0, 3, "fan") == 0 && pos != std::string::npos && pos > 3)
-                        prefixes.push_back(fn.substr(0, pos));
-                }
-                closedir(hd);
-            }
-            std::sort(prefixes.begin(), prefixes.end(), by_len);
-
-            for (const auto& pfx : prefixes) {
-                const int chan = channel_of(pfx);
-                if (chan == 0) continue;
-                long long rpm = 0;
-                { std::ifstream f(dir + "/" + pfx + "_input"); if (!(f >> rpm)) continue; }
-
-                std::string label;
-                { std::ifstream lf(dir + "/" + pfx + "_label"); if (lf) std::getline(lf, label); }
-
-                Entry en;
-                en.fan.rpm  = static_cast<int>(std::clamp(rpm, 0LL, 9999LL));
-                en.fallback = "FAN" + std::to_string(chan);
-                en.fan.name = chip == "amdgpu" ? "GPU" : fan_short_name(label);
-                if (en.fan.name.empty()) en.fan.name = en.fallback;
-                hw.push_back(en);
-            }
-        }
-    }
+    std::vector<Entry> all;
 
     for (const auto& g : gpus)
         if (g.fan_pct >= 0) {
             Entry en;
             en.fan.name = "GPU";
             en.fan.pct  = static_cast<int>(std::clamp(g.fan_pct, 0.0, 100.0) + 0.5);
-            nv.push_back(en);
+            all.push_back(en);
         }
 
+    for (const auto& d : hwmon_dirs(hwmon_root)) {
+        const std::string dir  = hwmon_root + "/" + d;
+        const std::string chip = read_first_line(dir + "/name");
+
+        for (const auto& pfx : hwmon_channels(dir, "fan")) {
+            const int chan = channel_of(pfx);
+            if (chan == 0) continue;
+            long long rpm = 0;
+            { std::ifstream f(dir + "/" + pfx + "_input"); if (!(f >> rpm)) continue; }
+
+            Entry en;
+            en.fan.rpm  = static_cast<int>(std::clamp(rpm, 0LL, 9999LL));
+            en.fallback = "FAN" + std::to_string(chan);
+            en.fan.name = chip == "amdgpu" ? "GPU" : fan_short_name(read_first_line(dir + "/" + pfx + "_label"));
+            if (en.fan.name.empty()) en.fan.name = en.fallback;
+            all.push_back(en);
+        }
+    }
+
     // GPU first (NVIDIA, or amdgpu's hwmon fan), then the board's fans in channel order
-    std::vector<Entry> all = nv;
-    all.insert(all.end(), hw.begin(), hw.end());
     std::stable_partition(all.begin(), all.end(), [](const Entry& e) { return e.fan.name == "GPU"; });
     if (all.size() > static_cast<size_t>(FAN_MAX)) all.resize(FAN_MAX);
 

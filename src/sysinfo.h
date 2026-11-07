@@ -2,8 +2,7 @@
 
 #include "state.h"
 
-std::vector<cpustat> parse_percpu();
-double               cpu_delta(const cpustat& prev, const cpustat& cur);
+double cpu_delta(const cpustat& prev, const cpustat& cur);
 
 struct MemUsed { ull used_kib; double pct; };
 MemUsed mem_used(const meminfo& mi);
@@ -30,7 +29,8 @@ std::pair<double,double> hwmon_limits(const HwmonSensor& s);
 std::string           thermal_zone_type  (int zone);
 std::pair<double,double> thermal_trip_limits(int zone);
 
-std::vector<HwmonChip> parse_hwmon();
+// every hwmonN directory of root with its temp*_input channels in numeric order
+std::vector<HwmonChip> parse_hwmon(const std::string& root = "/sys/class/hwmon");
 
 constexpr int FAN_NAME_W = 4;  // longest short name: CPU, GPU, PSU, FAN1
 constexpr int FAN_MAX    = 10; // GPU + fan1..fan9; the panel shows as many as its width fits

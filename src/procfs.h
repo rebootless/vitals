@@ -69,8 +69,6 @@ struct cpuinfo { // /proc/cpuinfo, /sys/devices/system/cpu/cpu*/topology
 struct netdev { // /proc/net/dev, one entry per interface
     std::string interface;
 
-    std::vector<netdev> v_netdev;
-
     unsigned long long rx_bytes;
     unsigned long long rx_packets;
     unsigned long long rx_errors;
@@ -95,8 +93,6 @@ struct snmp { // /proc/net/snmp
 
 struct diskstats { // /proc/diskstats, one entry per block device
     std::string device;
-
-    std::vector<diskstats> v_diskstats;
 
     unsigned long long reads_completed;
     unsigned long long reads_merged;
@@ -146,6 +142,7 @@ struct systemuname { // uname(); named so to avoid clashing with POSIX uname
 };
 
 cpustat                parse_cpustat();
+std::vector<cpustat>   parse_percpu();
 meminfo                parse_meminfo();
 uptime                 parse_uptime();
 loadavg                parse_loadavg();

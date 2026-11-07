@@ -1,6 +1,8 @@
 #include "procfs.h"
+#include "strutil.h"
 
 #include <algorithm>
+#include <cctype>
 #include <dirent.h>
 #include <fstream>
 #include <map>
@@ -11,23 +13,19 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
-static std::string trim(const std::string& s) {
-    size_t start = s.find_first_not_of(" \t\r\n");
-    size_t end   = s.find_last_not_of(" \t\r\n");
-    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+static cpustat cpu_fields(const std::string& fields) {
+    std::istringstream ss(fields);
+    cpustat s{};
+    ss >> s.user   >> s.nice >> s.system  >> s.idle
+       >> s.iowait >> s.irq  >> s.softirq >> s.steal
+       >> s.guest  >> s.guest_nice;
+    return s;
 }
 
 cpustat parse_cpustat_from(std::istream& in) {
     std::string line;
-    while (std::getline(in, line)) {
-        if (line.substr(0, 4) != "cpu ") continue;
-        std::istringstream ss(line.substr(4));
-        cpustat s{};
-        ss >> s.user   >> s.nice >> s.system  >> s.idle
-           >> s.iowait >> s.irq  >> s.softirq >> s.steal
-           >> s.guest  >> s.guest_nice;
-        return s;
-    }
+    while (std::getline(in, line))
+        if (line.compare(0, 4, "cpu ") == 0) return cpu_fields(line.substr(4));
     throw std::runtime_error("aggregate cpu line not found");
 }
 
@@ -36,6 +34,22 @@ cpustat parse_cpustat() {
     std::ifstream f("/proc/stat");
     if (!f) throw std::runtime_error("cannot open /proc/stat");
     return parse_cpustat_from(f);
+}
+
+// /proc/stat: one "cpuN" line per core
+std::vector<cpustat> parse_percpu() {
+    std::ifstream f("/proc/stat");
+    std::vector<cpustat> result;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.compare(0, 3, "cpu") != 0 || line.size() < 4 || !std::isdigit(static_cast<unsigned char>(line[3]))) continue;
+        const size_t sp = line.find(' ');
+        if (sp == std::string::npos) continue;
+        cpustat s = cpu_fields(line.substr(sp + 1));
+        try { s.cpu = std::stoi(line.substr(3, sp - 3)); } catch (...) { continue; }
+        result.push_back(s);
+    }
+    return result;
 }
 
 meminfo parse_meminfo_from(std::istream& in) {
@@ -121,8 +135,8 @@ cpuinfo parse_cpuinfo_from(std::istream& in) {
         auto colon = line.find(':');
         if (colon == std::string::npos) continue;
 
-        std::string key = trim(line.substr(0, colon));
-        std::string val = trim(line.substr(colon + 1));
+        std::string key = str_trim(line.substr(0, colon));
+        std::string val = str_trim(line.substr(colon + 1));
 
         if      (key == "processor")                 ++c.cpu_siblings;
         else if (key == "model name" && model.empty())       model    = val; // x86, ARM32
@@ -166,7 +180,7 @@ static std::string read_device_tree_model() {
     std::ifstream f("/proc/device-tree/model");
     std::string s;
     std::getline(f, s, '\0');
-    return trim(s);
+    return str_trim(s);
 }
 
 // /proc/cpuinfo (model, threads), /sys/devices/system/cpu/cpu*/topology (cores), /proc/device-tree/model (ARM fallback)
@@ -194,7 +208,7 @@ std::vector<netdev> parse_netdev_from(std::istream& in) {
         if (colon == std::string::npos) continue;
 
         netdev nd{};
-        nd.interface = trim(line.substr(0, colon));
+        nd.interface = str_trim(line.substr(0, colon));
 
         std::istringstream ss(line.substr(colon + 1));
         unsigned long long skip;

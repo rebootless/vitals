@@ -1,9 +1,9 @@
 #include "gpu.h"
 #include "log.h"
+#include "strutil.h"
 
 #include <algorithm>
 #include <cctype>
-#include <cstring>
 #include <chrono>
 #include <cerrno>
 #include <cstring>
@@ -40,12 +40,6 @@ double read_double(const std::string& path, double fallback = -1.0) {
     return f.fail() ? fallback : v;
 }
 
-std::string trim(const std::string& s) {
-    size_t start = s.find_first_not_of(" \t\r\n");
-    size_t end   = s.find_last_not_of(" \t\r\n");
-    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
-}
-
 std::string read_symlink_basename(const std::string& path) {
     char buf[512];
     ssize_t n = readlink(path.c_str(), buf, sizeof(buf) - 1);
@@ -77,6 +71,14 @@ double read_hwmon_field(const std::string& device_dir, const std::string& field,
     return result;
 }
 
+void read_hwmon_sensors(GpuInfo& g, const std::string& device_dir) {
+    const double temp_m = read_hwmon_field(device_dir, "temp1_input");
+    if (temp_m >= 0) g.temp_c = temp_m / 1000.0;
+
+    const double power_u = read_hwmon_field(device_dir, "power1_average", "power1_input");
+    if (power_u >= 0) g.power_w = power_u / 1000000.0;
+}
+
 GpuInfo parse_amd(const std::string& device_dir, const std::string& card) {
     GpuInfo g;
     g.vendor = GpuVendor::AMD;
@@ -84,36 +86,25 @@ GpuInfo parse_amd(const std::string& device_dir, const std::string& card) {
 
     g.util_pct = read_double(device_dir + "/gpu_busy_percent");
 
-    double used  = read_double(device_dir + "/mem_info_vram_used");
-    double total = read_double(device_dir + "/mem_info_vram_total");
+    const double used  = read_double(device_dir + "/mem_info_vram_used");
+    const double total = read_double(device_dir + "/mem_info_vram_total");
     if (used >= 0 && total > 0) {
         g.mem_used_mb  = used  / (1024.0 * 1024.0);
         g.mem_total_mb = total / (1024.0 * 1024.0);
     }
 
-    double temp_m = read_hwmon_field(device_dir, "temp1_input");
-    if (temp_m >= 0) g.temp_c = temp_m / 1000.0;
-
-    double power_u = read_hwmon_field(device_dir, "power1_average", "power1_input");
-    if (power_u >= 0) g.power_w = power_u / 1000000.0;
-
+    read_hwmon_sensors(g, device_dir);
     return g;
 }
 
+// Intel iGPUs have no sysfs VRAM node: mem_*_mb stay -1
 GpuInfo parse_intel(const std::string& device_dir, const std::string& card) {
     GpuInfo g;
     g.vendor = GpuVendor::Intel;
     g.name   = "Intel GPU (" + card + ")";
 
     g.util_pct = read_double(device_dir + "/gpu_busy_percent");
-
-    double temp_m = read_hwmon_field(device_dir, "temp1_input");
-    if (temp_m >= 0) g.temp_c = temp_m / 1000.0;
-
-    double power_u = read_hwmon_field(device_dir, "power1_average", "power1_input");
-    if (power_u >= 0) g.power_w = power_u / 1000000.0;
-
-    // Intel iGPUs have no sysfs VRAM node: mem_*_mb stay -1
+    read_hwmon_sensors(g, device_dir);
     return g;
 }
 
@@ -172,9 +163,9 @@ double read_engine_busy_percent(const std::string& pci_addr) {
 
             while (std::getline(f, line)) {
                 if (line.rfind("drm-pdev:", 0) == 0) {
-                    pdev = trim(line.substr(9));
+                    pdev = str_trim(line.substr(9));
                 } else if (line.rfind("drm-client-id:", 0) == 0) {
-                    client = trim(line.substr(14));
+                    client = str_trim(line.substr(14));
                 } else if (line.rfind("drm-engine-gr:", 0) == 0) {
                     std::istringstream ls(line.substr(14));
                     unsigned long long v = 0;
@@ -225,9 +216,7 @@ GpuInfo parse_nouveau(const std::string& device_dir, const std::string& card) {
     std::string pci_addr = read_symlink_basename(device_dir);
     g.util_pct = read_engine_busy_percent(pci_addr);
 
-    double temp_m = read_hwmon_field(device_dir, "temp1_input");
-    if (temp_m >= 0) g.temp_c = temp_m / 1000.0;
-
+    read_hwmon_sensors(g, device_dir);
     return g;
 }
 
@@ -236,22 +225,28 @@ bool parse_smi_line(const std::string& line, GpuInfo& g) {
     std::istringstream ls(line);
     std::string field;
     std::vector<std::string> fields;
-    while (std::getline(ls, field, ',')) fields.push_back(trim(field));
+    while (std::getline(ls, field, ',')) fields.push_back(str_trim(field));
     if (fields.size() < 6) {
         static int reported = 0;
         if (reported++ < 5) LOG_WARN("gpu", "nvidia-smi: unparsable line: %s", line.c_str());
         return false;
     }
 
+    // "[N/A]" and "[Not Supported]" stay at -1
+    auto num = [&](size_t i, double& out) {
+        if (i >= fields.size()) return;
+        try { out = std::stod(fields[i]); } catch (...) {}
+    };
+
     g = GpuInfo{};
     g.vendor = GpuVendor::Nvidia;
     g.name   = fields[0];
-    try { g.util_pct     = std::stod(fields[1]); } catch (...) {}
-    try { g.mem_used_mb  = std::stod(fields[2]); } catch (...) {}
-    try { g.mem_total_mb = std::stod(fields[3]); } catch (...) {}
-    try { g.temp_c       = std::stod(fields[4]); } catch (...) {}
-    try { g.power_w      = std::stod(fields[5]); } catch (...) {}
-    if (fields.size() > 6) { try { g.fan_pct = std::stod(fields[6]); } catch (...) {} }
+    num(1, g.util_pct);
+    num(2, g.mem_used_mb);
+    num(3, g.mem_total_mb);
+    num(4, g.temp_c);
+    num(5, g.power_w);
+    num(6, g.fan_pct);
     return true;
 }
 

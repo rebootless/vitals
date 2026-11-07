@@ -1,22 +1,13 @@
 #include "config.h"
 #include "paths.h"
 #include "log.h"
+#include "strutil.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-
-namespace {
-
-std::string trim(const std::string& s) {
-    size_t start = s.find_first_not_of(" \t\r\n");
-    size_t end   = s.find_last_not_of(" \t\r\n");
-    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
-}
-
-}
 
 Config load_config() {
     Config cfg{};
@@ -37,7 +28,7 @@ Config load_config() {
     int lineno = 0;
     while (std::getline(f, line)) {
         ++lineno;
-        if (trim(line).empty() || trim(line)[0] == '#') continue;
+        if (str_trim(line).empty() || str_trim(line)[0] == '#') continue;
 
         size_t eq = line.find('=');
         if (eq == std::string::npos) {
@@ -45,8 +36,8 @@ Config load_config() {
             continue;
         }
 
-        std::string key = trim(line.substr(0, eq));
-        std::string val = trim(line.substr(eq + 1));
+        std::string key = str_trim(line.substr(0, eq));
+        std::string val = str_trim(line.substr(eq + 1));
         const int panel = key.rfind("panel_", 0) == 0 ? panel_index(key.substr(6)) : -1;
         if (key == "theme")           cfg.theme_name = val;
         else if (key == "background") cfg.bg_mode    = val;
