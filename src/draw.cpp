@@ -28,25 +28,33 @@ static void hline(ncplane* n, int y, int x, int w, const char* glyph,
 std::tuple<int,int,int,int>
 draw_box(ncplane* n, int y, int x, int h, int w,
          const std::string& title, const std::string& bl_label) {
-    if (G.tty_active) return draw_box_tty(n, y, x, h, w, title, bl_label);
     if (h < 2 || w < 2) return {y, x, 0, 0};
+
+    const char *tl, *tr, *bl, *br, *hz, *vt;
+    if (G.tty_active) {
+        tl = tr = bl = br = "+";
+        hz = "-";
+        vt = "|";
+    } else {
+        const bool rounded = (G.corners_idx == 1);
+        tl = rounded ? "╭" : "┌";
+        tr = rounded ? "╮" : "┐";
+        bl = rounded ? "╰" : "└";
+        br = rounded ? "╯" : "┘";
+        hz = "─";
+        vt = "│";
+    }
 
     nc_set(n, theme().BORDER);
 
-    const bool rounded = (G.corners_idx == 1);
-    const char* tl = rounded ? "╭" : "┌";
-    const char* tr = rounded ? "╮" : "┐";
-    const char* bl = rounded ? "╰" : "└";
-    const char* br = rounded ? "╯" : "┘";
-
     ncplane_putstr_yx(n, y, x, tl);
-    hline(n, y, x + 1, w - 2, "─", theme().BORDER);
+    hline(n, y, x + 1, w - 2, hz, theme().BORDER);
     ncplane_putstr_yx(n, y, x + w - 1, tr);
 
     for (int i = 1; i < h - 1; ++i) {
         nc_set(n, theme().BORDER);
-        ncplane_putstr_yx(n, y + i, x, "│");
-        ncplane_putstr_yx(n, y + i, x + w - 1, "│");
+        ncplane_putstr_yx(n, y + i, x, vt);
+        ncplane_putstr_yx(n, y + i, x + w - 1, vt);
 
         nc_set(n, theme().BG);
         for (int j = x + 1; j < x + w - 1; ++j)
@@ -55,7 +63,7 @@ draw_box(ncplane* n, int y, int x, int h, int w,
 
     nc_set(n, theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x, bl);
-    hline(n, y + h - 1, x + 1, w - 2, "─", theme().BORDER);
+    hline(n, y + h - 1, x + 1, w - 2, hz, theme().BORDER);
     ncplane_putstr_yx(n, y + h - 1, x + w - 1, br);
 
     // labels stop two columns short of each corner
@@ -91,7 +99,7 @@ void rbr(ncplane* n, int y, int x) {
 void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
     if (G.tty_active) { draw_bar_tty(n, y, x, w, fill, gt); return; }
     if (w <= 0) return;
-    fill = std::max(0.0, std::min(1.0, fill));
+    fill = std::clamp(fill, 0.0, 1.0);
 
     double cells = fill * w * 8.0;
     int full  = static_cast<int>(cells / 8.0);
@@ -115,64 +123,72 @@ void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
     }
 }
 
-void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist) {
-    if (G.tty_active) { draw_spark_tty(n, y, x, w, hist); return; }
-    if (w <= 0 || hist.empty()) return;
-    const char* const* glyphs = (G.graph_style_idx == 1) ? SPARK_BRAILLE : SPARK;
-    // Bold only for braille (heavier dots); block glyphs stay regular.
-    const unsigned style = (G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
-    int start = (static_cast<int>(hist.size()) > w)
-                ? static_cast<int>(hist.size()) - w : 0;
+namespace {
 
-    for (int i = start, col = x; i < static_cast<int>(hist.size()); ++i, ++col) {
-        double v   = std::max(0.0, std::min(100.0, hist[i]));
-        int    idx = static_cast<int>(v / 100.0 * 7.0 + 0.5);
-        uint32_t color = grad_color(GRAD_HIST, v / 100.0);
-        nc_set(n, color, style);
-        ncplane_putstr_yx(n, y, col, glyphs[std::max(0, std::min(7, idx))]);
+struct Ramp { const char* const* glyphs; int n; };
+
+const char* const TTY_RAMP[] = { " ", ".", ",", ":", ";", "=", "+", "*", "#", "@" };
+
+Ramp spark_ramp(bool bottom_row) {
+    if (G.tty_active) return { TTY_RAMP, 10 };
+    const bool braille = (G.graph_style_idx == 1);
+    if (bottom_row && G.symbol_mirror_idx)
+        return { braille ? SPARK_BRAILLE_MIRROR : SPARK_MIRROR, 8 };
+    return { braille ? SPARK_BRAILLE : SPARK, 8 };
+}
+
+// Bold only for braille (heavier dots); block glyphs stay regular.
+unsigned spark_style() {
+    return (!G.tty_active && G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
+}
+
+const char* empty_cell() { return G.tty_active ? "." : BAR_BG; }
+
+int first_visible(const std::deque<double>& h, int w) {
+    return static_cast<int>(h.size()) > w ? static_cast<int>(h.size()) - w : 0;
+}
+
+}
+
+void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist) {
+    if (w <= 0 || hist.empty()) return;
+    const Ramp ramp = spark_ramp(false);
+
+    for (int i = first_visible(hist, w), col = x; i < static_cast<int>(hist.size()); ++i, ++col) {
+        const double v = std::clamp(hist[i], 0.0, 100.0);
+        const int idx  = std::clamp(static_cast<int>(v / 100.0 * (ramp.n - 1) + 0.5), 0, ramp.n - 1);
+        nc_set(n, grad_color(GRAD_HIST, v / 100.0), spark_style());
+        ncplane_putstr_yx(n, y, col, ramp.glyphs[idx]);
     }
 }
 
 void draw_spark_bidir(ncplane* n, int y, int x, int w,
                       const std::deque<double>& top_hist, uint32_t top_color,
                       const std::deque<double>& bot_hist, uint32_t bot_color) {
-    if (G.tty_active) {
-        draw_spark_bidir_tty(n, y, x, w, top_hist, top_color, bot_hist, bot_color);
-        return;
-    }
     if (w <= 0) return;
 
     auto visible_max = [&](const std::deque<double>& h) {
-        int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
         double m = 0.0;
-        for (int i = st; i < static_cast<int>(h.size()); ++i) m = std::max(m, h[i]);
+        for (int i = first_visible(h, w); i < static_cast<int>(h.size()); ++i) m = std::max(m, h[i]);
         return m;
     };
-    double max_v = std::max({ visible_max(top_hist), visible_max(bot_hist), 1.0 });
+    const double max_v = std::max({ visible_max(top_hist), visible_max(bot_hist), 1.0 });
 
-    const char* const* glyphs = (G.graph_style_idx == 1) ? SPARK_BRAILLE : SPARK;
-    // Bold only for braille (heavier dots); block glyphs stay regular.
-    const unsigned style = (G.graph_style_idx == 1) ? NCSTYLE_BOLD : NCSTYLE_NONE;
-
-    const char* const* glyphs_bot = !G.symbol_mirror_idx ? glyphs
-        : (G.graph_style_idx == 1 ? SPARK_BRAILLE_MIRROR : SPARK_MIRROR);
-
-    auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color,
-                        const char* const* glyphs) {
-        int st = (static_cast<int>(h.size()) > w) ? static_cast<int>(h.size()) - w : 0;
-        int drawn = static_cast<int>(h.size()) - st;
+    auto draw_row = [&](const std::deque<double>& h, int row, uint32_t color, const Ramp& ramp) {
+        const int st = first_visible(h, w);
+        const int drawn = static_cast<int>(h.size()) - st;
         for (int i = st, col = x; i < static_cast<int>(h.size()); ++i, ++col) {
-            double v   = std::max(0.0, std::min(max_v, h[i]));
-            int    idx = static_cast<int>(v / max_v * 7.0 + 0.5);
-            nc_set(n, color, style);
-            ncplane_putstr_yx(n, row, col, glyphs[std::max(0, std::min(7, idx))]);
+            const double v = std::clamp(h[i], 0.0, max_v);
+            const int idx  = std::clamp(static_cast<int>(v / max_v * (ramp.n - 1) + 0.5), 0, ramp.n - 1);
+            nc_set(n, color, spark_style());
+            ncplane_putstr_yx(n, row, col, ramp.glyphs[idx]);
         }
         nc_set(n, theme().BAR_EMPTY);
         for (int col = x + drawn; col < x + w; ++col)
-            ncplane_putstr_yx(n, row, col, BAR_BG);
+            ncplane_putstr_yx(n, row, col, empty_cell());
     };
-    draw_row(top_hist, y,     top_color, glyphs);
-    draw_row(bot_hist, y + 1, bot_color, glyphs_bot);
+    draw_row(top_hist, y,     top_color, spark_ramp(false));
+    draw_row(bot_hist, y + 1, bot_color, spark_ramp(true));
 }
 
 void draw_pair_header(ncplane* n, int y, int x, int w, const PairCols& c,

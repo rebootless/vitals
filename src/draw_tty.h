@@ -1,20 +1,8 @@
 #pragma once
 
 #include "colors.h"
-#include <deque>
-#include <string>
-#include <tuple>
-
-std::tuple<int,int,int,int>
-draw_box_tty(ncplane* n, int y, int x, int h, int w,
-            const std::string& title, const std::string& bl_label);
 
 void draw_bar_tty  (ncplane* n, int y, int x, int w, double fill, GradType gt);
-void draw_spark_tty(ncplane* n, int y, int x, int w, const std::deque<double>& hist);
-
-void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
-                          const std::deque<double>& top_hist, uint32_t top_color,
-                          const std::deque<double>& bot_hist, uint32_t bot_color);
 
 const char* glyph_down();  // "\xe2\x96\xbc" (▼) or "v"
 const char* glyph_up();    // "\xe2\x96\xb2" (▲) or "^"
