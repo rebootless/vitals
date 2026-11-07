@@ -8,7 +8,6 @@ namespace {
 struct ThermItem {
     std::string label;
     double      temp;
-    bool        featured;
     double      row_hi   = -1.0;
     double      row_crit = -1.0;
 };
@@ -68,7 +67,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     }
 
     auto draw_temp_row = [&](int r, const std::string& label,
-                             double temp, bool,
+                             double temp,
                              double row_hi, double row_crit) {
         if (r >= iy + ih - 1) return;
 
@@ -133,7 +132,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
             }
             if (s.is_package) continue; // the CPU group lists the cores only
             const auto [row_hi, row_crit] = hwmon_limits(s);
-            bucket->push_back({lbl, s.temp_celsius, s.is_package, row_hi, row_crit});
+            bucket->push_back({lbl, s.temp_celsius, row_hi, row_crit});
         }
     }
 
@@ -141,13 +140,13 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
     if (hwmon.empty()) {
         for (const auto& z : zones) {
             const auto [zone_hi, zone_crit] = thermal_trip_limits(z.zone);
-            zone_items.push_back({thermal_zone_type(z.zone), z.temperature_celsius, false, zone_hi, zone_crit});
+            zone_items.push_back({thermal_zone_type(z.zone), z.temperature_celsius, zone_hi, zone_crit});
         }
     }
 
     std::vector<ThermItem> gpu_items;
     if (!gpus.empty() && gpus.front().temp_c >= 0)
-        gpu_items.push_back({"GPU 00", gpus.front().temp_c, false, -1.0, -1.0});
+        gpu_items.push_back({"GPU 00", gpus.front().temp_c, -1.0, -1.0});
 
     sort_thermistors(mobo_items);
 
@@ -194,7 +193,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
             const std::string prefix = last ? "\xe2\x94\x94\xe2\x94\x80"
                                             : "\xe2\x94\x9c\xe2\x94\x80";
             const auto& it = g.items[i];
-            draw_temp_row(row++, prefix + it.label, it.temp, it.featured, it.row_hi, it.row_crit);
+            draw_temp_row(row++, prefix + it.label, it.temp, it.row_hi, it.row_crit);
         }
     }
 

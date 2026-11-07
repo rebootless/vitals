@@ -5,7 +5,6 @@
 #include "gpu.h"
 
 void panel_cpu    (ncplane* n, int y, int x, int h, int w,
-                   const cpustat&              cur,
                    double                      pct,
                    const std::vector<cpufreq>& freqs,
                    const std::vector<double>&  core_pcts);

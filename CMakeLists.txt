@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 1.2.1 LANGUAGES CXX)
+project(vitals VERSION 1.2.2 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -74,11 +74,6 @@ target_link_libraries(notcurses-core-static PRIVATE ZLIB::ZLIB)
 target_link_libraries(vitals PRIVATE
     notcurses-static
 )
-
-# GCC < 9 keeps std::filesystem in libstdc++fs
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.1)
-    target_link_libraries(vitals PRIVATE stdc++fs)
-endif()
 
 target_compile_options(vitals PRIVATE
     -Wall

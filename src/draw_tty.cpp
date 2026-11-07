@@ -132,5 +132,4 @@ void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
 
 const char* glyph_down() { return G.tty_active ? "v" : "\xe2\x96\xbc"; }
 const char* glyph_up()   { return G.tty_active ? "^" : "\xe2\x96\xb2"; }
-const char* glyph_dash() { return G.tty_active ? "-" : "\xe2\x80\x94"; }
 const char* deg_suffix() { return G.tty_active ? "C" : "\xc2\xb0" "C"; }

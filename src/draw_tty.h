@@ -18,5 +18,4 @@ void draw_spark_bidir_tty(ncplane* n, int y, int x, int w,
 
 const char* glyph_down();  // "\xe2\x96\xbc" (▼) or "v"
 const char* glyph_up();    // "\xe2\x96\xb2" (▲) or "^"
-const char* glyph_dash();  // "\xe2\x80\x94" (—) or "-"
 const char* deg_suffix();  // "\xc2\xb0" "C" (°C) or "C"

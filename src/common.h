@@ -2,11 +2,6 @@
 
 #include "notcurses/include/notcurses/notcurses.h"
 
-#include <ifaddrs.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <dirent.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cctype>
@@ -15,9 +10,7 @@
 #include <cstring>
 #include <ctime>
 #include <deque>
-#include <fstream>
 #include <map>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <vector>

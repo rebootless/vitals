@@ -2,7 +2,6 @@
 #include "layout.h"
 
 void render(notcurses* nc, ncplane* n,
-            const cpustat&                cur_cpu,
             double                        cpu_pct,
             const std::vector<netdev>&    cur_net,
             const std::vector<diskstats>& cur_disk,
@@ -30,7 +29,7 @@ void render(notcurses* nc, ncplane* n,
     const Layout L = compute_layout(rows, cols, gpus, panel_visibility(G.panel_mode, G.panel_avail));
 
     if (const Rect& a = L.panel[P_CPU]; a.h > 0)
-        panel_cpu(n, a.y, a.x, a.h, a.w, cur_cpu, cpu_pct, freqs, core_pcts);
+        panel_cpu(n, a.y, a.x, a.h, a.w, cpu_pct, freqs, core_pcts);
     if (const Rect& a = L.panel[P_GPU]; a.h > 0)
         panel_gpu(n, a.y, a.x, a.h, a.w, gpus);
     if (const Rect& a = L.panel[P_MEMORY]; a.h > 0)

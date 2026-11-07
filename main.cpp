@@ -193,7 +193,6 @@ int main(int argc, char** argv) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    cpustat                last_cpu{};
     double                 last_pct = 0.0;
     std::vector<netdev>    last_net;
     std::vector<diskstats> last_disk;
@@ -499,7 +498,6 @@ int main(int argc, char** argv) {
             if (static_cast<int>(G.disk_wr_hist.size()) > HIST_CAP)
                 G.disk_wr_hist.pop_front();
 
-            last_cpu       = cur_cpu;
             last_pct       = pct;
             last_net       = cur_net;
             last_disk      = cur_disk;
@@ -531,7 +529,7 @@ int main(int argc, char** argv) {
         }
 
         if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
-            render(nc, n, last_cpu, last_pct, last_net, last_disk,
+            render(nc, n, last_pct, last_net, last_disk,
                   last_therm, last_freqs, last_core_pcts, last_hwmon, G.gpus,
                   last_net_rx, last_net_tx, last_disk_rd, last_disk_wr);
 
