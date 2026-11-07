@@ -171,7 +171,7 @@ void panel_settings(ncplane* n, int rows, int cols) {
             const std::string t = " " + l.text + " ";
             ncplane_putstr_yx(n, r, right_x, str_trunc(t, text_w).c_str());
             const int used = static_cast<int>(str_trunc(t, text_w).size());
-            nc_set(n, theme().BORDER, NCSTYLE_NONE);
+            nc_set(n, theme().MUTED, NCSTYLE_NONE);
             for (int c = used; c < text_w; ++c) ncplane_putstr_yx(n, r, right_x + c, "-");
             break;
         }
