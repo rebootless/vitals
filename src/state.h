@@ -35,6 +35,19 @@ struct FanInfo {
     int         pct = -1;
 };
 
+// the last tick's results that are not kept elsewhere in AppState
+struct Sample {
+    double                 cpu_pct = 0.0;
+    std::vector<netdev>    net;
+    std::vector<diskstats> disk;
+    std::vector<thermal>   therm;
+    std::vector<cpufreq>   freqs;
+    std::vector<double>    core_pcts;
+    std::vector<HwmonChip> hwmon;
+    std::map<std::string, double> net_rx, net_tx;   // bytes/s per interface
+    std::map<std::string, double> disk_rd, disk_wr; // bytes/s per device
+};
+
 struct AppState {
     cpustat                prev_cpu  = {};
     std::vector<cpustat>   prev_core;
@@ -60,6 +73,7 @@ struct AppState {
     loadavg                load      = {};
     filesystemstat         root_fs   = {};
     std::string            local_ip  = "N/A";
+    Sample                 last;
 
     std::vector<GpuInfo>   gpus;
     std::vector<FanInfo>   fans;

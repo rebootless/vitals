@@ -1,19 +1,9 @@
 #include "render.h"
 #include "layout.h"
 
-void render(notcurses* nc, ncplane* n,
-            double                        cpu_pct,
-            const std::vector<netdev>&    cur_net,
-            const std::vector<diskstats>& cur_disk,
-            const std::vector<thermal>&   therm,
-            const std::vector<cpufreq>&   freqs,
-            const std::vector<double>&    core_pcts,
-            const std::vector<HwmonChip>& hwmon,
-            const std::vector<GpuInfo>&   gpus,
-            const std::map<std::string, double>& net_rx_rate,
-            const std::map<std::string, double>& net_tx_rate,
-            const std::map<std::string, double>& disk_rd_rate,
-            const std::map<std::string, double>& disk_wr_rate) {
+void render(notcurses* nc, ncplane* n) {
+    const Sample& s = G.last;
+    const std::vector<GpuInfo>& gpus = G.gpus;
 
     nc_bg_apply(n);
     ncplane_erase(n);
@@ -29,17 +19,17 @@ void render(notcurses* nc, ncplane* n,
     const Layout L = compute_layout(rows, cols, gpus, panel_visibility(G.opt.panels, G.panel_avail));
 
     if (const Rect& a = L.panel[P_CPU]; a.h > 0)
-        panel_cpu(n, a.y, a.x, a.h, a.w, cpu_pct, freqs, core_pcts);
+        panel_cpu(n, a.y, a.x, a.h, a.w, s.cpu_pct, s.freqs, s.core_pcts);
     if (const Rect& a = L.panel[P_GPU]; a.h > 0)
         panel_gpu(n, a.y, a.x, a.h, a.w, gpus);
     if (const Rect& a = L.panel[P_MEMORY]; a.h > 0)
         panel_memory(n, a.y, a.x, a.h, a.w);
     if (const Rect& a = L.panel[P_NETWORK]; a.h > 0)
-        panel_network(n, a.y, a.x, a.h, a.w, cur_net, net_rx_rate, net_tx_rate);
+        panel_network(n, a.y, a.x, a.h, a.w, s.net, s.net_rx, s.net_tx);
     if (const Rect& a = L.panel[P_STORAGE]; a.h > 0)
-        panel_storage(n, a.y, a.x, a.h, a.w, cur_disk, disk_rd_rate, disk_wr_rate);
+        panel_storage(n, a.y, a.x, a.h, a.w, s.disk, s.disk_rd, s.disk_wr);
     if (const Rect& a = L.panel[P_THERMAL]; a.h > 0)
-        panel_thermal(n, a.y, a.x, a.h, a.w, therm, hwmon, gpus);
+        panel_thermal(n, a.y, a.x, a.h, a.w, s.therm, s.hwmon, gpus);
     if (const Rect& a = L.panel[P_FAN]; a.h > 0)
         panel_fan(n, a.y, a.x, a.h, a.w);
 
