@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)  # notcurses requires 3.21
 
-project(vitals VERSION 1.2.9 LANGUAGES CXX)
+project(vitals VERSION 1.3.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -73,6 +73,12 @@ target_compile_definitions(vitals PRIVATE
 # notcurses v3.0.17 doesn't pass zlib on to its static library
 find_package(ZLIB REQUIRED)
 target_link_libraries(notcurses-core-static PRIVATE ZLIB::ZLIB)
+
+# stdc++fs for GCC 8.5 AlmaLinux 8 (RHEL 8)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    target_link_libraries(vitals PRIVATE stdc++fs)
+endif()
 
 target_link_libraries(vitals PRIVATE
     notcurses-static
