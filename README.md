@@ -14,7 +14,7 @@
 
 [![Debian](https://img.shields.io/badge/Debian-12%20%7C%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com)
-[![Fedora](https://img.shields.io/badge/Fedora-43%20%7C%2044-51A2DA?logo=fedora&logoColor=white)](https://fedoraproject.org)
+[![Fedora](https://img.shields.io/badge/Fedora-43%20%7C%2044%20%7C%2045-51A2DA?logo=fedora&logoColor=white)](https://fedoraproject.org)
 [![AlmaLinux](https://img.shields.io/badge/AlmaLinux-8%20%7C%209%20%7C%2010-0095D5?logo=almalinux&logoColor=white)](https://almalinux.org)
 [![openSUSE](https://img.shields.io/badge/openSUSE-Tumbleweed%20%7C%20Leap%2016.0-73BA25?logo=opensuse&logoColor=white)](https://www.opensuse.org)
 [![Arch Linux](https://img.shields.io/badge/Arch%20Linux-Rolling-1793D1?logo=archlinux&logoColor=white)](https://archlinux.org)
@@ -28,6 +28,7 @@
 [![Ubuntu 26.04](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Ubuntu%2026.04%20%28Resolute%29&label=Ubuntu%2026.04)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Fedora 43](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2043&label=Fedora%2043)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Fedora 44](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2044&label=Fedora%2044)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Fedora 45](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Fedora%2045&label=Fedora%2045)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 8](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%208%20%28RHEL%208%29&label=AlmaLinux%208)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 9](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%209%20%28RHEL%209%29&label=AlmaLinux%209)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%2010%20%28RHEL%2010%29&label=AlmaLinux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
