@@ -16,6 +16,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com)
 [![Fedora](https://img.shields.io/badge/Fedora-43%20%7C%2044%20%7C%2045-51A2DA?logo=fedora&logoColor=white)](https://fedoraproject.org)
 [![AlmaLinux](https://img.shields.io/badge/AlmaLinux-8%20%7C%209%20%7C%2010-0095D5?logo=almalinux&logoColor=white)](https://almalinux.org)
+[![Rocky Linux](https://img.shields.io/badge/Rocky%20Linux-8%20%7C%209%20%7C%2010-10B981?logo=rockylinux&logoColor=white)](https://rockylinux.org)
 [![openSUSE](https://img.shields.io/badge/openSUSE-Tumbleweed%20%7C%20Leap%2016.0-73BA25?logo=opensuse&logoColor=white)](https://www.opensuse.org)
 [![Arch Linux](https://img.shields.io/badge/Arch%20Linux-Rolling-1793D1?logo=archlinux&logoColor=white)](https://archlinux.org)
 
@@ -32,6 +33,9 @@
 [![AlmaLinux 8](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%208%20%28RHEL%208%29&label=AlmaLinux%208)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 9](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%209%20%28RHEL%209%29&label=AlmaLinux%209)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![AlmaLinux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=AlmaLinux%2010%20%28RHEL%2010%29&label=AlmaLinux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Rocky Linux 8](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Rocky%20Linux%208%20%28RHEL%208%29&label=Rocky%20Linux%208)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Rocky Linux 9](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Rocky%20Linux%209%20%28RHEL%209%29&label=Rocky%20Linux%209)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
+[![Rocky Linux 10](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Rocky%20Linux%2010%20%28RHEL%2010%29&label=Rocky%20Linux%2010)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![openSUSE Tumbleweed](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Tumbleweed&label=openSUSE%20Tumbleweed)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![openSUSE Leap 16.0](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=openSUSE%20Leap%2016.0&label=openSUSE%20Leap%2016.0)](https://github.com/rebootless/vitals/actions/workflows/build.yml)
 [![Arch Linux](https://img.shields.io/github/check-runs/rebootless/vitals/main?nameFilter=Arch%20Linux&label=Arch%20Linux)](https://github.com/rebootless/vitals/actions/workflows/build.yml)

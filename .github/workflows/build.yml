@@ -35,6 +35,9 @@ jobs:
           - { name: "AlmaLinux 8 (RHEL 8)",    image: "almalinux:8" }
           - { name: "AlmaLinux 9 (RHEL 9)",    image: "almalinux:9" }
           - { name: "AlmaLinux 10 (RHEL 10)",  image: "almalinux:10" }
+          - { name: "Rocky Linux 8 (RHEL 8)",  image: "rockylinux/rockylinux:8" }
+          - { name: "Rocky Linux 9 (RHEL 9)",  image: "rockylinux/rockylinux:9" }
+          - { name: "Rocky Linux 10 (RHEL 10)", image: "rockylinux/rockylinux:10" }
           - { name: "openSUSE Tumbleweed",     image: "opensuse/tumbleweed:latest" }
           - { name: "openSUSE Leap 16.0",      image: "opensuse/leap:16.0" }
           - { name: "Arch Linux",              image: "archlinux:latest" }
