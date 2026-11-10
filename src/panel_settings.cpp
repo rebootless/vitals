@@ -62,6 +62,8 @@ std::vector<Line> build_lines() {
     block("User data", F_CLEAR_LOGS);
     stepper("Clear logs: ", std::string("[") + (G.opt.clear_logs ? glyph_check() : " ") + "]", F_CLEAR_LOGS);
     note("(Irreversible action)", F_CLEAR_LOGS);
+    stepper("Reset settings: ", std::string("[") + (G.opt.reset_settings ? glyph_check() : " ") + "]", F_RESET_SETTINGS);
+    note("(Irreversible action)", F_RESET_SETTINGS);
 
     blank();
     block("Panels", F_PANELS);

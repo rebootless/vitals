@@ -51,14 +51,19 @@ void discard_settings() {
 }
 
 void save_settings() {
+    const bool clear_logs = G.opt.clear_logs;
+    if (G.opt.reset_settings) {
+        G.opt        = settings_from_config(Config{});
+        G.tty_active = resolve_tty_active(G.opt.tty_force);
+        LOG_INFO("ui", "settings reset to defaults");
+    }
+    G.opt.clear_logs = false;
+
     const Config cfg = config_from_settings(G.opt);
     save_config(cfg);
     log_set_max_mb(cfg.log_size_mb);
     log_set_keep(cfg.log_keep);
-    if (G.opt.clear_logs) {
-        log_clear();
-        G.opt.clear_logs = false;
-    }
+    if (clear_logs) log_clear();
     G.settings_open = false;
     LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d log_size=%d log_keep=%d corners=%s graph=%s mirroring=%d",
              cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
@@ -86,7 +91,8 @@ void change_value(int dir) {
     case F_LOG_SIZE:
         s.log_mb = LOG_SIZE_STEPS[std::clamp(nearest_step(LOG_SIZE_STEPS, LOG_SIZE_STEPS_N, s.log_mb) - dir, 0, LOG_SIZE_STEPS_N - 1)];
         break;
-    case F_CLEAR_LOGS: s.clear_logs = !s.clear_logs; break;
+    case F_CLEAR_LOGS:     s.clear_logs     = !s.clear_logs;     break;
+    case F_RESET_SETTINGS: s.reset_settings = !s.reset_settings; break;
     case F_LOG_COUNT:
         s.log_keep = LOG_COUNT_STEPS[std::clamp(nearest_step(LOG_COUNT_STEPS, LOG_COUNT_STEPS_N, s.log_keep) - dir, 0, LOG_COUNT_STEPS_N - 1)];
         break;
@@ -107,8 +113,8 @@ void settings_key(uint32_t ch) {
         m = (m == PanelMode::On)   ? PanelMode::Auto
           : (m == PanelMode::Auto) ? PanelMode::Off
                                    : PanelMode::On;
-    } else if (ch == ' ' && G.settings_focus == F_CLEAR_LOGS) {
-        G.opt.clear_logs = !G.opt.clear_logs;
+    } else if (ch == ' ' && (G.settings_focus == F_CLEAR_LOGS || G.settings_focus == F_RESET_SETTINGS)) {
+        change_value(+1);
     } else if (ch == NCKEY_UP) {
         change_value(-1);
     } else if (ch == NCKEY_DOWN) {
