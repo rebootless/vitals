@@ -81,7 +81,7 @@ void log_open() {
     const time_t now = time(nullptr);
     tm lt{};
     localtime_r(&now, &lt);
-    std::strftime(name, sizeof(name), "%m-%d-%Y.log", &lt);
+    std::strftime(name, sizeof(name), "%m-%d-%Y_%H-%M-%S.log", &lt);
     const std::string path = dir + "/" + name;
 
     // lock before truncating: a second instance must not wipe the first one's log

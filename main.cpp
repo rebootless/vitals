@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
                 printf("Settings, log and your themes: unavailable (HOME is not set)\n");
             } else {
                 printf("Settings:       %s\n", config_path().c_str());
-                printf("Log:            %s/MM-DD-YYYY.log\n", cfg.c_str());
+                printf("Log:            %s/MM-DD-YYYY_HH-MM-SS.log\n", cfg.c_str());
                 printf("User themes:    %s/themes\n", cfg.c_str());
             }
             printf("Bundled Themes: %s\n", system_theme_dir().c_str());

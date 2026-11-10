@@ -4,7 +4,7 @@
 
 enum class LogLevel { Debug, Info, Warn, Error };
 
-// Opens <config dir>/MM-DD-YYYY.log and truncates it. Logging stays off when the file
+// Opens <config dir>/MM-DD-YYYY_HH-MM-SS.log and truncates it. Logging stays off when the file
 // can't be created or another running instance holds it.
 void log_open();
 void log_close();

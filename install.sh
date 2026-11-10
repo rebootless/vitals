@@ -10,7 +10,7 @@ BUILD_DIR="$(mktemp -d /tmp/vitals-build.XXXXXX)"
 
 # only for summary - not used actually
 SETTINGS_FILE="${HOME}/.config/vitals/config.conf"
-LOG_FILE="${HOME}/.config/vitals/MM-DD-YYYY.log"
+LOG_FILE="${HOME}/.config/vitals/MM-DD-YYYY_HH-MM-SS.log"
 USER_THEMES_DIR="${HOME}/.config/vitals/themes"
 BUNDLED_THEMES_DIR="/usr/local/share/vitals/themes"
 
