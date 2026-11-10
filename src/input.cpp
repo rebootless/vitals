@@ -18,6 +18,9 @@ const int REFRESH_STEPS_N = sizeof(REFRESH_STEPS) / sizeof(REFRESH_STEPS[0]);
 const int LOG_SIZE_STEPS[] = { 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 };
 const int LOG_SIZE_STEPS_N = sizeof(LOG_SIZE_STEPS) / sizeof(LOG_SIZE_STEPS[0]);
 
+const int LOG_COUNT_STEPS[] = { 1, 3, 5, 10, 20, 50 };
+const int LOG_COUNT_STEPS_N = sizeof(LOG_COUNT_STEPS) / sizeof(LOG_COUNT_STEPS[0]);
+
 int nearest_step(const int* steps, int n, int value) {
     int best = 0;
     int best_diff = std::abs(steps[0] - value);
@@ -51,10 +54,11 @@ void save_settings() {
     const Config cfg = config_from_settings(G.opt);
     save_config(cfg);
     log_set_max_mb(cfg.log_size_mb);
+    log_set_keep(cfg.log_keep);
     G.settings_open = false;
-    LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d log_size=%d corners=%s graph=%s mirroring=%d",
+    LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d log_size=%d log_keep=%d corners=%s graph=%s mirroring=%d",
              cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-             cfg.log_size_mb, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+             cfg.log_size_mb, cfg.log_keep, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
 }
 
 // up/down changes the value of the focused group; dir is -1 for up, +1 for down
@@ -77,6 +81,9 @@ void change_value(int dir) {
         break;
     case F_LOG_SIZE:
         s.log_mb = LOG_SIZE_STEPS[std::clamp(nearest_step(LOG_SIZE_STEPS, LOG_SIZE_STEPS_N, s.log_mb) - dir, 0, LOG_SIZE_STEPS_N - 1)];
+        break;
+    case F_LOG_COUNT:
+        s.log_keep = LOG_COUNT_STEPS[std::clamp(nearest_step(LOG_COUNT_STEPS, LOG_COUNT_STEPS_N, s.log_keep) - dir, 0, LOG_COUNT_STEPS_N - 1)];
         break;
     default: // refresh: up is a longer interval
         s.refresh_ms = REFRESH_STEPS[std::clamp(nearest_step(REFRESH_STEPS, REFRESH_STEPS_N, s.refresh_ms) - dir, 0, REFRESH_STEPS_N - 1)];

@@ -55,6 +55,8 @@ std::vector<Line> build_lines() {
     blank();
     block("Log", F_LOG_SIZE);
     stepper("Log size: ", std::to_string(G.opt.log_mb) + "mb", F_LOG_SIZE);
+    stepper("Log count: ", std::to_string(G.opt.log_keep), F_LOG_COUNT);
+    note("(Oldest logs get deleted)", F_LOG_COUNT);
 
     blank();
     block("Panels", F_PANELS);

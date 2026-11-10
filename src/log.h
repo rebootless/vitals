@@ -14,6 +14,9 @@ const std::string& log_path();
 
 void log_set_max_mb(int mb);
 
+// keeps the newest `keep` .log files in the config dir (this run's included) and deletes the rest
+void log_set_keep(int keep);
+
 void log_write(LogLevel level, const char* tag, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
 

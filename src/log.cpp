@@ -2,6 +2,7 @@
 #include "console.h"
 #include "paths.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <cerrno>
 #include <cstdio>
@@ -15,6 +16,8 @@
 #include <sys/file.h>
 #include <system_error>
 #include <unistd.h>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -62,6 +65,34 @@ void write_line(const std::string& line) {
 
     const ssize_t n = write(g_fd, line.data(), line.size());
     if (n > 0) g_bytes += n;
+}
+
+// the caller holds g_mutex; returns how many files were removed
+int prune_logs(int keep) {
+    namespace fs = std::filesystem;
+
+    const std::string dir = config_dir();
+    if (dir.empty()) return 0;
+
+    std::error_code ec;
+    std::vector<std::pair<fs::file_time_type, fs::path>> files;
+    for (const auto& e : fs::directory_iterator(dir, ec)) {
+        std::error_code fec;
+        if (!e.is_regular_file(fec) || e.path().extension() != ".log" || e.path() == g_path) continue;
+        const auto t = e.last_write_time(fec);
+        if (!fec) files.emplace_back(t, e.path());
+    }
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+
+    const size_t slots = static_cast<size_t>(std::max(0, keep - (g_path.empty() ? 0 : 1)));
+    int removed = 0;
+    for (size_t i = slots; i < files.size(); ++i) {
+        const int fd = open(files[i].second.c_str(), O_RDONLY | O_CLOEXEC);
+        if (fd < 0) continue;
+        if (flock(fd, LOCK_EX | LOCK_NB) == 0 && fs::remove(files[i].second, ec)) ++removed;
+        close(fd);
+    }
+    return removed;
 }
 
 }
@@ -115,6 +146,15 @@ void log_set_max_mb(int mb) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_max_bytes = static_cast<long long>(mb) * 1024 * 1024;
     if (g_bytes < g_max_bytes) g_full = false;
+}
+
+void log_set_keep(int keep) {
+    int removed = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        removed = prune_logs(keep);
+    }
+    if (removed > 0) LOG_INFO("log", "removed %d old log file(s), keeping %d", removed, keep);
 }
 
 void log_close() {

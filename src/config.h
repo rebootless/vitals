@@ -10,6 +10,7 @@ struct Config {
     std::string tty_mode    = "auto";
     int         refresh_ms  = 1000;
     int         log_size_mb = 32;
+    int         log_keep    = 10;
     std::string corners     = "square";
     std::string graph_style = "sparkline";
     bool        symbol_mirroring = false;
