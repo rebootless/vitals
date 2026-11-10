@@ -59,6 +59,11 @@ std::vector<Line> build_lines() {
     note("(Oldest logs get deleted)", F_LOG_COUNT);
 
     blank();
+    block("User data", F_CLEAR_LOGS);
+    stepper("Clear logs: ", std::string("[") + (G.opt.clear_logs ? glyph_check() : " ") + "]", F_CLEAR_LOGS);
+    note("(Irreversible action)", F_CLEAR_LOGS);
+
+    blank();
     block("Panels", F_PANELS);
     for (int i = 0; i < PANEL_N; ++i) {
         const size_t    k    = static_cast<size_t>(i);

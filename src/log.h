@@ -17,6 +17,9 @@ void log_set_max_mb(int mb);
 // keeps the newest `keep` .log files in the config dir (this run's included) and deletes the rest
 void log_set_keep(int keep);
 
+// deletes every .log file in the config dir except this run's
+void log_clear();
+
 void log_write(LogLevel level, const char* tag, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
 

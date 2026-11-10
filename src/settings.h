@@ -11,6 +11,7 @@ struct Settings {
     int        refresh_ms = 1000;
     int        log_mb     = 32;
     int        log_keep   = 10;
+    bool       clear_logs = false;   // one-shot: runs on save, never persisted
     bool       rounded    = false;
     bool       braille    = false;
     bool       mirror     = false;   // symbol mirroring
@@ -18,7 +19,7 @@ struct Settings {
 };
 
 // the overlay's option groups
-enum Focus { F_THEME, F_BG, F_TERMINAL, F_CORNERS, F_GRAPH, F_MIRROR, F_PANELS, F_REFRESH, F_LOG_SIZE, F_LOG_COUNT };
+enum Focus { F_THEME, F_BG, F_TERMINAL, F_CORNERS, F_GRAPH, F_MIRROR, F_PANELS, F_REFRESH, F_LOG_SIZE, F_LOG_COUNT, F_CLEAR_LOGS };
 
 // Tab visits the groups in the order they appear on screen
-inline constexpr int SETTINGS_TAB_ORDER[10] = { F_THEME, F_BG, F_CORNERS, F_GRAPH, F_MIRROR, F_TERMINAL, F_REFRESH, F_LOG_SIZE, F_LOG_COUNT, F_PANELS };
+inline constexpr int SETTINGS_TAB_ORDER[11] = { F_THEME, F_BG, F_CORNERS, F_GRAPH, F_MIRROR, F_TERMINAL, F_REFRESH, F_LOG_SIZE, F_LOG_COUNT, F_CLEAR_LOGS, F_PANELS };

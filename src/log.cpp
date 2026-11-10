@@ -157,6 +157,15 @@ void log_set_keep(int keep) {
     if (removed > 0) LOG_INFO("log", "removed %d old log file(s), keeping %d", removed, keep);
 }
 
+void log_clear() {
+    int removed = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        removed = prune_logs(g_path.empty() ? 0 : 1);
+    }
+    LOG_INFO("log", "cleared %d old log file(s) on request", removed);
+}
+
 void log_close() {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_fd >= 0) close(g_fd);
