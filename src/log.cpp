@@ -24,6 +24,7 @@ long long g_max_bytes = 32LL * 1024 * 1024;
 std::mutex  g_mutex;
 int         g_fd    = -1;
 long long   g_bytes = 0;
+bool        g_full  = false;
 std::string g_path;
 
 const char* level_name(LogLevel l) {
@@ -50,13 +51,13 @@ std::string timestamp() {
 
 // the caller holds g_mutex
 void write_line(const std::string& line) {
-    if (g_fd < 0) return;
+    if (g_fd < 0 || g_full) return;
 
     if (g_bytes + static_cast<long long>(line.size()) > g_max_bytes) {
-        if (ftruncate(g_fd, 0) != 0) { close(g_fd); g_fd = -1; return; }
-        g_bytes = 0;
-        const std::string note = timestamp() + " INFO  [log] size limit reached, file restarted\n";
+        g_full = true;
+        const std::string note = timestamp() + " WARN  [log] size limit reached, logging stopped\n";
         if (write(g_fd, note.data(), note.size()) > 0) g_bytes += static_cast<long long>(note.size());
+        return;
     }
 
     const ssize_t n = write(g_fd, line.data(), line.size());
@@ -103,6 +104,7 @@ void log_open() {
 
     g_fd    = fd;
     g_bytes = 0;
+    g_full  = false;
     g_path  = path;
     con_set_log_path(path.c_str());
 }
@@ -112,6 +114,7 @@ const std::string& log_path() { return g_path; }
 void log_set_max_mb(int mb) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_max_bytes = static_cast<long long>(mb) * 1024 * 1024;
+    if (g_bytes < g_max_bytes) g_full = false;
 }
 
 void log_close() {
