@@ -81,6 +81,7 @@ int main(int argc, char** argv) {
 
     con_stage("config");
     G.opt        = settings_from_config(load_config());
+    log_set_max_mb(G.opt.log_mb);
     G.tty_active = resolve_tty_active(G.opt.tty_force);
 
     report_config();

@@ -15,11 +15,14 @@ const int REFRESH_STEPS[] = {
 };
 const int REFRESH_STEPS_N = sizeof(REFRESH_STEPS) / sizeof(REFRESH_STEPS[0]);
 
-int refresh_step_index() {
+const int LOG_SIZE_STEPS[] = { 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 };
+const int LOG_SIZE_STEPS_N = sizeof(LOG_SIZE_STEPS) / sizeof(LOG_SIZE_STEPS[0]);
+
+int nearest_step(const int* steps, int n, int value) {
     int best = 0;
-    int best_diff = std::abs(REFRESH_STEPS[0] - G.opt.refresh_ms);
-    for (int i = 1; i < REFRESH_STEPS_N; ++i) {
-        int diff = std::abs(REFRESH_STEPS[i] - G.opt.refresh_ms);
+    int best_diff = std::abs(steps[0] - value);
+    for (int i = 1; i < n; ++i) {
+        int diff = std::abs(steps[i] - value);
         if (diff < best_diff) { best = i; best_diff = diff; }
     }
     return best;
@@ -47,10 +50,11 @@ void discard_settings() {
 void save_settings() {
     const Config cfg = config_from_settings(G.opt);
     save_config(cfg);
+    log_set_max_mb(cfg.log_size_mb);
     G.settings_open = false;
-    LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
+    LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d log_size=%d corners=%s graph=%s mirroring=%d",
              cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-             cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+             cfg.log_size_mb, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
 }
 
 // up/down changes the value of the focused group; dir is -1 for up, +1 for down
@@ -71,8 +75,11 @@ void change_value(int dir) {
     case F_PANELS:
         G.settings_panel_cursor = wrap(G.settings_panel_cursor + dir, PANEL_N);
         break;
+    case F_LOG_SIZE:
+        s.log_mb = LOG_SIZE_STEPS[std::clamp(nearest_step(LOG_SIZE_STEPS, LOG_SIZE_STEPS_N, s.log_mb) - dir, 0, LOG_SIZE_STEPS_N - 1)];
+        break;
     default: // refresh: up is a longer interval
-        s.refresh_ms = REFRESH_STEPS[std::clamp(refresh_step_index() - dir, 0, REFRESH_STEPS_N - 1)];
+        s.refresh_ms = REFRESH_STEPS[std::clamp(nearest_step(REFRESH_STEPS, REFRESH_STEPS_N, s.refresh_ms) - dir, 0, REFRESH_STEPS_N - 1)];
         break;
     }
 }

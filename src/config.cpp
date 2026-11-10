@@ -58,13 +58,21 @@ Config load_config() {
             } catch (...) {
                 LOG_WARN("config", "line %d: invalid refresh_ms \"%s\"", lineno, val.c_str());
             }
+        } else if (key == "log_size_mb") {
+            try {
+                int v = std::stoi(val);
+                cfg.log_size_mb = std::max(2, std::min(1024, v));
+                if (cfg.log_size_mb != v) LOG_WARN("config", "log_size_mb=%d is out of range, using %d", v, cfg.log_size_mb);
+            } catch (...) {
+                LOG_WARN("config", "line %d: invalid log_size_mb \"%s\"", lineno, val.c_str());
+            }
         } else {
             LOG_WARN("config", "line %d: unknown key \"%s\"", lineno, key.c_str());
         }
     }
-    LOG_INFO("config", "read %s: theme=%s background=%s terminal=%s refresh=%d corners=%s graph=%s mirroring=%d",
+    LOG_INFO("config", "read %s: theme=%s background=%s terminal=%s refresh=%d log_size=%d corners=%s graph=%s mirroring=%d",
              path.c_str(), cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-             cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+             cfg.log_size_mb, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
     return cfg;
 }
 
@@ -75,7 +83,8 @@ Settings settings_from_config(const Config& cfg) {
     s.solid_bg   = (cfg.bg_mode == "solid");
     s.tty_force  = tty_force_from_string(cfg.tty_mode);
     s.refresh_ms = cfg.refresh_ms;
-    s.rounded    = (cfg.corners == "rounded");
+    s.log_mb     = cfg.log_size_mb;
+    s.rounded   = (cfg.corners == "rounded");
     s.braille    = (cfg.graph_style == "braille");
     s.mirror     = cfg.symbol_mirroring;
     s.panels     = cfg.panels;
@@ -88,7 +97,8 @@ Config config_from_settings(const Settings& s) {
     cfg.bg_mode          = s.solid_bg ? "solid" : "transparent";
     cfg.tty_mode         = tty_force_to_string(s.tty_force);
     cfg.refresh_ms       = s.refresh_ms;
-    cfg.corners          = s.rounded ? "rounded" : "square";
+    cfg.log_size_mb      = s.log_mb;
+    cfg.corners         = s.rounded ? "rounded" : "square";
     cfg.graph_style      = s.braille ? "braille" : "sparkline";
     cfg.symbol_mirroring = s.mirror;
     cfg.panels           = s.panels;
@@ -123,6 +133,7 @@ void save_config(const Config& cfg) {
         f << "background=" << cfg.bg_mode << "\n";
         f << "terminal=" << cfg.tty_mode << "\n";
         f << "refresh_ms=" << cfg.refresh_ms << "\n";
+        f << "log_size_mb=" << cfg.log_size_mb << "\n";
         f << "corners=" << cfg.corners << "\n";
         f << "graph_style=" << cfg.graph_style << "\n";
         f << "symbol_mirroring=" << (cfg.symbol_mirroring ? "true" : "false") << "\n";

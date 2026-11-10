@@ -12,6 +12,8 @@ void log_close();
 // the open log file; empty while logging is off
 const std::string& log_path();
 
+void log_set_max_mb(int mb);
+
 void log_write(LogLevel level, const char* tag, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
 

@@ -11,11 +11,12 @@ const char* GRAPH_STYLE_NAMES[2] = { "Sparkline", "Braille" };
 const char* MIRROR_NAMES[2] = { "Symbol Mirroring: False", "Symbol Mirroring: True" };
 
 // One line of the right-hand column; the whole column is built first so it can be scrolled
-enum class Kind { Blank, Block, Header, Note, Option, PanelRow, Refresh };
+enum class Kind { Blank, Block, Header, Note, Option, PanelRow, Stepper };
 
 struct Line {
     Kind        kind  = Kind::Blank;
     std::string text;
+    std::string value;
     int         group = -1;     // focus id this line belongs to
     bool        selected = false;
     bool        dim      = false;
@@ -29,6 +30,9 @@ std::vector<Line> build_lines() {
     auto note   = [&](const char* t, int group) { Line l; l.kind = Kind::Note; l.text = t; l.group = group; v.push_back(l); };
     auto option = [&](const char* t, int group, bool sel) {
         Line l; l.kind = Kind::Option; l.text = t; l.group = group; l.selected = sel; v.push_back(l);
+    };
+    auto stepper = [&](const char* t, const std::string& val, int group) {
+        Line l; l.kind = Kind::Stepper; l.text = t; l.value = val; l.group = group; v.push_back(l);
     };
 
     block("Appearance");
@@ -46,7 +50,11 @@ std::vector<Line> build_lines() {
     block("Behavior");
     header("Terminal", F_TERMINAL);
     for (int i = 0; i < 3; ++i) option(TTY_MODE_NAMES[i], F_TERMINAL, static_cast<int>(G.opt.tty_force) == i);
-    { Line l; l.kind = Kind::Refresh; l.group = F_REFRESH; v.push_back(l); }
+    stepper("Refresh: ", std::to_string(G.opt.refresh_ms) + "ms", F_REFRESH);
+
+    blank();
+    block("Log", F_LOG_SIZE);
+    stepper("Log size: ", std::to_string(G.opt.log_mb) + "mb", F_LOG_SIZE);
 
     blank();
     block("Panels", F_PANELS);
@@ -191,14 +199,14 @@ void panel_settings(ncplane* n, int rows, int cols) {
             nc_set(n, l.selected ? theme().LOW : (l.dim ? theme().MUTED : theme().FG), NCSTYLE_NONE);
             ncplane_putstr_yx(n, r, right_x, str_trunc(std::string(l.selected ? " > " : "   ") + l.text, text_w).c_str());
             break;
-        case Kind::Refresh: {
+        case Kind::Stepper: {
             nc_set(n, theme().LABEL);
-            const std::string lead = std::string(focused ? " > " : "   ") + "Refresh: ";
+            const std::string lead = std::string(focused ? " > " : "   ") + l.text;
             ncplane_putstr_yx(n, r, right_x, str_trunc(lead, text_w).c_str());
             nc_set(n, focused ? theme().LOW : theme().FG, NCSTYLE_NONE);
             const int lx = static_cast<int>(lead.size());
             if (lx < text_w)
-                ncplane_putstr_yx(n, r, right_x + lx, str_trunc(std::to_string(G.opt.refresh_ms) + "ms", text_w - lx).c_str());
+                ncplane_putstr_yx(n, r, right_x + lx, str_trunc(l.value, text_w - lx).c_str());
             break;
         }
         }

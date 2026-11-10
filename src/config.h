@@ -9,6 +9,7 @@ struct Config {
     std::string bg_mode     = "transparent";
     std::string tty_mode    = "auto";
     int         refresh_ms  = 1000;
+    int         log_size_mb = 32;
     std::string corners     = "square";
     std::string graph_style = "sparkline";
     bool        symbol_mirroring = false;

@@ -19,7 +19,7 @@
 namespace {
 
 // a long run at a short refresh would otherwise grow the file without bound
-constexpr long long MAX_BYTES = 32LL * 1024 * 1024;
+long long g_max_bytes = 32LL * 1024 * 1024;
 
 std::mutex  g_mutex;
 int         g_fd    = -1;
@@ -52,7 +52,7 @@ std::string timestamp() {
 void write_line(const std::string& line) {
     if (g_fd < 0) return;
 
-    if (g_bytes + static_cast<long long>(line.size()) > MAX_BYTES) {
+    if (g_bytes + static_cast<long long>(line.size()) > g_max_bytes) {
         if (ftruncate(g_fd, 0) != 0) { close(g_fd); g_fd = -1; return; }
         g_bytes = 0;
         const std::string note = timestamp() + " INFO  [log] size limit reached, file restarted\n";
@@ -108,6 +108,11 @@ void log_open() {
 }
 
 const std::string& log_path() { return g_path; }
+
+void log_set_max_mb(int mb) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_max_bytes = static_cast<long long>(mb) * 1024 * 1024;
+}
 
 void log_close() {
     std::lock_guard<std::mutex> lock(g_mutex);
