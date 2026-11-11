@@ -73,6 +73,7 @@ struct AppState {
     loadavg                load      = {};
     filesystemstat         root_fs   = {};
     std::string            local_ip  = "N/A";
+    std::string            clock     = "N/A";
     Sample                 last;
 
     std::vector<GpuInfo>   gpus;

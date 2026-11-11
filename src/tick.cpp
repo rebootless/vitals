@@ -1,4 +1,5 @@
 #include "tick.h"
+#include "format.h"
 #include "sysinfo.h"
 
 #include <chrono>
@@ -64,6 +65,7 @@ void tick(Clock::time_point t_now, unsigned long long tick_count) {
     const std::string ip = get_local_ip();
     if (ip != G.local_ip) LOG_INFO("network", "local address: %s -> %s", G.local_ip.c_str(), ip.c_str());
     G.local_ip = ip;
+    G.clock    = fmt_time();
 
     const double pct = cpu_delta(G.prev_cpu, cur_cpu);
     push_hist(G.cpu_hist, pct);

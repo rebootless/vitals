@@ -315,7 +315,7 @@ void draw_titlebar(ncplane* n, int cols) {
     kv("kernel: ",   G.un.kernel_release);
     kv("AVG load: ", lbuf);
     kv("uptime: ",   fmt_uptime(up.uptime_seconds), theme().LOW);
-    kv("time: ",     fmt_time());
+    kv("time: ",     G.clock);
     if (G.frozen) kv("", "FROZEN", theme().HIGH);
 }
 
