@@ -5,6 +5,9 @@
 
 #include <exception>
 
+// the UI tick: wakes the loop to follow the terminal size; keep it below the shortest refresh (100 ms)
+inline constexpr int UI_TICK_MS = 30;
+
 // runs one data source; failures go to the log (once per outage) instead of being swallowed
 template <class F>
 bool sample(const char* name, F&& fn) {

@@ -1,6 +1,18 @@
 #include "render.h"
 #include "layout.h"
 
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+bool terminal_resized(ncplane* n) {
+    winsize ws{};
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != 0 || ws.ws_row == 0 || ws.ws_col == 0) return false;
+
+    unsigned rows = 0, cols = 0;
+    ncplane_dim_yx(n, &rows, &cols);
+    return static_cast<unsigned>(ws.ws_row) != rows || static_cast<unsigned>(ws.ws_col) != cols;
+}
+
 void render(notcurses* nc, ncplane* n) {
     const Sample& s = G.last;
     const std::vector<GpuInfo>& gpus = G.gpus;

@@ -10,6 +10,7 @@
 #include "report.h"
 #include "tick.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <clocale>
 #include <cstdio>
@@ -107,15 +108,14 @@ int main(int argc, char** argv) {
     for (;;) {
         ncinput ni{};
 
-        // sleep until input or the next tick; frozen and settings only wake on input
+        // sleep until input, the next data tick or the UI tick, whichever comes first
         uint32_t ch;
-        std::chrono::nanoseconds left{0};
+        std::chrono::nanoseconds left = std::chrono::milliseconds(UI_TICK_MS);
         if (!G.settings_open && !G.frozen)
-            left = std::chrono::milliseconds(G.opt.refresh_ms) - (Clock::now() - last_tick);
+            left = std::min<std::chrono::nanoseconds>(
+                left, std::chrono::milliseconds(G.opt.refresh_ms) - (Clock::now() - last_tick));
 
-        if (G.settings_open || G.frozen) {
-            ch = notcurses_get(nc, nullptr, &ni);
-        } else if (left.count() <= 0) {
+        if (left.count() <= 0) {
             ch = notcurses_get_nblock(nc, &ni);
         } else {
             timespec deadline{};
@@ -137,7 +137,6 @@ int main(int argc, char** argv) {
         if (ni.evtype == NCTYPE_RELEASE) ch = 0;
         if (ch != 0) LOG_DEBUG("input", "key %u", static_cast<unsigned>(ch));
 
-        const bool settings_was_open = G.settings_open;
         if (handle_key(ch)) { exit_reason = "quit key"; break; }
 
         // rates must not span a pause: start from a fresh baseline and tick within a second
@@ -167,15 +166,16 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (due_for_tick || settings_was_open || G.settings_open || ch != 0) {
-            render(nc, n);
-
-            if (ch == NCKEY_RESIZE) {
-                unsigned rows = 0, cols = 0;
-                notcurses_stddim_yx(nc, &rows, &cols);
-                LOG_INFO("terminal", "resized to %ux%u", cols, rows);
-            }
+        // the plane must match the terminal before the layout is computed from it
+        const bool resized = ch == NCKEY_RESIZE || terminal_resized(n);
+        if (resized) {
+            unsigned rows = 0, cols = 0;
+            notcurses_refresh(nc, &rows, &cols);
+            LOG_INFO("terminal", "resized to %ux%u", cols, rows);
         }
+
+        if (due_for_tick || resized || ch != 0)
+            render(nc, n);
     }
 
     LOG_INFO("main", "exiting: %s, %llu ticks in %.0f s", exit_reason, tick_count,
