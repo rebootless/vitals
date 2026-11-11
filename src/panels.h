@@ -4,6 +4,12 @@
 #include "sysinfo.h"
 #include "gpu.h"
 
+// bytes/s of one interface or device; 0 when it has no entry
+inline double rate_of(const std::map<std::string, double>& rates, const std::string& name) {
+    const auto it = rates.find(name);
+    return it != rates.end() ? it->second : 0.0;
+}
+
 void panel_cpu    (ncplane* n, int y, int x, int h, int w,
                    double                      pct,
                    const std::vector<cpufreq>& freqs,

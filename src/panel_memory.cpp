@@ -10,34 +10,16 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     // See mem_used() (sysinfo.cpp) for why this isn't MemTotal - MemAvailable.
     const MemUsed mu = mem_used(mi);
+    const bool has_mem = mi.MemTotal > 0;
 
     if (row < iy + ih) {
-        uint32_t pc = pct_color(mu.pct);
-        nc_set(n, theme().LABEL);
-        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Memory:");
-
-        lbr(n, row, ix + LBL);
-        if (mi.MemTotal > 0) {
-            nc_set(n, pc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", mu.pct);
-        } else {
-            nc_set(n, theme().BORDER);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%4s", "N/A");
-        }
-        rbr(n, row, ix + LBL + 5);
-
-        int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
-        if (bw > 2) {
-            lbr(n, row, bx);
-            draw_bar_grad(n, row, bx + 1, bw, mu.pct / 100.0, GRAD_MEM);
-            rbr(n, row, bx + 1 + bw);
-        }
+        draw_pct_row(n, row, ix, iw, LBL, "Memory:", mu.pct, has_mem, pct_color(mu.pct), GRAD_MEM);
         row++;
     }
 
     if (row < iy + ih) {
-        nc_set(n, mi.MemTotal > 0 ? theme().FG : theme().BORDER);
-        std::string used_str = mi.MemTotal > 0
+        nc_set(n, has_mem ? theme().FG : theme().BORDER);
+        const std::string used_str = has_mem
             ? fmt_mem_kib(mu.used_kib) + " / " + fmt_mem_kib(mi.MemTotal) : "N/A";
         ncplane_printf_yx(n, row, ix + LBL, "%s",
                           str_trunc(used_str, iw - LBL).c_str());
@@ -46,49 +28,28 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
 
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
+    const bool   has_swap = mi.SwapTotal > 0;
+    const ull    swp_used = mi.SwapTotal > mi.SwapFree ? mi.SwapTotal - mi.SwapFree : 0;
+    const double spct     = has_swap ? 100.0 * static_cast<double>(swp_used) / mi.SwapTotal : 0.0;
+
     if (row < iy + ih) {
-        nc_set(n, theme().LABEL);
-        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Swap:");
-
-        const bool   has_swap = mi.SwapTotal > 0;
-        const ull    swp_used = (has_swap && mi.SwapTotal > mi.SwapFree)
-                                ? mi.SwapTotal - mi.SwapFree : 0;
-        const double spct     = has_swap
-                                ? 100.0 * static_cast<double>(swp_used) / mi.SwapTotal : 0.0;
-        uint32_t sc = has_swap ? pct_color(spct) : theme().BORDER;
-
-        lbr(n, row, ix + LBL);
-        nc_set(n, sc, NCSTYLE_BOLD);
-        ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", spct);
-        rbr(n, row, ix + LBL + 5);
-
-        int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
-        if (bw > 2) {
-            lbr(n, row, bx);
-            draw_bar_grad(n, row, bx + 1, bw, spct / 100.0, GRAD_MEM);
-            rbr(n, row, bx + 1 + bw);
-        }
+        draw_pct_row(n, row, ix, iw, LBL, "Swap:", spct, true,
+                     has_swap ? pct_color(spct) : theme().BORDER, GRAD_MEM);
         row++;
     }
 
     if (row < iy + ih) {
         nc_set(n, theme().FG);
-        if (mi.SwapTotal > 0) {
-            const ull swp_used = (mi.SwapTotal > mi.SwapFree)
-                                 ? mi.SwapTotal - mi.SwapFree : 0;
-            std::string s = fmt_mem_kib(swp_used) + " / " + fmt_mem_kib(mi.SwapTotal);
-            ncplane_printf_yx(n, row, ix + LBL, "%s",
-                              str_trunc(s, iw - LBL).c_str());
-        } else {
-            ncplane_putstr_yx(n, row, ix + LBL, "0 B / 0 B");
-        }
+        const std::string s = has_swap
+            ? fmt_mem_kib(swp_used) + " / " + fmt_mem_kib(mi.SwapTotal) : "0 B / 0 B";
+        ncplane_printf_yx(n, row, ix + LBL, "%s", str_trunc(s, iw - LBL).c_str());
         row++;
     }
 
     if (row < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     struct MemRow { const char* label; ull value; uint32_t color; };
-    const std::vector<MemRow> rows = {
+    const MemRow rows[] = {
         {"Cached",  mi.Cached,  theme().DATA_B},
         {"Buffers", mi.Buffers, theme().DATA_B},
         {"Slab",    mi.Slab,    theme().FG},
@@ -96,14 +57,10 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
         {"Dirty",   mi.Dirty,   theme().MID},
     };
 
-    std::vector<std::string> rendered;
-    rendered.reserve(rows.size());
-    for (const auto& r : rows) rendered.push_back(fmt_mem_kib(r.value));
-
     const int VAL_W = std::min(11, std::max(6, iw - LBL - 2));
 
-    for (size_t i = 0; i < rows.size() && row < iy + ih; ++i) {
-        const auto& r = rows[i];
+    for (const MemRow& r : rows) {
+        if (row >= iy + ih) break;
         nc_set(n, theme().LABEL);
         ncplane_printf_yx(n, row, ix, "%-*s", LBL, r.label);
 
@@ -111,7 +68,7 @@ void panel_memory(ncplane* n, int y, int x, int h, int w) {
         ncplane_putstr_yx(n, row, ix + LBL, "(");
 
         nc_set(n, r.color);
-        ncplane_printf_yx(n, row, ix + LBL + 1, "%*s", VAL_W, rendered[i].c_str());
+        ncplane_printf_yx(n, row, ix + LBL + 1, "%*s", VAL_W, fmt_mem_kib(r.value).c_str());
 
         nc_set(n, theme().MUTED);
         ncplane_putstr_yx(n, row, ix + LBL + 1 + VAL_W, ")");

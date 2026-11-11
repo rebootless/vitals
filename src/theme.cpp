@@ -47,11 +47,6 @@ const Role ROLES[] = {
     { "DATA_B",    &Theme::DATA_B    },
 };
 
-std::string lower(std::string s) {
-    for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    return s;
-}
-
 bool parse_hex(const std::string& h, uint32_t& out) {
     if (h.empty()) return false;
     for (char c : h)
@@ -95,7 +90,7 @@ bool load_theme_file(const fs::path& path, Theme& out) {
     std::string line;
     while (std::getline(f, line)) {
         line = str_trim(line);
-        if (line.rfind("theme[", 0) != 0) continue;
+        if (!str_starts(line, "theme[")) continue;
 
         size_t close = line.find(']');
         if (close == std::string::npos) continue;
@@ -150,7 +145,7 @@ const std::vector<Theme>& registry() {
 
                 Theme t;
                 if (load_theme_file(p, t)) {
-                    const std::string key = lower(p.stem().string());
+                    const std::string key = str_lower(p.stem().string());
                     if (by_file.count(key)) LOG_INFO("theme", "%s overrides an earlier theme of the same name", p.string().c_str());
                     else LOG_DEBUG("theme", "loaded %s as \"%s\"", p.string().c_str(), t.name.c_str());
                     by_file[key] = std::move(t);
@@ -162,7 +157,7 @@ const std::vector<Theme>& registry() {
         files.reserve(by_file.size());
         for (auto& kv : by_file) files.push_back(std::move(kv.second));
         std::sort(files.begin(), files.end(), [](const Theme& a, const Theme& b) {
-            return lower(a.name) < lower(b.name);
+            return str_lower(a.name) < str_lower(b.name);
         });
 
         std::vector<Theme> all;

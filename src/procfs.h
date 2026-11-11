@@ -32,11 +32,7 @@ struct meminfo { // /proc/meminfo, values in kiB
     unsigned long long SwapTotal;
     unsigned long long SwapFree;
 
-    unsigned long long Active;
-    unsigned long long Inactive;
-
     unsigned long long Dirty;
-    unsigned long long Writeback;
 
     unsigned long long Slab;
     unsigned long long Shmem;
@@ -86,9 +82,6 @@ struct snmp { // /proc/net/snmp
 
     unsigned long long udp_in_datagrams;
     unsigned long long udp_out_datagrams;
-
-    unsigned long long ip_in_receives;
-    unsigned long long ip_out_requests;
 };
 
 struct diskstats { // /proc/diskstats, one entry per block device
@@ -116,8 +109,6 @@ struct thermal { // /sys/class/thermal/thermal_zone*/temp
 struct cpufreq { // /sys/devices/system/cpu/cpu*/cpufreq
     int    cpu;
     double current_khz;
-
-    double min_khz;
     double max_khz;
 };
 
@@ -126,9 +117,6 @@ struct filesystemstat { // statvfs(); named so to avoid clashing with POSIX stat
     unsigned long long used_bytes;
     unsigned long long free_bytes;
     unsigned long long avail_bytes; // free space for unprivileged users (excludes the root reserve)
-
-    unsigned long long total_inodes;
-    unsigned long long free_inodes;
 };
 
 struct systemuname { // uname(); named so to avoid clashing with POSIX uname
@@ -136,7 +124,6 @@ struct systemuname { // uname(); named so to avoid clashing with POSIX uname
 
     std::string kernel_name;
     std::string kernel_release;
-    std::string kernel_version;
 
     std::string architecture;
 };

@@ -17,26 +17,8 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         // same basis as df: the root-reserved blocks are neither used nor available
         const double basis = static_cast<double>(fs.used_bytes + fs.avail_bytes);
         double fpct = basis > 0 ? 100.0 * static_cast<double>(fs.used_bytes) / basis : 0.0;
-        uint32_t fc = pct_color(fpct);
 
-        nc_set(n, theme().LABEL);
-        ncplane_putstr_yx(n, row, ix, "Root: ");
-        lbr(n, row, ix + 6);
-        if (has_fs) {
-            nc_set(n, fc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + 7, "%3.0f%%", fpct);
-        } else {
-            nc_set(n, theme().BORDER);
-            ncplane_printf_yx(n, row, ix + 7, "%4s", "N/A");
-        }
-        rbr(n, row, ix + 11);
-
-        int bx = ix + 12, bw = iw - 14;
-        if (bw > 2) {
-            lbr(n, row, bx);
-            draw_bar_grad(n, row, bx + 1, bw, fpct / 100.0, GRAD_STORAGE);
-            rbr(n, row, bx + 1 + bw);
-        }
+        draw_pct_row(n, row, ix, iw, 6, "Root:", fpct, has_fs, pct_color(fpct), GRAD_STORAGE);
         row++;
     }
     if (row < iy + ih) {
@@ -53,13 +35,6 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         row++;
     }
 
-    auto rate = [&](const diskstats& ds) -> std::pair<double, double> {
-        double rd = 0, wr = 0;
-        if (auto it = rd_rates.find(ds.device); it != rd_rates.end()) rd = it->second;
-        if (auto it = wr_rates.find(ds.device); it != wr_rates.end()) wr = it->second;
-        return {rd, wr};
-    };
-
     auto disk_line = [&](const std::string& name, const std::string& wr_text, const std::string& rd_text) {
         if (row >= iy + ih) return;
         draw_pair_row(n, row, ix, iw, cols, name, wr_text, rd_text);
@@ -67,9 +42,9 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
     };
 
     auto disk_row = [&](const std::string& prefix, const diskstats& ds) {
-        auto [rd, wr] = rate(ds);
         const int prefix_cols = prefix.empty() ? 0 : 2;
-        disk_line(prefix + str_trunc(ds.device, 13 - prefix_cols), fmt_io_rate(wr), fmt_io_rate(rd));
+        disk_line(prefix + str_trunc(ds.device, 13 - prefix_cols),
+                  fmt_io_rate(rate_of(wr_rates, ds.device)), fmt_io_rate(rate_of(rd_rates, ds.device)));
     };
 
     std::vector<const diskstats*> roots;

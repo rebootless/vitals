@@ -25,7 +25,7 @@ static cpustat cpu_fields(const std::string& fields) {
 cpustat parse_cpustat_from(std::istream& in) {
     std::string line;
     while (std::getline(in, line))
-        if (line.compare(0, 4, "cpu ") == 0) return cpu_fields(line.substr(4));
+        if (str_starts(line, "cpu ")) return cpu_fields(line.substr(4));
     throw std::runtime_error("aggregate cpu line not found");
 }
 
@@ -42,7 +42,7 @@ std::vector<cpustat> parse_percpu() {
     std::vector<cpustat> result;
     std::string line;
     while (std::getline(f, line)) {
-        if (line.compare(0, 3, "cpu") != 0 || line.size() < 4 || !std::isdigit(static_cast<unsigned char>(line[3]))) continue;
+        if (!str_starts(line, "cpu") || line.size() < 4 || !std::isdigit(static_cast<unsigned char>(line[3]))) continue;
         const size_t sp = line.find(' ');
         if (sp == std::string::npos) continue;
         cpustat s = cpu_fields(line.substr(sp + 1));
@@ -68,10 +68,7 @@ meminfo parse_meminfo_from(std::istream& in) {
         else if (key == "Cached:")       m.Cached       = value;
         else if (key == "SwapTotal:")    m.SwapTotal    = value;
         else if (key == "SwapFree:")     m.SwapFree     = value;
-        else if (key == "Active:")       m.Active       = value;
-        else if (key == "Inactive:")     m.Inactive     = value;
         else if (key == "Dirty:")        m.Dirty        = value;
-        else if (key == "Writeback:")    m.Writeback    = value;
         else if (key == "Slab:")         m.Slab         = value;
         else if (key == "Shmem:")        m.Shmem        = value;
         else if (key == "SReclaimable:") m.SReclaimable = value;
@@ -164,7 +161,7 @@ static int count_physical_cores() {
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
         const std::string name = entry->d_name;
-        if (name.size() <= 3 || name.compare(0, 3, "cpu") != 0) continue;
+        if (name.size() <= 3 || !str_starts(name, "cpu")) continue;
         if (!std::isdigit(static_cast<unsigned char>(name[3]))) continue;
 
         const std::string topo = std::string("/sys/devices/system/cpu/") + name + "/topology/";
@@ -269,8 +266,6 @@ snmp parse_snmp() {
     s.tcp_out_segments  = get("Tcp", "OutSegs");
     s.udp_in_datagrams  = get("Udp", "InDatagrams");
     s.udp_out_datagrams = get("Udp", "OutDatagrams");
-    s.ip_in_receives    = get("Ip",  "InReceives");
-    s.ip_out_requests   = get("Ip",  "OutRequests");
     return s;
 }
 
@@ -312,7 +307,7 @@ std::vector<thermal> parse_thermal() {
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
         const std::string name = entry->d_name;
-        if (name.size() <= 12 || name.substr(0, 12) != "thermal_zone") continue;
+        if (name.size() <= 12 || !str_starts(name, "thermal_zone")) continue;
 
         int zone = std::stoi(name.substr(12));
         std::ifstream f(std::string(base) + "/" + name + "/temp");
@@ -338,18 +333,16 @@ static std::vector<cpufreq> parse_cpufreq_from_cpuinfo() {
     std::string line;
     int cpu = -1;
     while (std::getline(f, line)) {
-        if (line.rfind("processor", 0) == 0) {
+        if (str_starts(line, "processor")) {
             auto pos = line.find(':');
             if (pos != std::string::npos)
                 cpu = std::stoi(line.substr(pos + 1));
-        } else if (line.rfind("cpu MHz", 0) == 0) {
+        } else if (str_starts(line, "cpu MHz")) {
             auto pos = line.find(':');
             if (pos != std::string::npos && cpu >= 0) {
                 cpufreq cf{};
                 cf.cpu         = cpu;
                 cf.current_khz = std::stod(line.substr(pos + 1)) * 1000.0;
-                cf.min_khz     = 0.0;
-                cf.max_khz     = 0.0;
                 result.push_back(cf);
             }
         }
@@ -368,27 +361,26 @@ std::vector<cpufreq> parse_cpufreq() {
     DIR* dir = opendir(base);
     if (!dir) return parse_cpufreq_from_cpuinfo();
 
+    auto read_khz = [](const std::string& path) -> double {
+        std::ifstream f(path);
+        if (!f) return 0.0;
+        unsigned long long v = 0;
+        f >> v;
+        return static_cast<double>(v);
+    };
+
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
         const std::string name = entry->d_name;
-        if (name.size() <= 3 || name.substr(0, 3) != "cpu") continue;
+        if (name.size() <= 3 || !str_starts(name, "cpu")) continue;
         if (!std::isdigit(static_cast<unsigned char>(name[3]))) continue;
 
         int cpu = std::stoi(name.substr(3));
         std::string freq_dir = std::string(base) + "/" + name + "/cpufreq";
 
-        auto read_khz = [](const std::string& path) -> double {
-            std::ifstream f(path);
-            if (!f) return 0.0;
-            unsigned long long v = 0;
-            f >> v;
-            return static_cast<double>(v);
-        };
-
         cpufreq cf{};
         cf.cpu         = cpu;
         cf.current_khz = read_khz(freq_dir + "/scaling_cur_freq");
-        cf.min_khz     = read_khz(freq_dir + "/scaling_min_freq");
         cf.max_khz     = read_khz(freq_dir + "/scaling_max_freq");
 
         if (cf.max_khz == 0.0) continue;
@@ -415,8 +407,6 @@ filesystemstat parse_filesystemstat(const std::string& path) {
     stat.free_bytes   = sv.f_bfree  * block;
     stat.avail_bytes  = sv.f_bavail * block;
     stat.used_bytes   = stat.total_bytes - stat.free_bytes;
-    stat.total_inodes = sv.f_files;
-    stat.free_inodes  = sv.f_ffree;
     return stat;
 }
 
@@ -425,7 +415,6 @@ systemuname systemuname_from(const struct utsname& u) {
     s.kernel_name    = u.sysname;
     s.hostname       = u.nodename;
     s.kernel_release = u.release;
-    s.kernel_version = u.version;
     s.architecture   = u.machine;
     return s;
 }

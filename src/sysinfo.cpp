@@ -1,4 +1,6 @@
 #include "sysinfo.h"
+#include "strutil.h"
+#include "sysfs.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -18,13 +20,6 @@ namespace {
 // hwmon10 sorts after hwmon9
 bool by_len(const std::string& a, const std::string& b) {
     return a.size() != b.size() ? a.size() < b.size() : a < b;
-}
-
-std::string read_first_line(const std::string& path) {
-    std::ifstream f(path);
-    std::string s;
-    std::getline(f, s);
-    return s;
 }
 
 // a sysfs value in thousandths, as a whole unit
@@ -47,7 +42,7 @@ std::vector<std::string> list_dir(const std::string& dir) {
 std::vector<std::string> hwmon_dirs(const std::string& root) {
     std::vector<std::string> dirs;
     for (std::string& n : list_dir(root))
-        if (n.size() > 5 && n.compare(0, 5, "hwmon") == 0) dirs.push_back(std::move(n));
+        if (n.size() > 5 && str_starts(n, "hwmon")) dirs.push_back(std::move(n));
     std::sort(dirs.begin(), dirs.end(), by_len);
     return dirs;
 }
@@ -57,7 +52,7 @@ std::vector<std::string> hwmon_channels(const std::string& dir, const std::strin
     std::vector<std::string> channels;
     for (const std::string& fn : list_dir(dir)) {
         const size_t pos = fn.find("_input");
-        if (fn.compare(0, kind.size(), kind) == 0 && pos != std::string::npos && pos > kind.size())
+        if (str_starts(fn, kind) && pos != std::string::npos && pos > kind.size())
             channels.push_back(fn.substr(0, pos));
     }
     std::sort(channels.begin(), channels.end(), by_len);
@@ -157,14 +152,14 @@ bool is_hidden_iface(const std::string& name) {
     if (name == "lo") return true;
     if (name.find('.') != std::string::npos) return true; // VLAN: counted in its parent
     for (const char* p : prefixes)
-        if (name.rfind(p, 0) == 0) return true;
+        if (str_starts(name, p)) return true;
     return false;
 }
 
 bool is_virtual_disk(const std::string& dev) {
     static const char* const prefixes[] = {"dm-", "loop", "sr", "ram", "zram", "md", "nbd", "zd"};
     for (const char* p : prefixes)
-        if (dev.rfind(p, 0) == 0) return true;
+        if (str_starts(dev, p)) return true;
     return false;
 }
 
@@ -270,7 +265,7 @@ std::vector<HwmonChip> parse_hwmon(const std::string& root) {
             if (const auto mx = read_milli(dir + "/" + pfx + "_max"))  { s.temp_max  = *mx; s.has_max  = true; }
             if (const auto cr = read_milli(dir + "/" + pfx + "_crit")) { s.temp_crit = *cr; s.has_crit = true; }
 
-            s.is_package = (s.label.rfind("Package", 0) == 0);
+            s.is_package = str_starts(s.label, "Package");
             chip.sensors.push_back(s);
         }
 
@@ -379,7 +374,7 @@ std::string parent_of(const std::string& dev) {
         std::string c = dev.substr(0, p);
         if (!c.empty()) return c;
     }
-    if (dev.size() > 6 && dev.substr(0, 6) == "mmcblk") {
+    if (dev.size() > 6 && str_starts(dev, "mmcblk")) {
         auto q = dev.rfind('p');
         if (q != std::string::npos && q > 6) return dev.substr(0, q);
     }

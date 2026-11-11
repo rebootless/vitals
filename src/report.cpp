@@ -3,6 +3,7 @@
 #include "log.h"
 #include "paths.h"
 #include "state.h"
+#include "strutil.h"
 
 #include <cerrno>
 #include <clocale>
@@ -54,8 +55,7 @@ void report_data() {
     static const PanelId ORDER[] = { P_CPU, P_MEMORY, P_NETWORK, P_STORAGE, P_GPU, P_THERMAL, P_FAN };
     std::string s;
     for (PanelId id : ORDER) {
-        std::string name = PANELS[id].label;
-        for (char& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        const std::string name = str_lower(PANELS[id].label);
         s += (s.empty() ? "" : ", ") + name + (G.panel_avail[static_cast<size_t>(id)] ? " ok" : " n/a");
     }
     con_say("[5/6] data: %s", s.c_str());

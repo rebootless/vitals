@@ -1,5 +1,6 @@
 #include "tty.h"
 #include "log.h"
+#include "strutil.h"
 
 #include <algorithm>
 #include <cctype>
@@ -20,7 +21,7 @@ bool detect_linux_console() {
 
         if (path == "/dev/console") return true;
 
-        if (path.rfind("/dev/tty", 0) == 0) {
+        if (str_starts(path, "/dev/tty")) {
             std::string rest = path.substr(8);
             bool all_digits = !rest.empty() &&
                 std::all_of(rest.begin(), rest.end(),

@@ -31,26 +31,7 @@ void panel_cpu(ncplane* n, int y, int x, int h, int w,
     }
 
     if (row < iy + ih) {
-        uint32_t pc = pct_color(pct);
-        nc_set(n, theme().LABEL);
-        ncplane_printf_yx(n, row, ix, "%-*s", LBL, "Usage:");
-
-        lbr(n, row, ix + LBL);
-        if (!core_pcts.empty()) {
-            nc_set(n, pc, NCSTYLE_BOLD);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%3.0f%%", pct);
-        } else {
-            nc_set(n, theme().BORDER);
-            ncplane_printf_yx(n, row, ix + LBL + 1, "%4s", "N/A");
-        }
-        rbr(n, row, ix + LBL + 5);
-
-        int bx = ix + LBL + 6, bw = iw - (LBL + 6 + 2);
-        if (bw > 2) {
-            lbr(n, row, bx);
-            draw_bar_grad(n, row, bx + 1, bw, pct / 100.0, GRAD_CPU);
-            rbr(n, row, bx + 1 + bw);
-        }
+        draw_pct_row(n, row, ix, iw, LBL, "Usage:", pct, !core_pcts.empty(), pct_color(pct), GRAD_CPU);
         row++;
     }
 

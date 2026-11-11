@@ -1,7 +1,6 @@
 #include "draw_tty.h"
 
 #include <algorithm>
-#include <cstring>
 
 void draw_bar_tty(ncplane* n, int y, int x, int w, double fill, GradType gt) {
     if (w <= 0) return;

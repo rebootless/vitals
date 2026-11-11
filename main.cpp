@@ -14,12 +14,10 @@
 #include <cerrno>
 #include <clocale>
 #include <cstdio>
-#include <cstdlib>
 #include <ctime>
 #include <thread>
 #include <chrono>
 #include <unistd.h>
-#include <utility>
 
 AppState G;
 

@@ -48,7 +48,7 @@ inline void nc_set(ncplane* n, uint32_t rgb, unsigned style = NCSTYLE_NONE) {
     ncplane_set_styles(n, style);
 }
 
-static inline uint32_t lerp_rgb(uint32_t a, uint32_t b, double t) {
+inline uint32_t lerp_rgb(uint32_t a, uint32_t b, double t) {
     t = std::max(0.0, std::min(1.0, t));
     auto ch = [&](int shift) -> uint32_t {
         int av = (a >> shift) & 0xFF;

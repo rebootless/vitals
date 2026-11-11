@@ -1,6 +1,7 @@
 #include "gpu.h"
 #include "log.h"
 #include "strutil.h"
+#include "sysfs.h"
 
 #include <algorithm>
 #include <cctype>
@@ -23,14 +24,6 @@
 extern char** environ;
 
 namespace {
-
-std::string read_line(const std::string& path) {
-    std::ifstream f(path);
-    if (!f) return "";
-    std::string s;
-    std::getline(f, s);
-    return s;
-}
 
 double read_double(const std::string& path, double fallback = -1.0) {
     std::ifstream f(path);
@@ -60,7 +53,7 @@ double read_hwmon_field(const std::string& device_dir, const std::string& field,
     struct dirent* e;
     while ((e = readdir(d)) != nullptr) {
         std::string name = e->d_name;
-        if (name.rfind("hwmon", 0) != 0) continue;
+        if (!str_starts(name, "hwmon")) continue;
 
         double v = read_double(hwmon_base + "/" + name + "/" + field);
         if (v < 0 && !fallback_field.empty())
@@ -162,11 +155,11 @@ double read_engine_busy_percent(const std::string& pci_addr) {
             bool has_engine = false;
 
             while (std::getline(f, line)) {
-                if (line.rfind("drm-pdev:", 0) == 0) {
+                if (str_starts(line, "drm-pdev:")) {
                     pdev = str_trim(line.substr(9));
-                } else if (line.rfind("drm-client-id:", 0) == 0) {
+                } else if (str_starts(line, "drm-client-id:")) {
                     client = str_trim(line.substr(14));
-                } else if (line.rfind("drm-engine-gr:", 0) == 0) {
+                } else if (str_starts(line, "drm-engine-gr:")) {
                     std::istringstream ls(line.substr(14));
                     unsigned long long v = 0;
                     ls >> v; // value is "<ns> ns" — trailing unit is ignored
@@ -419,7 +412,7 @@ std::vector<GpuInfo> parse_gpus() {
         struct dirent* entry;
         while ((entry = readdir(dir)) != nullptr) {
             std::string name = entry->d_name;
-            if (name.size() < 5 || name.substr(0, 4) != "card") continue;
+            if (name.size() < 5 || !str_starts(name, "card")) continue;
             if (!std::isdigit(static_cast<unsigned char>(name[4]))) continue;
             if (name.find('-') != std::string::npos) continue;
 
@@ -427,7 +420,7 @@ std::vector<GpuInfo> parse_gpus() {
             try { idx = std::stoi(name.substr(4)); } catch (...) { continue; }
 
             const std::string device_dir = std::string(base) + "/" + name + "/device";
-            candidates.push_back({idx, name, device_dir, read_line(device_dir + "/vendor")});
+            candidates.push_back({idx, name, device_dir, read_first_line(device_dir + "/vendor")});
         }
         closedir(dir);
     }

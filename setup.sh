@@ -3,7 +3,7 @@
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-# pinned notcurses tag; the CI workflow reads this line too
+# pinned notcurses tag
 NOTCURSES_VERSION="v3.0.17"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

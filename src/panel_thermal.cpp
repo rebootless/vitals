@@ -1,4 +1,5 @@
 #include "panels.h"
+#include "strutil.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -20,7 +21,7 @@ struct ThermGroup {
 // "Thermistor N" rows go last, in number order (the chip lists them by channel: 15, 16, 0, 1)
 void sort_thermistors(std::vector<ThermItem>& items) {
     constexpr size_t PFX = 11; // "Thermistor "
-    auto is_th = [](const ThermItem& t) { return t.label.rfind("Thermistor ", 0) == 0; };
+    auto is_th = [](const ThermItem& t) { return str_starts(t.label, "Thermistor "); };
     std::stable_partition(items.begin(), items.end(), [&](const ThermItem& t) { return !is_th(t); });
     auto first = std::find_if(items.begin(), items.end(), is_th);
     std::stable_sort(first, items.end(), [](const ThermItem& a, const ThermItem& b) {
@@ -74,7 +75,7 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         double use_hi   = row_hi   >= 0 ? row_hi   : hi_limit;
         double use_crit = row_crit >= 0 ? row_crit : crit_limit;
 
-        double shown = std::min(99.0, std::max(0.0, temp));
+        double shown = std::clamp(temp, 0.0, 99.0);
         uint32_t tc  = (temp >= use_crit) ? theme().HIGH
                      : (temp >= use_hi)   ? theme().MID
                                             : theme().LOW;
@@ -119,12 +120,9 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
         for (const auto& s : chip.sensors) {
             std::string lbl = s.label;
             if (chip.name == "acpitz" && lbl == chip.display) lbl = "ACPI";
-            if (lbl.size() > 5 && lbl.substr(0, 5) == "Core ") {
-                std::string num = lbl.substr(5);
-                bool all_dig = !num.empty();
-                for (char c : num)
-                    if (!std::isdigit(static_cast<unsigned char>(c))) { all_dig = false; break; }
-                if (all_dig) {
+            if (lbl.size() > 5 && str_starts(lbl, "Core ")) {
+                const std::string num = lbl.substr(5);
+                if (std::all_of(num.begin(), num.end(), [](unsigned char c) { return std::isdigit(c) != 0; })) {
                     char fmt_lbl[16];
                     snprintf(fmt_lbl, sizeof(fmt_lbl), "Core %02d", std::stoi(num));
                     lbl = fmt_lbl;
@@ -202,18 +200,21 @@ void panel_thermal(ncplane* n, int y, int x, int h, int w,
 
     char hibuf[32], cbuf[32];
     snprintf(hibuf, sizeof(hibuf), "+%.1f%s",
-             std::min(99.0, std::max(0.0, hi_limit)), deg_suffix());
+             std::clamp(hi_limit, 0.0, 99.0), deg_suffix());
     snprintf(cbuf,  sizeof(cbuf),  "+%.1f%s",
-             std::min(99.0, std::max(0.0, crit_limit)), deg_suffix());
+             std::clamp(crit_limit, 0.0, 99.0), deg_suffix());
 
     int cx = ix;
-    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, "(");   cx++;
-    nc_set(n, theme().LABEL);     ncplane_putstr_yx(n, frow, cx, "HIGH = "); cx += 7;
-    nc_set(n, theme().DATA_A, NCSTYLE_BOLD);
-                              ncplane_putstr_yx(n, frow, cx, hibuf); cx += 7;
-    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, ", ");  cx += 2;
-    nc_set(n, theme().LABEL);     ncplane_putstr_yx(n, frow, cx, "CRIT = "); cx += 7;
-    nc_set(n, theme().HIGH, NCSTYLE_BOLD);
-                              ncplane_putstr_yx(n, frow, cx, cbuf);  cx += 7;
-    nc_set(n, theme().MUTED); ncplane_putstr_yx(n, frow, cx, ")");
+    auto put = [&](uint32_t color, const char* text, unsigned style = NCSTYLE_NONE) {
+        nc_set(n, color, style);
+        ncplane_putstr_yx(n, frow, cx, text);
+        cx += str_cols(text);
+    };
+    put(theme().MUTED, "(");
+    put(theme().LABEL, "HIGH = ");
+    put(theme().DATA_A, hibuf, NCSTYLE_BOLD);
+    put(theme().MUTED, ", ");
+    put(theme().LABEL, "CRIT = ");
+    put(theme().HIGH, cbuf, NCSTYLE_BOLD);
+    put(theme().MUTED, ")");
 }

@@ -18,6 +18,13 @@ std::string str_trunc(const std::string& s, int maxcols) {
     return s.substr(0, i);
 }
 
+int str_cols(std::string_view s) {
+    int cols = 0;
+    for (unsigned char c : s)
+        if ((c & 0xC0) != 0x80) ++cols;
+    return cols;
+}
+
 static void hline(ncplane* n, int y, int x, int w, const char* glyph,
                   uint32_t color, unsigned style = NCSTYLE_NONE) {
     nc_set(n, color, style);
@@ -120,6 +127,30 @@ void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt) {
             nc_set(n, theme().BAR_EMPTY);
             ncplane_putstr_yx(n, y, x + i, BAR_BG);
         }
+    }
+}
+
+void draw_pct_row(ncplane* n, int y, int x, int w, int label_w, const char* label,
+                  double pct, bool valid, uint32_t color, GradType gt) {
+    nc_set(n, theme().LABEL);
+    ncplane_printf_yx(n, y, x, "%-*s", label_w, label);
+
+    const int px = x + label_w;
+    lbr(n, y, px);
+    if (valid) {
+        nc_set(n, color, NCSTYLE_BOLD);
+        ncplane_printf_yx(n, y, px + 1, "%3.0f%%", pct);
+    } else {
+        nc_set(n, theme().BORDER);
+        ncplane_printf_yx(n, y, px + 1, "%4s", "N/A");
+    }
+    rbr(n, y, px + 5);
+
+    const int bw = w - (label_w + 6 + 2);
+    if (bw > 2) {
+        lbr(n, y, px + 6);
+        draw_bar_grad(n, y, px + 7, bw, valid ? pct / 100.0 : 0.0, gt);
+        rbr(n, y, px + 7 + bw);
     }
 }
 
@@ -254,9 +285,7 @@ void draw_titlebar(ncplane* n, int cols) {
         : " Vitals \xe2\x80\x94 Resource Monitor";
     nc_set(n, theme().TITLE, NCSTYLE_BOLD);
     ncplane_putstr_yx(n, 0, col, banner);
-    for (const char* p = banner; *p; ++p)
-        if ((static_cast<unsigned char>(*p) & 0xC0) != 0x80) ++col;
-    col += 2;
+    col += str_cols(banner) + 2;
 
     auto kv = [&](const char* key, const std::string& val,
                   uint32_t val_color = theme().FG) {

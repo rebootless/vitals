@@ -20,6 +20,9 @@ struct Config {
 
 Config load_config();
 
+// one line of the values for the log
+std::string config_summary(const Config& cfg);
+
 void save_config(const Config& cfg);
 
 Settings settings_from_config(const Config& cfg);

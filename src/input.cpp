@@ -5,30 +5,25 @@
 #include "theme.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <iterator>
 
 namespace {
 
-const int REFRESH_STEPS[] = {
+constexpr int REFRESH_STEPS[] = {
     100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000,
     7500, 10000, 15000, 20000, 30000, 45000, 60000
 };
-const int REFRESH_STEPS_N = sizeof(REFRESH_STEPS) / sizeof(REFRESH_STEPS[0]);
+constexpr int LOG_SIZE_STEPS[]  = { 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 };
+constexpr int LOG_COUNT_STEPS[] = { 1, 3, 5, 10, 20, 50 };
 
-const int LOG_SIZE_STEPS[] = { 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 };
-const int LOG_SIZE_STEPS_N = sizeof(LOG_SIZE_STEPS) / sizeof(LOG_SIZE_STEPS[0]);
-
-const int LOG_COUNT_STEPS[] = { 1, 3, 5, 10, 20, 50 };
-const int LOG_COUNT_STEPS_N = sizeof(LOG_COUNT_STEPS) / sizeof(LOG_COUNT_STEPS[0]);
-
-int nearest_step(const int* steps, int n, int value) {
+// the table entry nearest to `value`, moved by `dir` (+1 = one step down the table) and kept inside it
+template <size_t N>
+int step_by(const int (&steps)[N], int value, int dir) {
     int best = 0;
-    int best_diff = std::abs(steps[0] - value);
-    for (int i = 1; i < n; ++i) {
-        int diff = std::abs(steps[i] - value);
-        if (diff < best_diff) { best = i; best_diff = diff; }
-    }
-    return best;
+    for (int i = 1; i < static_cast<int>(N); ++i)
+        if (std::abs(steps[i] - value) < std::abs(steps[best] - value)) best = i;
+    return steps[std::clamp(best - dir, 0, static_cast<int>(N) - 1)];
 }
 
 int wrap(int v, int n) { return ((v % n) + n) % n; }
@@ -65,9 +60,7 @@ void save_settings() {
     log_set_keep(cfg.log_keep);
     if (clear_logs) log_clear();
     G.settings_open = false;
-    LOG_INFO("ui", "settings saved: theme=%s background=%s terminal=%s refresh=%d log_size=%d log_keep=%d corners=%s graph=%s mirroring=%d",
-             cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-             cfg.log_size_mb, cfg.log_keep, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+    LOG_INFO("ui", "settings saved: %s", config_summary(cfg).c_str());
 }
 
 // up/down changes the value of the focused group; dir is -1 for up, +1 for down
@@ -89,15 +82,15 @@ void change_value(int dir) {
         G.settings_panel_cursor = wrap(G.settings_panel_cursor + dir, PANEL_N);
         break;
     case F_LOG_SIZE:
-        s.log_mb = LOG_SIZE_STEPS[std::clamp(nearest_step(LOG_SIZE_STEPS, LOG_SIZE_STEPS_N, s.log_mb) - dir, 0, LOG_SIZE_STEPS_N - 1)];
+        s.log_mb = step_by(LOG_SIZE_STEPS, s.log_mb, dir);
         break;
     case F_CLEAR_LOGS:     s.clear_logs     = !s.clear_logs;     break;
     case F_RESET_SETTINGS: s.reset_settings = !s.reset_settings; break;
     case F_LOG_COUNT:
-        s.log_keep = LOG_COUNT_STEPS[std::clamp(nearest_step(LOG_COUNT_STEPS, LOG_COUNT_STEPS_N, s.log_keep) - dir, 0, LOG_COUNT_STEPS_N - 1)];
+        s.log_keep = step_by(LOG_COUNT_STEPS, s.log_keep, dir);
         break;
     default: // refresh: up is a longer interval
-        s.refresh_ms = REFRESH_STEPS[std::clamp(nearest_step(REFRESH_STEPS, REFRESH_STEPS_N, s.refresh_ms) - dir, 0, REFRESH_STEPS_N - 1)];
+        s.refresh_ms = step_by(REFRESH_STEPS, s.refresh_ms, dir);
         break;
     }
 }

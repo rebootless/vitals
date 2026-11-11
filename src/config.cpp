@@ -5,10 +5,30 @@
 #include "theme.h"
 
 #include <algorithm>
-#include <cstdlib>
 #include <fstream>
-#include <sstream>
 #include <filesystem>
+
+namespace {
+
+// a bad value leaves `out` as it was
+void read_int(int& out, const std::string& key, const std::string& val, int lo, int hi, int lineno) {
+    try {
+        const int v = std::stoi(val);
+        out = std::clamp(v, lo, hi);
+        if (out != v) LOG_WARN("config", "%s=%d is out of range, using %d", key.c_str(), v, out);
+    } catch (...) {
+        LOG_WARN("config", "line %d: invalid %s \"%s\"", lineno, key.c_str(), val.c_str());
+    }
+}
+
+}
+
+std::string config_summary(const Config& cfg) {
+    return "theme=" + cfg.theme_name + " background=" + cfg.bg_mode + " terminal=" + cfg.tty_mode +
+           " refresh=" + std::to_string(cfg.refresh_ms) + " log_size=" + std::to_string(cfg.log_size_mb) +
+           " log_keep=" + std::to_string(cfg.log_keep) + " corners=" + cfg.corners +
+           " graph=" + cfg.graph_style + " mirroring=" + (cfg.symbol_mirroring ? "1" : "0");
+}
 
 Config load_config() {
     Config cfg{};
@@ -29,7 +49,8 @@ Config load_config() {
     int lineno = 0;
     while (std::getline(f, line)) {
         ++lineno;
-        if (str_trim(line).empty() || str_trim(line)[0] == '#') continue;
+        const std::string trimmed = str_trim(line);
+        if (trimmed.empty() || trimmed[0] == '#') continue;
 
         size_t eq = line.find('=');
         if (eq == std::string::npos) {
@@ -39,7 +60,7 @@ Config load_config() {
 
         std::string key = str_trim(line.substr(0, eq));
         std::string val = str_trim(line.substr(eq + 1));
-        const int panel = key.rfind("panel_", 0) == 0 ? panel_index(key.substr(6)) : -1;
+        const int panel = str_starts(key, "panel_") ? panel_index(key.substr(6)) : -1;
         if (key == "theme")           cfg.theme_name = val;
         else if (key == "background") cfg.bg_mode    = val;
         else if (key == "terminal")   cfg.tty_mode    = val;
@@ -50,37 +71,14 @@ Config load_config() {
             if (!mode_from_string(val, cfg.panels[static_cast<size_t>(panel)]))
                 LOG_WARN("config", "line %d: invalid value \"%s\" for %s", lineno, val.c_str(), key.c_str());
         }
-        else if (key == "refresh_ms") {
-            try {
-                int v = std::stoi(val);
-                cfg.refresh_ms = std::max(100, std::min(60000, v));
-                if (cfg.refresh_ms != v) LOG_WARN("config", "refresh_ms=%d is out of range, using %d", v, cfg.refresh_ms);
-            } catch (...) {
-                LOG_WARN("config", "line %d: invalid refresh_ms \"%s\"", lineno, val.c_str());
-            }
-        } else if (key == "log_size_mb") {
-            try {
-                int v = std::stoi(val);
-                cfg.log_size_mb = std::max(2, std::min(1024, v));
-                if (cfg.log_size_mb != v) LOG_WARN("config", "log_size_mb=%d is out of range, using %d", v, cfg.log_size_mb);
-            } catch (...) {
-                LOG_WARN("config", "line %d: invalid log_size_mb \"%s\"", lineno, val.c_str());
-            }
-        } else if (key == "log_keep") {
-            try {
-                int v = std::stoi(val);
-                cfg.log_keep = std::max(1, std::min(50, v));
-                if (cfg.log_keep != v) LOG_WARN("config", "log_keep=%d is out of range, using %d", v, cfg.log_keep);
-            } catch (...) {
-                LOG_WARN("config", "line %d: invalid log_keep \"%s\"", lineno, val.c_str());
-            }
-        } else {
+        else if (key == "refresh_ms")  read_int(cfg.refresh_ms,  key, val, 100, 60000, lineno);
+        else if (key == "log_size_mb") read_int(cfg.log_size_mb, key, val, 2, 1024, lineno);
+        else if (key == "log_keep")    read_int(cfg.log_keep,    key, val, 1, 50, lineno);
+        else {
             LOG_WARN("config", "line %d: unknown key \"%s\"", lineno, key.c_str());
         }
     }
-    LOG_INFO("config", "read %s: theme=%s background=%s terminal=%s refresh=%d log_size=%d log_keep=%d corners=%s graph=%s mirroring=%d",
-             path.c_str(), cfg.theme_name.c_str(), cfg.bg_mode.c_str(), cfg.tty_mode.c_str(), cfg.refresh_ms,
-             cfg.log_size_mb, cfg.log_keep, cfg.corners.c_str(), cfg.graph_style.c_str(), cfg.symbol_mirroring ? 1 : 0);
+    LOG_INFO("config", "read %s: %s", path.c_str(), config_summary(cfg).c_str());
     return cfg;
 }
 
@@ -93,7 +91,7 @@ Settings settings_from_config(const Config& cfg) {
     s.refresh_ms = cfg.refresh_ms;
     s.log_mb     = cfg.log_size_mb;
     s.log_keep   = cfg.log_keep;
-    s.rounded   = (cfg.corners == "rounded");
+    s.rounded    = (cfg.corners == "rounded");
     s.braille    = (cfg.graph_style == "braille");
     s.mirror     = cfg.symbol_mirroring;
     s.panels     = cfg.panels;
@@ -108,7 +106,7 @@ Config config_from_settings(const Settings& s) {
     cfg.refresh_ms       = s.refresh_ms;
     cfg.log_size_mb      = s.log_mb;
     cfg.log_keep         = s.log_keep;
-    cfg.corners         = s.rounded ? "rounded" : "square";
+    cfg.corners          = s.rounded ? "rounded" : "square";
     cfg.graph_style      = s.braille ? "braille" : "sparkline";
     cfg.symbol_mirroring = s.mirror;
     cfg.panels           = s.panels;

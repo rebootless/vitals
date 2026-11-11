@@ -6,6 +6,9 @@
 
 std::string str_trunc(const std::string& s, int maxcols);
 
+// terminal columns of a UTF-8 string, one per code point
+int str_cols(std::string_view s);
+
 std::tuple<int,int,int,int>
 draw_box(ncplane* n, int y, int x, int h, int w,
          const std::string& title, const std::string& bl_label = "");
@@ -16,6 +19,10 @@ void lbr(ncplane* n, int y, int x);
 void rbr(ncplane* n, int y, int x);
 
 void draw_bar_grad(ncplane* n, int y, int x, int w, double fill, GradType gt);
+
+// "Label: [ 45%][bar]": the label padded to label_w, a percent box (N/A when !valid), a bar over the rest of the row
+void draw_pct_row(ncplane* n, int y, int x, int w, int label_w, const char* label,
+                  double pct, bool valid, uint32_t color, GradType gt);
 
 void draw_spark(ncplane* n, int y, int x, int w, const std::deque<double>& hist);
 
