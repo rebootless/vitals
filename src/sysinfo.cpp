@@ -163,6 +163,17 @@ bool is_virtual_disk(const std::string& dev) {
     return false;
 }
 
+DiskTotals disk_totals(const std::vector<diskstats>& disks) {
+    DiskTotals t{0, 0, false};
+    for (const auto& ds : disks) {
+        if (is_virtual_disk(ds.device) || !parent_of(ds.device).empty()) continue;
+        t.read_bytes  += ds.sectors_read    * 512ULL;
+        t.write_bytes += ds.sectors_written * 512ULL;
+        t.any = true;
+    }
+    return t;
+}
+
 std::string thermal_zone_type(int zone) {
     const std::string t = read_first_line("/sys/class/thermal/thermal_zone" + std::to_string(zone) + "/type");
     return t.empty() ? "Zone " + std::to_string(zone) : t;

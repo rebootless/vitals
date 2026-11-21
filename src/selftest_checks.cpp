@@ -35,7 +35,9 @@ Result check_gpu() {
 }
 
 Result check_storage() {
-    if (parse_diskstats().empty()) return fail("no devices in /proc/diskstats");
+    const std::vector<diskstats> disks = parse_diskstats();
+    if (disks.empty()) return fail("no devices in /proc/diskstats");
+    if (!disk_totals(disks).any) return fail("no whole physical disks for Total");
     if (parse_filesystemstat("/").total_bytes == 0)
         return fail("root filesystem reports zero size");
     return ok();

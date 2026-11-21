@@ -24,7 +24,7 @@ const Metric METRICS[] = {
      check_memory,   check_fixture_memory},
     {"GPU",      "sysfs vendor ID", "vendor = 0x1002",
      check_gpu,      check_fixture_gpu},
-    {"Storage",  "/proc/diskstats", "sda sectors_read 2000->2200  sectors_written 4000->4500",
+    {"Storage",  "/proc/diskstats", "sda sectors_read 2000->2200  sectors_written 4000->4500  Total = whole disks only",
      check_storage,  check_fixture_storage},
     {"Network",  "/proc/net/dev",   "eth0 rx_bytes 1000->1500  tx_bytes 2000->2800",
      check_network,  check_fixture_network},

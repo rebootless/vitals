@@ -95,6 +95,23 @@ Result check_fixture_storage() {
         return fail("disk_rate(read): expected 51200 B/s, got " + std::to_string(r.read_bytes_per_sec));
     if (std::abs(r.write_bytes_per_sec - 128000.0) > 0.01)
         return fail("disk_rate(write): expected 128000 B/s, got " + std::to_string(r.write_bytes_per_sec));
+
+    // Total: whole disks only; partitions and virtual devices must not be counted twice
+    std::istringstream mixed(
+        "   8       0 sda 100 0 2000 10 200 0 4000 20 0 30\n"
+        "   8       1 sda1 90 0 1800 10 180 0 3600 20 0 30\n"
+        " 259       0 nvme0n1 100 0 1000 10 200 0 3000 20 0 30\n"
+        " 259       1 nvme0n1p1 90 0 900 10 180 0 2900 20 0 30\n"
+        " 253       0 dm-0 50 0 500 5 50 0 500 5 0 10\n"
+        "   7       0 loop0 10 0 100 1 0 0 0 0 0 1\n");
+    const DiskTotals t = disk_totals(parse_diskstats_from(mixed));
+    // read (2000+1000)*512 = 1536000 B ; write (4000+3000)*512 = 3584000 B
+    if (!t.any)
+        return fail("disk_totals: expected whole disks to be found");
+    if (t.read_bytes != 1536000ULL)
+        return fail("disk_totals(read): expected 1536000 B, got " + std::to_string(t.read_bytes));
+    if (t.write_bytes != 3584000ULL)
+        return fail("disk_totals(write): expected 3584000 B, got " + std::to_string(t.write_bytes));
     return ok();
 }
 

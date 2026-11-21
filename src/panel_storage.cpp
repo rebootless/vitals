@@ -72,6 +72,14 @@ void panel_storage(ncplane* n, int y, int x, int h, int w,
         }
     }
 
+    if (row + 1 < iy + ih) {
+        draw_sep(n, row, ix, iw);
+        row++;
+        const DiskTotals tot = disk_totals(cur_disk);
+        disk_line("Total", tot.any ? fmt_bytes(tot.write_bytes) : "N/A",
+                           tot.any ? fmt_bytes(tot.read_bytes)  : "N/A");
+    }
+
     if (row + 1 < iy + ih) { draw_sep(n, row, ix, iw); row++; }
 
     if (row + 2 < iy + ih) {

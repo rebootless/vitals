@@ -14,6 +14,10 @@ struct DiskRate { double read_bytes_per_sec; double write_bytes_per_sec; };
 DiskRate disk_rate(ull prev_sectors_read,  ull cur_sectors_read,
                    ull prev_sectors_written, ull cur_sectors_written, double dt);
 
+// bytes read/written since boot, summed over whole physical disks (partitions and virtual devices excluded)
+struct DiskTotals { ull read_bytes; ull write_bytes; bool any; };
+DiskTotals disk_totals(const std::vector<diskstats>& disks);
+
 // IPv4 of the default-route interface, else of the first up, non-virtual one; "N/A" if none
 std::string get_local_ip();
 // interface of the lowest-metric default route in /proc/net/route format, "" if none
